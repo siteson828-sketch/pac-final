@@ -1,0 +1,17 @@
+{
+  "name": "pac-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^15.2.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@neondatabase/serverless": "^0.9.0",
+    "@clerk/nextjs": "^6.12.0"
+  }
+}
