@@ -265,7 +265,9 @@ export default async function handler(req, res) {
   if (req.query.secret !== process.env.SYNC_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
+
   const sql = neon(process.env.DATABASE_URL);
+
   await sql`
     CREATE TABLE IF NOT EXISTS artworks (
       id SERIAL PRIMARY KEY, source TEXT NOT NULL, source_id TEXT NOT NULL,
@@ -275,21 +277,28 @@ export default async function handler(req, res) {
       synced_at TIMESTAMP DEFAULT NOW(), UNIQUE(source, source_id)
     )
   `;
+
+  // Use ?source=name to run one source at a time and avoid timeout
+  // e.g. /api/sync?secret=xxx&source=rijks
+  const source = req.query.source || 'all';
   const log = [];
   let total = 0;
+
   const run = async (name, fn) => {
     try { const n = await fn(); total += n; log.push(`${name}: ${n} saved`); }
     catch(e) { log.push(`${name} error: ${e.message}`); }
   };
-  await run('Met Museum',        () => syncMet(sql));
-  await run('Art Inst. Chicago', () => syncArtic(sql));
-  await run('Cleveland',         () => syncCleveland(sql));
-  await run('Rijksmuseum',       () => syncRijks(sql));
-  await run('National Gallery',  () => syncNGA(sql));
-  await run('V&A Museum',        () => syncVAM(sql));
-  await run('Europeana',         () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
-  await run('Smithsonian',       () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
-  await run('Harvard',           () => syncHarvard(sql, process.env.HARVARD_KEY));
+
+  if (source==='met'         || source==='all') await run('Met Museum',        () => syncMet(sql));
+  if (source==='artic'       || source==='all') await run('Art Inst. Chicago', () => syncArtic(sql));
+  if (source==='cleveland'   || source==='all') await run('Cleveland',         () => syncCleveland(sql));
+  if (source==='rijks'       || source==='all') await run('Rijksmuseum',       () => syncRijks(sql));
+  if (source==='nga'         || source==='all') await run('National Gallery',  () => syncNGA(sql));
+  if (source==='vam'         || source==='all') await run('V&A Museum',        () => syncVAM(sql));
+  if (source==='europeana'   || source==='all') await run('Europeana',         () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
+  if (source==='smithsonian' || source==='all') await run('Smithsonian',       () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
+  if (source==='harvard'     || source==='all') await run('Harvard',           () => syncHarvard(sql, process.env.HARVARD_KEY));
+
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
