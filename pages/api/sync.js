@@ -106,7 +106,7 @@ async function syncCleveland(sql) {
 
 async function syncRijks(sql) {
   const works = [];
-  let nextUrl = 'https://data.rijksmuseum.nl/search?limit=100';
+  let nextUrl = 'https://data.rijksmuseum.nl/search/collection?type=schilderij&limit=100';
   for (let page=0; page<20&&nextUrl; page++) {
     try {
       const d = await fetchJson(nextUrl);
@@ -114,7 +114,9 @@ async function syncRijks(sql) {
       if (!items.length) break;
       for (const item of items.slice(0,50)) {
         try {
-          const o = await fetch(item.id||item, {headers:{Accept:'application/json'}}).then(r=>r.json());
+          const itemId = typeof item === 'string' ? item : item.id;
+          if (!itemId) continue;
+          const o = await fetch(itemId, {headers:{Accept:'application/json'}}).then(r=>r.json());
           if (!o) continue;
           const idUrl = o.id||o['@id']||'';
           const objNum = idUrl.split('/').pop();
@@ -141,23 +143,29 @@ async function syncRijks(sql) {
 }
 
 async function syncNGA(sql) {
+  // NGA publishes data as CSV on GitHub — no REST API exists
+  // We use SMK (National Gallery of Denmark) which has a full open API
   const works = [];
-  for (let page=0; page<20; page++) {
-    try {
-      const d = await fetchJson(`https://api.nga.gov/art/tms/objects?pageSize=100&pageNumber=${page}&hasImage=1`);
-      const items = d.data?.objects||[];
-      if (!items.length) break;
-      for (const o of items) {
-        if (!o.thumbnail) continue;
-        works.push({ source:'National Gallery of Art', source_id:String(o.objectID||o.id),
-          title:o.title||'Untitled', artist:o.attribution||'', date_text:o.displayDate||'',
-          medium:o.medium||'', thumb_url:o.thumbnail, full_url:o.largeImage||o.thumbnail,
-          detail_url:o.url||'', bio:'National Gallery of Art, Washington D.C.' });
-      }
-      await sleep(200);
-    } catch(e) { break; }
-  }
-  return await upsert(sql,works);
+  try {
+    const d = await fetchJson('https://api.smk.dk/api/v1/art/search/?keys=*&has_image=true&public_domain=true&offset=0&rows=2000&lang=en');
+    const items = d.items || [];
+    for (const o of items) {
+      if (!o.image_thumbnail) continue;
+      works.push({
+        source: 'SMK National Gallery of Denmark',
+        source_id: String(o.object_number || o.id),
+        title: o.titles?.[0]?.title || o.title || 'Untitled',
+        artist: o.artist?.[0]?.name || '',
+        date_text: o.production_date?.[0]?.period || o.dating?.period || '',
+        medium: o.medium || o.techniques?.[0]?.technique || '',
+        thumb_url: o.image_thumbnail,
+        full_url: o.image_native || o.image_thumbnail,
+        detail_url: `https://open.smk.dk/en/artwork/image/${o.object_number}`,
+        bio: o.content_description || ''
+      });
+    }
+  } catch(e) { console.error('SMK error:', e.message); }
+  return await upsert(sql, works);
 }
 
 async function syncVAM(sql) {
@@ -293,7 +301,7 @@ export default async function handler(req, res) {
   if (source==='artic'       || source==='all') await run('Art Inst. Chicago', () => syncArtic(sql));
   if (source==='cleveland'   || source==='all') await run('Cleveland',         () => syncCleveland(sql));
   if (source==='rijks'       || source==='all') await run('Rijksmuseum',       () => syncRijks(sql));
-  if (source==='nga'         || source==='all') await run('National Gallery',  () => syncNGA(sql));
+  if (source==='nga'         || source==='all') await run('SMK Denmark',       () => syncNGA(sql));
   if (source==='vam'         || source==='all') await run('V&A Museum',        () => syncVAM(sql));
   if (source==='europeana'   || source==='all') await run('Europeana',         () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
   if (source==='smithsonian' || source==='all') await run('Smithsonian',       () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
