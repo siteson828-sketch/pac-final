@@ -1,272 +1,205 @@
-import { useState, useEffect, useCallback } from 'react';
-
-export default function Gallery() {
-  const [works, setWorks] = useState([]);
-  const [total, setTotal] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [search, setSearch] = useState('');
-  const [searchInput, setSearchInput] = useState('');
-  const [selected, setSelected] = useState(null);
-  const [heroIdx, setHeroIdx] = useState(0);
-
-  const PAGE = 24;
-
-  useEffect(() => {
-    fetch('/api/artworks?count=true')
-      .then(r => r.json())
-      .then(d => setTotal(d.total))
-      .catch(() => {});
-  }, []);
-
-  const fetchWorks = useCallback(async (reset) => {
-    const off = reset ? 0 : offset;
-    if (!reset && loadingMore) return;
-    reset ? setLoading(true) : setLoadingMore(true);
-    try {
-      const params = new URLSearchParams({ limit: PAGE, offset: off });
-      if (search) params.set('search', search);
-      const d = await fetch('/api/artworks?' + params).then(r => r.json());
-      const newWorks = d.works || [];
-      setWorks(prev => reset ? newWorks : [...prev, ...newWorks]);
-      setOffset(off + newWorks.length);
-      setHasMore(newWorks.length === PAGE);
-    } catch(e) {}
-    reset ? setLoading(false) : setLoadingMore(false);
-  }, [search, offset, loadingMore]);
-
-  useEffect(() => {
-    setOffset(0);
-    setWorks([]);
-    fetchWorks(true);
-  // eslint-disable-next-line
-  }, [search]);
-
-  useEffect(() => {
-    if (!works.length) return;
-    const t = setInterval(() => setHeroIdx(i => (i + 1) % Math.min(works.length, 8)), 5000);
-    return () => clearInterval(t);
-  }, [works.length]);
-
-  const heroWork = works[heroIdx] || null;
-
-  const shortSource = (s) => (s || '')
-    .replace('Victoria & Albert Museum', 'V&A')
-    .replace('Metropolitan Museum of Art', 'Met Museum')
-    .replace('Art Institute of Chicago', 'Art Inst. Chicago')
-    .replace('SMK National Gallery of Denmark', 'SMK Denmark')
-    .replace('Smithsonian Institution', 'Smithsonian')
-    .replace(/^Europeana — /, '');
-
-  const PRODS = [
-    { e:'🖼️', n:'Fine art print', f:18 },
-    { e:'🎨', n:'Canvas wrap', f:45 },
-    { e:'👕', n:'T-shirt', f:24 },
-    { e:'☕', n:'Mug', f:14 },
-    { e:'📱', n:'Phone case', f:19 },
-    { e:'🛍️', n:'Tote bag', f:16 },
-  ];
+export default function Home() {
+  const html = `<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,sans-serif;background:#FAF8F4;color:#1A1714}
+nav{position:fixed;top:0;left:0;right:0;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:rgba(250,248,244,0.95);border-bottom:0.5px solid rgba(26,23,20,0.12);z-index:100}
+.logo{font-size:20px;font-weight:400;font-family:Georgia,serif}.logo span{color:#B8942A}
+.btn{display:inline-block;padding:9px 20px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;border:1px solid rgba(26,23,20,0.25);color:#1A1714;background:transparent;font-family:system-ui}
+.btn-dark{background:#1A1714;color:#FAF8F4;border-color:#1A1714}
+.hero{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:48px;padding:80px 64px 48px;max-width:1280px;margin:64px auto 0}
+.hero h1{font-family:Georgia,serif;font-size:clamp(44px,5vw,72px);font-weight:300;line-height:1.05;margin-bottom:20px}
+.hero h1 em{font-style:italic;color:#B8942A}
+.hero p{font-size:15px;color:#4A4540;line-height:1.7;margin-bottom:32px;max-width:420px}
+.hero-btns{display:flex;gap:14px;flex-wrap:wrap}
+.frame{background:#2C2318;padding:16px;border-radius:2px;box-shadow:0 8px 48px rgba(26,23,20,0.2)}
+.frame-inner{aspect-ratio:4/5;overflow:hidden;background:#EDE8DF;position:relative}
+.frame-inner img{width:100%;height:100%;object-fit:cover}
+.frame-cap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(26,23,20,0.75));color:#F0EAD8;padding:20px 14px 10px;font-size:12px}
+.frame-cap strong{display:block;font-family:Georgia,serif;font-size:15px;font-weight:400}
+.repos{background:#EDE8DF;border-top:0.5px solid rgba(26,23,20,0.12);border-bottom:0.5px solid rgba(26,23,20,0.12);padding:12px 48px;display:flex;align-items:center;gap:20px;overflow-x:auto;font-size:12px;color:#4A4540}
+.repos-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#8A8178;white-space:nowrap}
+section{max-width:1280px;margin:0 auto;padding:48px 32px}
+section h2{font-family:Georgia,serif;font-size:34px;font-weight:300;margin-bottom:24px}
+section h2 span{color:#B8942A}
+.search-row{display:flex;gap:8px;margin-bottom:28px}
+.search-row input{flex:1;padding:10px 16px;border:0.5px solid rgba(26,23,20,0.25);border-radius:4px;font-size:14px;background:#FAF8F4;outline:none;font-family:system-ui}
+.search-row input:focus{border-color:#B8942A}
+#grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:40px}
+.card{cursor:pointer;transition:transform .2s}
+.card:hover{transform:translateY(-3px)}
+.card-thumb{aspect-ratio:3/4;background:#EDE8DF;overflow:hidden;position:relative;margin-bottom:10px}
+.card-thumb img{width:100%;height:100%;object-fit:cover}
+.card-source{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#B8942A;margin-bottom:3px}
+.card-title{font-family:Georgia,serif;font-size:17px;font-weight:400;margin-bottom:2px;line-height:1.2}
+.card-artist{font-size:11px;color:#8A8178;margin-bottom:5px}
+.card-foot{display:flex;align-items:center;justify-content:space-between}
+.badge{font-size:10px;padding:2px 6px;border-radius:10px;background:#DCFCE7;color:#166534}
+.load-more{text-align:center;padding-bottom:32px}
+.empty{grid-column:1/-1;padding:64px 0;text-align:center;color:#8A8178}
+.empty p{font-family:Georgia,serif;font-size:24px;font-weight:300;margin-top:12px}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,23,20,0.65);z-index:200;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:#FAF8F4;border-radius:10px;max-width:800px;width:100%;max-height:90vh;overflow-y:auto;position:relative}
+.modal-layout{display:grid;grid-template-columns:1fr 1fr}
+.modal-img{background:#EDE8DF;min-height:380px}
+.modal-img img{width:100%;height:100%;object-fit:cover}
+.modal-info{padding:32px 24px;display:flex;flex-direction:column;gap:10px}
+.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:28px;cursor:pointer;color:#8A8178;z-index:1}
+.modal-source{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#B8942A}
+.modal-title{font-family:Georgia,serif;font-size:28px;font-weight:300;line-height:1.15}
+.modal-artist{font-size:13px;color:#4A4540}
+.modal-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 0;border-top:0.5px solid rgba(26,23,20,0.12);border-bottom:0.5px solid rgba(26,23,20,0.12)}
+.meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#8A8178;margin-bottom:2px}
+.meta-value{font-size:13px;font-weight:500}
+.modal-bio{font-size:12px;color:#4A4540;line-height:1.7}
+.prods-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#8A8178;margin-bottom:8px}
+.prods{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.prod{background:#EDE8DF;border-radius:4px;padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;color:#4A4540;border:none;transition:all .15s;font-family:system-ui}
+.prod:hover{background:#1A1714;color:#FAF8F4}
+.modal-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+footer{background:#2C2318;color:#B0A898;padding:40px 32px 24px}
+.footer-inner{max-width:1280px;margin:0 auto}
+.footer-logo{font-family:Georgia,serif;font-size:20px;color:#F3EFE8;margin-bottom:10px}
+.footer-logo span{color:#B8942A}
+.footer-bottom{border-top:0.5px solid rgba(240,234,214,0.1);padding-top:16px;margin-top:16px;font-size:12px;color:#6A6058}
+@media(max-width:900px){.hero{grid-template-columns:1fr;padding:80px 24px 40px}#grid{grid-template-columns:repeat(2,1fr)}.modal-layout{grid-template-columns:1fr}}
+@media(max-width:540px){#grid{grid-template-columns:1fr}}
+</style>
+<nav>
+  <span class="logo">Public Art <span>Collections</span></span>
+  <span id="total-count" style="font-size:13px;color:#8A8178"></span>
+  <a href="/api/artworks" class="btn">API</a>
+</nav>
+<div class="hero">
+  <div>
+    <p id="hero-eyebrow" style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#8A8178;margin-bottom:16px">Loading...</p>
+    <h1>The world's art,<br/><em>in your home</em></h1>
+    <p>Browse museum masterpieces. Buy any piece as a fine art print, canvas, mug, or tee — shipped to your door.</p>
+    <div class="hero-btns">
+      <a href="#gallery" class="btn btn-dark">Browse collection</a>
+      <a href="/api/artworks" class="btn">View API</a>
+    </div>
+  </div>
+  <div class="frame">
+    <div class="frame-inner" id="hero-frame">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:80px;color:#B8942A">🖼️</div>
+    </div>
+  </div>
+</div>
+<div class="repos">
+  <span class="repos-label">Sources</span>
+  <span>Met Museum · Art Institute of Chicago · Cleveland Museum · V&A Museum · SMK Denmark · Smithsonian</span>
+</div>
+<section id="gallery">
+  <h2>Browse the collection <span id="count-label"></span></h2>
+  <div class="search-row">
+    <input id="search-input" type="text" placeholder="Search by title, artist, or keyword…" onkeydown="if(event.key==='Enter')doSearch()"/>
+    <button class="btn btn-dark" onclick="doSearch()">Search</button>
+    <button class="btn" id="clear-btn" style="display:none" onclick="clearSearch()">Clear</button>
+  </div>
+  <div id="grid"><div class="empty"><div style="font-size:32px">⏳</div><p>Loading artworks…</p></div></div>
+  <div class="load-more" id="load-more" style="display:none">
+    <button class="btn" onclick="loadMore()">Load more works</button>
+  </div>
+</section>
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">Public Art <span>Collections</span></div>
+    <p style="font-size:13px;line-height:1.7;margin-bottom:16px">Museum-quality art for every home. All works public domain.</p>
+    <div class="footer-bottom">© 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful</div>
+  </div>
+</footer>
+<div class="modal-bg" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-layout">
+      <div class="modal-img" id="modal-img"></div>
+      <div class="modal-info">
+        <div class="modal-source" id="modal-source"></div>
+        <div class="modal-title" id="modal-title"></div>
+        <div class="modal-artist" id="modal-artist"></div>
+        <div class="modal-meta" id="modal-meta"></div>
+        <div class="modal-bio" id="modal-bio"></div>
+        <div>
+          <div class="prods-label">Order as</div>
+          <div class="prods">
+            <button class="prod">🖼️<br/>Fine art print<br/><span style="opacity:.7;font-size:10px">from $18</span></button>
+            <button class="prod">🎨<br/>Canvas wrap<br/><span style="opacity:.7;font-size:10px">from $45</span></button>
+            <button class="prod">👕<br/>T-shirt<br/><span style="opacity:.7;font-size:10px">from $24</span></button>
+            <button class="prod">☕<br/>Mug<br/><span style="opacity:.7;font-size:10px">from $14</span></button>
+            <button class="prod">📱<br/>Phone case<br/><span style="opacity:.7;font-size:10px">from $19</span></button>
+            <button class="prod">🛍️<br/>Tote bag<br/><span style="opacity:.7;font-size:10px">from $16</span></button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-dark">Order a print →</button>
+          <a id="modal-link" href="#" target="_blank" rel="noopener" class="btn" style="text-align:center;display:none">View on museum website ↗</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var works=[],offset=0,search='',heroIdx=0,heroTimer=null;
+function ss(s){return(s||'').replace('Victoria & Albert Museum','V&A').replace('Metropolitan Museum of Art','Met Museum').replace('Art Institute of Chicago','Art Inst. Chicago').replace('SMK National Gallery of Denmark','SMK Denmark').replace('Smithsonian Institution','Smithsonian').replace(/^Europeana — /,'').split(',')[0];}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function load(reset){
+  if(reset){offset=0;works=[];}
+  var url='/api/artworks?limit=24&offset='+offset+(search?'&search='+encodeURIComponent(search):'');
+  fetch(url).then(function(r){return r.json();}).then(function(d){
+    var w=d.works||[];
+    works=reset?w:works.concat(w);
+    offset+=w.length;
+    render(reset?w:works);
+    document.getElementById('load-more').style.display=w.length===24?'block':'none';
+    if(reset&&w.length>0)startHero(w);
+  }).catch(function(){document.getElementById('grid').innerHTML='<div class="empty"><p>Could not load artworks</p></div>';});
+}
+function render(w){
+  var g=document.getElementById('grid');
+  if(!w.length){g.innerHTML='<div class="empty"><div style="font-size:40px">🔍</div><p>No works found</p></div>';return;}
+  g.innerHTML=w.map(function(x,i){return'<div class="card" onclick="openModal('+i+'"><div class="card-thumb">'+(x.thumb_url?'<img src="'+esc(x.thumb_url)+'" loading="lazy" onerror="this.parentNode.innerHTML=\'<div style=\\\"display:flex;align-items:center;justify-content:center;height:100%;font-size:40px;color:#B8942A\\\">&#128–/div>\'">':'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:40px;color:#B8942A">🖼️</div>')+'</div><div class="card-source">'+esc(ss(x.source))+'</div><div class="card-title">'+esc(x.title)+'</div><div class="card-artist">'+esc(x.artist||'Artist unknown')+(x.date_text?' · '+esc(x.date_text):'')+'</div><div class="card-foot"><span style="font-size:12px;font-weight:500">Prints from $18</span><span class="badge">'+esc(x.rights_label||'CC0')+'</span></div></div>';}).join('');
+}
+function startHero(w){
+  updateHero(w);
+  if(heroTimer)clearInterval(heroTimer);
+  heroTimer=setInterval(function(){heroIdx=(heroIdx+1)%Math.min(works.length,8);updateHero(works);},5000);
+}
+function updateHero(w){
+  var x=w[heroIdx%w.length];
+  document.getElementById('hero-frame').innerHTML=x.thumb_url?'<img src="'+esc(x.thumb_url)+'" onerror="this.style.display=\'none\'"><div class="frame-cap"><strong>'+esc(x.title)+'</strong>'+esc(x.artist||'')+'</div>':'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:80px;color:#B8942A">🖼️</div>';
+}
+function openModal(i){
+  var x=works[i];if(!x)return;
+  document.getElementById('modal-img').innerHTML=x.thumb_url?'<img src="'+esc(x.full_url||x.thumb_url)+'" style="width:100%;height:100%;object-fit:cover" onerror="this.src=\''+esc(x.thumb_url)+'\'">':'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:80px">🖼️</div>';
+  document.getElementById('modal-source').textContent=ss(x.source);
+  document.getElementById('modal-title').textContent=x.title;
+  document.getElementById('modal-artist').textContent=[x.artist,x.date_text].filter(Boolean).join(' · ');
+  document.getElementById('modal-meta').innerHTML='<div><div class="meta-label">Medium</div><div class="meta-value">'+esc(x.medium||'—')+'</div></div><div><div class="meta-label">Rights</div><div class="meta-value" style="color:#16a34a">'+esc(x.rights_label||'CC0')+'</div></div><div><div class="meta-label">Source</div><div class="meta-value">'+esc(ss(x.source))+'</div></div><div><div class="meta-label">Date</div><div class="meta-value">'+esc(x.date_text||'—')+'</div></div>';
+  document.getElementById('modal-bio').textContent=x.bio?x.bio.slice(0,280):'';
+  var lnk=document.getElementById('modal-link');
+  lnk.style.display=x.detail_url?'block':'none';
+  if(x.detail_url)lnk.href=x.detail_url;
+  document.getElementById('modal').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';}
+function doSearch(){search=document.getElementById('search-input').value.trim();document.getElementById('clear-btn').style.display=search?'inline-block':'none';load(true);}
+function clearSearch(){search='';document.getElementById('search-input').value='';document.getElementById('clear-btn').style.display='none';load(true);}
+function loadMore(){load(false);}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
+fetch('/api/artworks?count=true').then(function(r){return r.json();}).then(function(d){
+  if(d.total){
+    document.getElementById('total-count').textContent=Number(d.total).toLocaleString()+' works';
+    document.getElementById('hero-eyebrow').textContent=Number(d.total).toLocaleString()+'+ works · 7 museum sources';
+    document.getElementById('count-label').textContent='— '+Number(d.total).toLocaleString()+'+ works';
+    document.getElementById('count-label').style.color='#B8942A';
+  }
+});
+load(true);
+</script>`;
 
   return (
-    <div style={{fontFamily:'system-ui,sans-serif',background:'#FAF8F4',color:'#1A1714',minHeight:'100vh'}}>
-
-      {/* FONTS */}
-      <link rel="preconnect" href="https://fonts.googleapis.com" />
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet" />
-
-      {/* NAV */}
-      <nav style={{position:'fixed',top:0,left:0,right:0,height:64,display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0 32px',background:'rgba(250,248,244,0.95)',borderBottom:'0.5px solid rgba(26,23,20,0.12)',zIndex:100}}>
-        <span style={{fontFamily:'Georgia,serif',fontSize:20,fontWeight:400}}>
-          Public Art <span style={{color:'#B8942A'}}>Collections</span>
-        </span>
-        <span style={{fontSize:13,color:'#8A8178'}}>
-          {total ? Number(total).toLocaleString() + ' works' : ''}
-        </span>
-        <a href="/api/artworks" style={{fontSize:12,padding:'8px 18px',border:'1px solid rgba(26,23,20,0.25)',borderRadius:4,textDecoration:'none',color:'#1A1714'}}>API</a>
-      </nav>
-
-      {/* HERO */}
-      <div style={{marginTop:64,display:'grid',gridTemplateColumns:'1fr 1fr',alignItems:'center',gap:48,padding:'64px',maxWidth:1280,marginLeft:'auto',marginRight:'auto'}}>
-        <div>
-          <p style={{fontSize:11,letterSpacing:'0.12em',textTransform:'uppercase',color:'#8A8178',marginBottom:16,fontFamily:'system-ui'}}>
-            {total ? Number(total).toLocaleString() + '+ works' : '5,000+ works'} · 7 museum sources
-          </p>
-          <h1 style={{fontFamily:'Georgia,serif',fontSize:'clamp(44px,5vw,72px)',fontWeight:300,lineHeight:1.05,marginBottom:20}}>
-            The world&apos;s art,<br/><em style={{fontStyle:'italic',color:'#B8942A'}}>in your home</em>
-          </h1>
-          <p style={{fontSize:15,color:'#4A4540',lineHeight:1.7,marginBottom:32,maxWidth:420}}>
-            Browse 5,000+ museum masterpieces. Buy any piece as a fine art print, canvas, mug, or tee — shipped to your door.
-          </p>
-          <div style={{display:'flex',gap:14,flexWrap:'wrap'}}>
-            <a href="#gallery" style={{background:'#1A1714',color:'#FAF8F4',padding:'10px 24px',borderRadius:4,fontSize:13,fontWeight:500,textDecoration:'none'}}>Browse collection</a>
-            <a href="/api/artworks" style={{background:'transparent',color:'#1A1714',padding:'10px 24px',borderRadius:4,fontSize:13,fontWeight:500,textDecoration:'none',border:'1px solid rgba(26,23,20,0.25)'}}>View API</a>
-          </div>
-        </div>
-        <div style={{background:'#2C2318',padding:16,borderRadius:2,boxShadow:'0 8px 48px rgba(26,23,20,0.2)'}}>
-          <div style={{aspectRatio:'4/5',overflow:'hidden',background:'#EDE8DF',position:'relative'}}>
-            {heroWork?.thumb_url ? (
-              <img key={heroWork.id} src={heroWork.thumb_url} alt={heroWork.title}
-                style={{width:'100%',height:'100%',objectFit:'cover',transition:'opacity .8s'}}
-                onError={e => { e.currentTarget.style.display='none'; }}
-              />
-            ) : (
-              <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:80,color:'#B8942A'}}>🖼️</div>
-            )}
-            {heroWork && (
-              <div style={{position:'absolute',bottom:0,left:0,right:0,background:'linear-gradient(transparent,rgba(26,23,20,0.75))',color:'#F0EAD8',padding:'20px 14px 10px',fontSize:12}}>
-                <strong style={{display:'block',fontFamily:'Georgia,serif',fontSize:15,fontWeight:400}}>{heroWork.title}</strong>
-                {heroWork.artist}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* SOURCES BAR */}
-      <div style={{background:'#EDE8DF',borderTop:'0.5px solid rgba(26,23,20,0.12)',borderBottom:'0.5px solid rgba(26,23,20,0.12)',padding:'12px 48px',display:'flex',alignItems:'center',gap:20,overflowX:'auto',fontSize:12,color:'#4A4540'}}>
-        <span style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.1em',color:'#8A8178',whiteSpace:'nowrap'}}>Sources</span>
-        <span>Met Museum · Art Institute of Chicago · Cleveland Museum · V&amp;A Museum · SMK Denmark · Smithsonian</span>
-      </div>
-
-      {/* GALLERY */}
-      <section style={{maxWidth:1280,margin:'0 auto',padding:'48px 32px'}} id="gallery">
-        <h2 style={{fontFamily:'Georgia,serif',fontSize:34,fontWeight:300,marginBottom:24}}>
-          Browse the collection
-          {total && <span style={{color:'#B8942A'}}> — {Number(total).toLocaleString()}+ works</span>}
-        </h2>
-
-        {/* SEARCH */}
-        <div style={{display:'flex',gap:8,marginBottom:28}}>
-          <input
-            value={searchInput}
-            onChange={e => setSearchInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && setSearch(searchInput)}
-            placeholder="Search by title, artist, or keyword…"
-            style={{flex:1,padding:'10px 16px',border:'0.5px solid rgba(26,23,20,0.25)',borderRadius:4,fontSize:14,background:'#FAF8F4',outline:'none',fontFamily:'system-ui'}}
-          />
-          <button onClick={() => setSearch(searchInput)} style={{background:'#1A1714',color:'#FAF8F4',padding:'10px 20px',border:'none',borderRadius:4,fontSize:13,cursor:'pointer',fontFamily:'system-ui'}}>Search</button>
-          {search && <button onClick={() => { setSearch(''); setSearchInput(''); }} style={{background:'transparent',color:'#1A1714',padding:'10px 16px',border:'1px solid rgba(26,23,20,0.25)',borderRadius:4,fontSize:13,cursor:'pointer',fontFamily:'system-ui'}}>Clear</button>}
-        </div>
-
-        {/* GRID */}
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:20,marginBottom:40}}>
-          {loading ? (
-            <div style={{gridColumn:'1/-1',padding:'64px 0',textAlign:'center',color:'#8A8178'}}>
-              <div style={{fontSize:32,marginBottom:12}}>⏳</div>
-              <p style={{fontFamily:'Georgia,serif',fontSize:24,fontWeight:300}}>Loading artworks…</p>
-            </div>
-          ) : works.length === 0 ? (
-            <div style={{gridColumn:'1/-1',padding:'64px 0',textAlign:'center',color:'#8A8178'}}>
-              <div style={{fontSize:40,marginBottom:12}}>🔍</div>
-              <p style={{fontFamily:'Georgia,serif',fontSize:24,fontWeight:300}}>No works found</p>
-            </div>
-          ) : works.map(w => (
-            <div key={w.id} onClick={() => setSelected(w)}
-              style={{cursor:'pointer',transition:'transform .2s'}}
-              onMouseEnter={e => e.currentTarget.style.transform='translateY(-3px)'}
-              onMouseLeave={e => e.currentTarget.style.transform='translateY(0)'}
-            >
-              <div style={{aspectRatio:'3/4',background:'#EDE8DF',overflow:'hidden',position:'relative',marginBottom:10}}>
-                {w.thumb_url ? (
-                  <img src={w.thumb_url} alt={w.title} loading="lazy"
-                    style={{width:'100%',height:'100%',objectFit:'cover'}}
-                    onError={e => { e.currentTarget.parentNode.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:40px;color:#B8942A">🖼️</div>'; }}
-                  />
-                ) : (
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:40,color:'#B8942A'}}>🖼️</div>
-                )}
-              </div>
-              <div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.1em',color:'#B8942A',marginBottom:3}}>{shortSource(w.source)}</div>
-              <div style={{fontFamily:'Georgia,serif',fontSize:17,fontWeight:400,marginBottom:2,lineHeight:1.2}}>{w.title}</div>
-              <div style={{fontSize:11,color:'#8A8178',marginBottom:5}}>{w.artist || 'Artist unknown'}{w.date_text ? ' · ' + w.date_text : ''}</div>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-                <span style={{fontSize:12,fontWeight:500}}>Prints from $18</span>
-                <span style={{fontSize:10,padding:'2px 6px',borderRadius:10,background:'#DCFCE7',color:'#166534'}}>{w.rights_label || 'CC0'}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {!loading && hasMore && works.length > 0 && (
-          <div style={{textAlign:'center',paddingBottom:32}}>
-            <button onClick={() => fetchWorks(false)} disabled={loadingMore}
-              style={{background:'transparent',color:'#1A1714',padding:'10px 28px',border:'1px solid rgba(26,23,20,0.25)',borderRadius:4,fontSize:13,cursor:'pointer',fontFamily:'system-ui'}}>
-              {loadingMore ? 'Loading…' : 'Load more works'}
-            </button>
-          </div>
-        )}
-      </section>
-
-      {/* FOOTER */}
-      <footer style={{background:'#2C2318',color:'#B0A898',padding:'40px 32px 24px'}}>
-        <div style={{maxWidth:1280,margin:'0 auto'}}>
-          <div style={{fontFamily:'Georgia,serif',fontSize:20,color:'#F3EFE8',marginBottom:10}}>
-            Public Art <span style={{color:'#B8942A'}}>Collections</span>
-          </div>
-          <p style={{fontSize:13,lineHeight:1.7,marginBottom:16}}>Museum-quality art for every home. All works public domain.</p>
-          <div style={{borderTop:'0.5px solid rgba(240,234,214,0.1)',paddingTop:16,fontSize:12,color:'#6A6058'}}>
-            © 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful
-          </div>
-        </div>
-      </footer>
-
-      {/* MODAL */}
-      {selected && (
-        <div onClick={() => setSelected(null)}
-          style={{position:'fixed',inset:0,background:'rgba(26,23,20,0.65)',zIndex:200,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-          <div onClick={e => e.stopPropagation()}
-            style={{background:'#FAF8F4',borderRadius:10,maxWidth:800,width:'100%',maxHeight:'90vh',overflowY:'auto',position:'relative',boxShadow:'0 8px 48px rgba(26,23,20,0.2)'}}>
-            <button onClick={() => setSelected(null)}
-              style={{position:'absolute',top:12,right:16,background:'none',border:'none',fontSize:28,cursor:'pointer',color:'#8A8178',lineHeight:1,zIndex:1}}>×</button>
-            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr'}}>
-              <div style={{background:'#EDE8DF',minHeight:380}}>
-                {selected.thumb_url ? (
-                  <img src={selected.full_url || selected.thumb_url} alt={selected.title}
-                    style={{width:'100%',height:'100%',objectFit:'cover'}}
-                    onError={e => { e.currentTarget.src = selected.thumb_url; }}
-                  />
-                ) : (
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',fontSize:80}}>🖼️</div>
-                )}
-              </div>
-              <div style={{padding:'32px 24px',display:'flex',flexDirection:'column',gap:10}}>
-                <div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.12em',color:'#B8942A'}}>{shortSource(selected.source)}</div>
-                <div style={{fontFamily:'Georgia,serif',fontSize:28,fontWeight:300,lineHeight:1.15}}>{selected.title}</div>
-                <div style={{fontSize:13,color:'#4A4540'}}>{[selected.artist,selected.date_text].filter(Boolean).join(' · ')}</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,padding:'12px 0',borderTop:'0.5px solid rgba(26,23,20,0.12)',borderBottom:'0.5px solid rgba(26,23,20,0.12)'}}>
-                  <div><div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.1em',color:'#8A8178',marginBottom:2}}>Medium</div><div style={{fontSize:13,fontWeight:500}}>{selected.medium||'—'}</div></div>
-                  <div><div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.1em',color:'#8A8178',marginBottom:2}}>Rights</div><div style={{fontSize:13,fontWeight:500,color:'#16a34a'}}>{selected.rights_label||'CC0'}</div></div>
-                  <div><div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.1em',color:'#8A8178',marginBottom:2}}>Source</div><div style={{fontSize:13,fontWeight:500}}>{shortSource(selected.source)}</div></div>
-                  <div><div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.1em',color:'#8A8178',marginBottom:2}}>Date</div><div style={{fontSize:13,fontWeight:500}}>{selected.date_text||'—'}</div></div>
-                </div>
-                {selected.bio && <div style={{fontSize:12,color:'#4A4540',lineHeight:1.7}}>{selected.bio.slice(0,280)}</div>}
-                <div>
-                  <div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.1em',color:'#8A8178',marginBottom:8}}>Order as</div>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:5}}>
-                    {PRODS.map(p => (
-                      <div key={p.n} style={{background:'#EDE8DF',borderRadius:4,padding:'8px 4px',textAlign:'center',cursor:'pointer',fontSize:11,color:'#4A4540'}}>
-                        <span style={{fontSize:18,display:'block',marginBottom:3}}>{p.e}</span>
-                        {p.n}<br/><span style={{opacity:.7,fontSize:10}}>from ${p.f}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div style={{display:'flex',flexDirection:'column',gap:8,marginTop:4}}>
-                  <button style={{background:'#1A1714',color:'#FAF8F4',padding:'10px 20px',border:'none',borderRadius:4,fontSize:13,cursor:'pointer',fontFamily:'system-ui',fontWeight:500}}>Order a print →</button>
-                  {selected.detail_url && (
-                    <a href={selected.detail_url} target="_blank" rel="noopener noreferrer"
-                      style={{background:'transparent',color:'#1A1714',padding:'10px 20px',border:'1px solid rgba(26,23,20,0.25)',borderRadius:4,fontSize:13,cursor:'pointer',textDecoration:'none',textAlign:'center'}}>
-                      View on museum website ↗
-                    </a>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    <div dangerouslySetInnerHTML={{ __html: html }} />
   );
 }
