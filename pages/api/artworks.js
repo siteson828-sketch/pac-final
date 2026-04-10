@@ -1,5 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 
+export const dynamic = 'force-dynamic';
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
   try {
@@ -15,15 +17,16 @@ export default async function handler(req, res) {
     if (search) {
       works = await sql`
         SELECT * FROM artworks
-        WHERE commercial_ok = true AND thumb_url IS NOT NULL
-          AND (title ILIKE ${'%' + search + '%'} OR artist ILIKE ${'%' + search + '%'})
+        WHERE commercial_ok = true AND thumb_url IS NOT NULL AND thumb_url != ''
+          AND (title ILIKE ${'%' + search + '%'} OR artist ILIKE ${'%' + search + '%'}
+               OR source ILIKE ${'%' + search + '%'} OR medium ILIKE ${'%' + search + '%'})
         ORDER BY synced_at DESC
         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
       `;
     } else {
       works = await sql`
         SELECT * FROM artworks
-        WHERE commercial_ok = true AND thumb_url IS NOT NULL
+        WHERE commercial_ok = true AND thumb_url IS NOT NULL AND thumb_url != ''
         ORDER BY synced_at DESC
         LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
       `;
