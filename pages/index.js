@@ -1,4 +1,4 @@
-export default function Home() {
+export default function Home() { // v2
   const html = `<style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,sans-serif;background:#FAF8F4;color:#1A1714}
