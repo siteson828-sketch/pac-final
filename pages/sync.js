@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-
+export const dynamic = 'force-dynamic';
 async function fetchJson(url) {
   const res = await fetch(url, { headers: { 'Accept': 'application/json', 'User-Agent': 'PublicArtCollections/1.0' } });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
