@@ -424,10 +424,10 @@ async function syncLOC(sql) {
   const seen = new Set();
   const terms = ['painting','portrait','landscape','drawing','print'];
   for (const q of terms) {
-    for (let page=1; page<=10; page++) {
+    for (let page=1; page<=5; page++) {
       try {
         const d = await fetchJson(
-          `https://www.loc.gov/search/?fo=json&q=${encodeURIComponent(q)}&fa=online-format:image|rights-status:no-known-restrictions&c=100&sp=${page}&at=results,pagination`
+          `https://www.loc.gov/search/?fo=json&q=${encodeURIComponent(q)}&fa=online-format:image|rights-status:no-known-restrictions&c=50&sp=${page}&at=results,pagination`
         );
         const items = d.results||[];
         if (!items.length) break;
@@ -454,7 +454,7 @@ async function syncLOC(sql) {
         }
         const pg = d.pagination||{};
         if (!pg.next) break;
-        await sleep(200);
+        await sleep(500);
       } catch(e) { break; }
     }
   }
@@ -538,7 +538,7 @@ async function syncNYPL(sql) {
 async function syncWikimedia(sql) {
   const works = [];
   const seen = new Set();
-  for (let offset=0; offset<5000; offset+=1000) {
+  for (let offset=0; offset<500; offset+=50) {
     try {
       const query = `
         SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?date WHERE {
@@ -549,7 +549,7 @@ async function syncWikimedia(sql) {
           OPTIONAL { ?item wdt:P571 ?date. }
           SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
         }
-        LIMIT 1000 OFFSET ${offset}
+        LIMIT 50 OFFSET ${offset}
       `;
       const d = await fetchJson(
         `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
@@ -575,8 +575,9 @@ async function syncWikimedia(sql) {
           detail_url: `https://www.wikidata.org/wiki/${qid}`,
           bio: 'Public domain via Wikimedia Commons.'
         });
+        await sleep(200);
       }
-      await sleep(1000);
+      await sleep(500);
     } catch(e) { break; }
   }
   return upsert(sql, works);
@@ -588,7 +589,7 @@ async function syncDPLA(sql, key) {
   const seen = new Set();
   const terms = ['painting','photograph','drawing','print','watercolor'];
   for (const q of terms) {
-    for (let page=1; page<=10; page++) {
+    for (let page=1; page<=2; page++) {
       try {
         const d = await fetchJson(
           `https://api.dp.la/v2/items?q=${encodeURIComponent(q)}&sourceResource.type=image&page=${page}&page_size=100&api_key=${key}`
