@@ -84,12 +84,12 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 .gallery-title span{color:#B8942A}
 .gallery-meta{font-size:12px;color:#8A8178}
 
-.gallery-grid{columns:4 220px;column-gap:16px;padding:24px 32px 64px}
-.gallery-card{break-inside:avoid;margin-bottom:16px;cursor:pointer;border-radius:6px;overflow:hidden;background:#EDE8DF;box-shadow:0 1px 4px rgba(26,23,20,0.08);transition:box-shadow .22s,transform .22s}
-.gallery-card:hover{box-shadow:0 10px 40px rgba(26,23,20,0.18);transform:translateY(-2px)}
-.card-img-wrap{position:relative;overflow:hidden;background:#D4CEC3}
-.card-img-wrap img{width:100%;display:block;transition:transform .4s ease}
-.gallery-card:hover .card-img-wrap img{transform:scale(1.04)}
+.gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding:24px 32px 64px}
+.gallery-card{cursor:pointer;border-radius:8px;overflow:hidden;background:#EDE8DF;box-shadow:0 1px 4px rgba(26,23,20,0.08);transition:box-shadow .22s,transform .22s;display:flex;flex-direction:column}
+.gallery-card:hover{box-shadow:0 12px 40px rgba(26,23,20,0.18);transform:translateY(-3px)}
+.card-img-wrap{position:relative;overflow:hidden;background:#D4CEC3;aspect-ratio:3/4;flex-shrink:0}
+.card-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
+.gallery-card:hover .card-img-wrap img{transform:scale(1.05)}
 .card-hover{position:absolute;inset:0;background:linear-gradient(transparent 50%,rgba(26,23,20,0.75));opacity:0;transition:opacity .22s;display:flex;align-items:flex-end;padding:12px}
 .gallery-card:hover .card-hover{opacity:1}
 .card-hover-label{font-size:11px;font-weight:500;color:#FAF8F4;letter-spacing:.05em}
@@ -104,9 +104,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 
 /* SKELETON */
 .skeleton{animation:pulse 1.5s ease-in-out infinite}
-.skeleton-card{break-inside:avoid;margin-bottom:16px;border-radius:6px;overflow:hidden}
-.skeleton-img{background:#E0DAD0}
-.skeleton-body{padding:12px 14px 14px;background:#EDE8DF}
+.skeleton-card{border-radius:8px;overflow:hidden;background:#EDE8DF}
+.skeleton-img{aspect-ratio:3/4;background:#E0DAD0}
+.skeleton-body{padding:12px 14px 14px}
 .skeleton-line{height:10px;background:#D4CEC3;border-radius:3px;margin-bottom:8px}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
 
@@ -161,22 +161,21 @@ footer{background:#2C2318;color:#B0A898;padding:52px 32px 28px}
 .footer-bottom{max-width:1280px;margin:32px auto 0;border-top:0.5px solid rgba(240,234,214,0.08);padding-top:20px;font-size:12px;color:#4A4540}
 
 /* RESPONSIVE */
-@media(max-width:1100px){.gallery-grid{columns:3 200px}}
+@media(max-width:1200px){.gallery-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:800px){
   .nav{padding:0 16px;gap:10px}
   .hero{height:400px}
   .hero-content{padding:32px 24px 36px}
   .filter-bar{padding:0 16px}
   .gallery-header{padding:24px 16px 0}
-  .gallery-grid{columns:2 160px;column-gap:12px;padding:20px 16px 48px}
-  .gallery-grid .skeleton-card,.gallery-grid .gallery-card{margin-bottom:12px}
+  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:14px;padding:20px 16px 48px}
   .modal-layout{grid-template-columns:1fr}
   .modal-img-side{min-height:260px}
   .footer-grid{grid-template-columns:1fr;gap:32px}
 }
 @media(max-width:500px){
   .nav-count{display:none}
-  .gallery-grid{columns:1;padding:16px 12px 40px}
+  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:16px 12px 40px}
   .hero-title{font-size:28px}
 }
 `;
@@ -269,7 +268,7 @@ export default function Home() {
 
   const hero = works[heroIdx % Math.max(works.length, 1)];
 
-  const skeletonHeights = [240, 320, 200, 360, 280, 220, 300, 240, 360, 200, 320, 260];
+  const SKELETON_COUNT = 12;
 
   return (
     <>
@@ -365,9 +364,9 @@ export default function Home() {
       {/* GALLERY */}
       {loading && works.length === 0 ? (
         <div className="gallery-grid">
-          {skeletonHeights.map((h, i) => (
+          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div key={i} className="skeleton-card skeleton">
-              <div className="skeleton-img" style={{ height: h }} />
+              <div className="skeleton-img" />
               <div className="skeleton-body">
                 <div className="skeleton-line" style={{ width: '50%' }} />
                 <div className="skeleton-line" style={{ width: '75%' }} />
