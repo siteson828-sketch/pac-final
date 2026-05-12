@@ -505,50 +505,56 @@ async function syncNYPL(sql) {
 }
 
 async function syncWikimedia(sql) {
+  // Uses MediaWiki category API (not Wikidata SPARQL) with batched imageinfo requests
   const works = [];
   const seen = new Set();
-  for (let offset = 0; offset < 2000; offset += 500) {
-    try {
-      const query = `
-        SELECT ?item ?itemLabel ?image ?creatorLabel ?date WHERE {
-          ?item wdt:P31 wd:Q3305213;
-                wdt:P18 ?image;
-                wdt:P571 ?date.
-          FILTER(YEAR(?date) < 1700)
-          OPTIONAL { ?item wdt:P170 ?creator. }
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-        } LIMIT 500 OFFSET ${offset}
-      `;
-      const res = await fetch(
-        `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}`,
-        { headers: { 'Accept': 'application/json', 'User-Agent': 'PublicArtCollections/1.0' } }
-      );
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const d = await res.json();
-      const bindings = d.results?.bindings || [];
-      if (!bindings.length) break;
-      for (const r of bindings) {
-        const qid = r.item?.value.split('/').pop();
-        if (!qid || seen.has(qid)) continue;
-        seen.add(qid);
-        const imgRaw = r.image?.value || '';
-        if (!imgRaw) continue;
-        const imgHttps = imgRaw.replace('http://', 'https://');
-        const creator = r.creatorLabel?.value || '';
-        const year = (r.date?.value || '').replace(/^\+/, '').substring(0, 4);
-        works.push({
-          source: 'Wikimedia Commons', source_id: qid,
-          title: r.itemLabel?.value || 'Untitled',
-          artist: creator.match(/^Q\d+$/) ? '' : creator,
-          date_text: year, medium: 'Painting',
-          thumb_url: `${imgHttps}?width=400`,
-          full_url:  `${imgHttps}?width=1200`,
-          detail_url: `https://www.wikidata.org/wiki/${qid}`,
-          bio: 'Public domain via Wikimedia Commons.',
-        });
-      }
-      await sleep(600);
-    } catch(e) { break; }
+  const categories = ['Public_domain_paintings', 'CC0_artworks', 'Old_Masters'];
+  for (const category of categories) {
+    let cmcontinue = '';
+    let pages = 0;
+    while (pages < 8) {
+      try {
+        pages++;
+        const contParam = cmcontinue ? `&cmcontinue=${encodeURIComponent(cmcontinue)}` : '';
+        const d = await fetchJson(
+          `https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(category)}&cmtype=file&cmlimit=50&format=json${contParam}`
+        );
+        const members = d.query?.categorymembers || [];
+        if (!members.length) break;
+        // Batch all 50 files in one imageinfo request
+        const titleStr = members.map(m => m.title).join('|');
+        const metaRes = await fetchJson(
+          `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(titleStr)}&prop=imageinfo&iiprop=url|extmetadata|thumburl&iiurlwidth=400&format=json`
+        );
+        for (const pageData of Object.values(metaRes.query?.pages || {})) {
+          const title = pageData.title || '';
+          if (seen.has(title)) continue;
+          seen.add(title);
+          const ii = pageData.imageinfo?.[0];
+          if (!ii?.url) continue;
+          const meta = ii.extmetadata || {};
+          const licenseUrl = meta.LicenseUrl?.value || '';
+          if (licenseUrl && !licenseUrl.includes('creativecommons') && !licenseUrl.includes('public-domain')) continue;
+          const artist = meta.Artist?.value?.replace(/<[^>]+>/g, '') || '';
+          const dateStr = meta.DateTimeOriginal?.value || meta.DateTime?.value || '';
+          const year = dateStr.match(/\d{4}/)?.[0] || '';
+          const fileName = title.replace(/^File:/, '');
+          works.push({
+            source: 'Wikimedia Commons',
+            source_id: title,
+            title: meta.ObjectName?.value || fileName.replace(/\.[^.]+$/, '').replace(/_/g, ' '),
+            artist, date_text: year, medium: meta.Medium?.value || '',
+            thumb_url: ii.thumburl || ii.url,
+            full_url: ii.url,
+            detail_url: `https://commons.wikimedia.org/wiki/${encodeURIComponent(title)}`,
+            bio: meta.ImageDescription?.value?.replace(/<[^>]+>/g, '') || '',
+          });
+        }
+        cmcontinue = d.continue?.cmcontinue || '';
+        if (!cmcontinue) break;
+        await sleep(400);
+      } catch(e) { break; }
+    }
   }
   return upsert(sql, works);
 }
