@@ -512,8 +512,7 @@ async function syncWikimedia(sql) {
       const query = `
         SELECT ?item ?itemLabel ?image ?creatorLabel ?date WHERE {
           ?item wdt:P31 wd:Q3305213;
-                wdt:P18 ?image;
-                wdt:P6216 wd:Q19652.
+                wdt:P18 ?image.
           OPTIONAL { ?item wdt:P170 ?creator. }
           OPTIONAL { ?item wdt:P571 ?date. }
           SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
