@@ -41,27 +41,32 @@ async function upsert(sql, works) {
 
 async function syncMet(sql) {
   const works = [];
-  try {
-    const s = await fetchJson('https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&isPublicDomain=true&q=painting');
-    const ids = (s.objectIDs||[]).slice(0,1000);
-    for (let i = 0; i < ids.length; i += 20) {
-      const batch = ids.slice(i,i+20);
-      const details = await Promise.all(batch.map(id =>
-        fetchJson(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`).catch(()=>null)
-      ));
-      for (const o of details) {
-        if (!o?.primaryImageSmall||!o.isPublicDomain) continue;
-        works.push({ source:'Metropolitan Museum of Art', source_id:String(o.objectID),
-          title:o.title||'Untitled', artist:o.artistDisplayName||'', date_text:o.objectDate||'',
-          medium:o.medium||'', department:o.department||'', thumb_url:o.primaryImageSmall,
-          full_url:o.primaryImage,
-          iiif_manifest:`https://collectionapi.metmuseum.org/public/collection/v1/iiif/${o.objectID}/manifest.json`,
-          detail_url:o.objectURL||'', bio:o.creditLine||'' });
+  const seen = new Set();
+  const terms = ['painting', 'portrait', 'landscape', 'still life', 'drawing'];
+  for (const term of terms) {
+    try {
+      const s = await fetchJson(`https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&isPublicDomain=true&q=${encodeURIComponent(term)}`);
+      const ids = (s.objectIDs||[]).slice(0,500);
+      for (let i=0; i<ids.length; i+=20) {
+        const batch = ids.slice(i,i+20);
+        const details = await Promise.all(batch.map(id =>
+          fetchJson(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`).catch(()=>null)
+        ));
+        for (const o of details) {
+          if (!o?.primaryImageSmall||!o.isPublicDomain||seen.has(o.objectID)) continue;
+          seen.add(o.objectID);
+          works.push({ source:'Metropolitan Museum of Art', source_id:String(o.objectID),
+            title:o.title||'Untitled', artist:o.artistDisplayName||'', date_text:o.objectDate||'',
+            medium:o.medium||'', department:o.department||'', thumb_url:o.primaryImageSmall,
+            full_url:o.primaryImage,
+            iiif_manifest:`https://collectionapi.metmuseum.org/public/collection/v1/iiif/${o.objectID}/manifest.json`,
+            detail_url:o.objectURL||'', bio:o.creditLine||'' });
+        }
+        await sleep(50);
       }
-      await sleep(50);
-    }
-  } catch(e) {}
-  return await upsert(sql,works);
+    } catch(e) {}
+  }
+  return upsert(sql,works);
 }
 
 async function syncArtic(sql) {
@@ -106,40 +111,35 @@ async function syncCleveland(sql) {
   return await upsert(sql,works);
 }
 
-async function syncRijks(sql) {
+async function syncRijks(sql, key) {
+  if (!key) return 0;
   const works = [];
-  let nextUrl = 'https://data.rijksmuseum.nl/search?limit=100';
-  for (let page=0; page<20&&nextUrl; page++) {
+  for (let page=1; page<=20; page++) {
     try {
-      const d = await fetchJson(nextUrl);
-      const items = d.orderedItems||[];
+      const d = await fetchJson(
+        `https://www.rijksmuseum.nl/api/en/collection?key=${key}&imgonly=True&ps=100&p=${page}&s=relevance`
+      );
+      const items = d.artObjects||[];
       if (!items.length) break;
-      for (const item of items.slice(0,50)) {
-        try {
-          const o = await fetch(item.id||item, {headers:{Accept:'application/json'}}).then(r=>r.json());
-          if (!o) continue;
-          const idUrl = o.id||o['@id']||'';
-          const objNum = idUrl.split('/').pop();
-          if (!objNum) continue;
-          const title = o.identified_by?.find(x=>x.type==='Name')?.content||o.label?.en?.[0]||'Untitled';
-          const artist = o.produced_by?.carried_out_by?.[0]?.identified_by?.[0]?.content||'';
-          const imgService = o.representation?.[0]?.digitally_shown_by?.[0]?.access_point?.[0]?.id;
-          works.push({ source:'Rijksmuseum', source_id:objNum, title, artist,
-            date_text:o.produced_by?.timespan?.identified_by?.[0]?.content||'',
-            thumb_url:imgService?imgService.replace('/info.json','')+'/full/!400,400/0/default.jpg'
-              :`https://www.rijksmuseum.nl/api/iiif/${objNum}/full/!400,400/0/default.jpg`,
-            full_url:imgService?imgService.replace('/info.json','')+'/full/full/0/default.jpg':'',
-            iiif_info:imgService||`https://www.rijksmuseum.nl/api/iiif/${objNum}/info.json`,
-            iiif_manifest:`https://www.rijksmuseum.nl/api/iiif/presentation/${objNum}/manifest`,
-            detail_url:idUrl, bio:'Rijksmuseum, Amsterdam.' });
-          await sleep(50);
-        } catch(e) {}
+      for (const o of items) {
+        if (!o.webImage?.url||!o.permitDownload) continue;
+        const full = o.webImage.url;
+        // Resize Google CDN URL for thumbnail
+        const thumb = full.replace(/=s\d+$/, '=w400') !== full
+          ? full.replace(/=s\d+$/, '=w400')
+          : full;
+        works.push({ source:'Rijksmuseum', source_id:o.objectNumber,
+          title:o.title||'Untitled', artist:o.principalOrFirstMaker||'',
+          date_text:'', medium:'', department:'',
+          thumb_url:thumb, full_url:full,
+          iiif_manifest:`https://www.rijksmuseum.nl/api/iiif/${o.objectNumber}/manifest/json`,
+          detail_url:o.links?.web||`https://www.rijksmuseum.nl/en/collection/${o.objectNumber}`,
+          bio:'Rijksmuseum, Amsterdam.' });
       }
-      nextUrl = d.next?.id||null;
-      await sleep(300);
+      await sleep(200);
     } catch(e) { break; }
   }
-  return await upsert(sql,works);
+  return upsert(sql,works);
 }
 
 async function syncNGA(sql) {
@@ -216,27 +216,35 @@ async function syncEuropeana(sql, key) {
 }
 
 async function syncSmithsonian(sql, key) {
-  if (!key||key==='YOUR_SMITHSONIAN_KEY_HERE') return 0;
+  if (!key) return 0;
   const works = [];
-  for (let start=0; start<1000; start+=100) {
-    try {
-      const d = await fetchJson(`https://api.si.edu/openaccess/api/v1.0/search?q=art&rows=100&start=${start}&api_key=${key}`);
-      const rows = d.response?.rows||[];
-      if (!rows.length) break;
-      for (const o of rows) {
-        const media = o.content?.descriptiveNonRepeating?.online_media?.media?.[0];
-        if (!media?.thumbnail||media.usage?.access!=='CC0') continue;
-        works.push({ source:'Smithsonian Institution', source_id:o.id,
-          title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
-          date_text:o.content?.freetext?.date?.[0]?.content||'',
-          medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
-          thumb_url:media.thumbnail, full_url:media.content||'',
-          detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
-      }
-      await sleep(300);
-    } catch(e) { break; }
+  const seen = new Set();
+  const terms = ['painting', 'portrait', 'landscape', 'watercolor', 'drawing', 'print'];
+  for (const term of terms) {
+    for (let start=0; start<500; start+=100) {
+      try {
+        const d = await fetchJson(`https://api.si.edu/openaccess/api/v1.0/search?q=${encodeURIComponent(term)}&rows=100&start=${start}&api_key=${key}`);
+        const rows = d.response?.rows||[];
+        if (!rows.length) break;
+        for (const o of rows) {
+          if (seen.has(o.id)) continue;
+          // Check all media items for CC0, not just the first
+          const allMedia = o.content?.descriptiveNonRepeating?.online_media?.media||[];
+          const cc0 = allMedia.find(m => m?.thumbnail && m?.usage?.access==='CC0');
+          if (!cc0) continue;
+          seen.add(o.id);
+          works.push({ source:'Smithsonian Institution', source_id:o.id,
+            title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
+            date_text:o.content?.freetext?.date?.[0]?.content||'',
+            medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
+            thumb_url:cc0.thumbnail, full_url:cc0.content||'',
+            detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
+        }
+        await sleep(300);
+      } catch(e) { break; }
+    }
   }
-  return await upsert(sql,works);
+  return upsert(sql,works);
 }
 
 async function syncHarvard(sql, key) {
@@ -286,7 +294,7 @@ export default async function handler(req, res) {
   await run('Met Museum',        () => syncMet(sql));
   await run('Art Inst. Chicago', () => syncArtic(sql));
   await run('Cleveland',         () => syncCleveland(sql));
-  await run('Rijksmuseum',       () => syncRijks(sql));
+  await run('Rijksmuseum',       () => syncRijks(sql, process.env.RIJKS_KEY));
   await run('National Gallery',  () => syncNGA(sql));
   await run('V&A Museum',        () => syncVAM(sql));
   await run('Europeana',         () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
