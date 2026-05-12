@@ -7,6 +7,7 @@ const MUSEUMS = [
   { key: 'Cleveland Museum of Art',          label: 'Cleveland' },
   { key: 'Victoria & Albert Museum',         label: 'V&A Museum' },
   { key: 'Rijksmuseum',                      label: 'Rijksmuseum' },
+  { key: 'SMK National Gallery of Denmark',  label: 'SMK Denmark' },
   { key: 'Smithsonian Institution',          label: 'Smithsonian' },
   { key: 'Harvard Art Museums',              label: 'Harvard' },
 ];

@@ -142,24 +142,44 @@ async function syncRijks(sql, key) {
   return upsert(sql,works);
 }
 
-async function syncNGA(sql) {
+async function syncSMK(sql) {
   const works = [];
-  for (let page=0; page<20; page++) {
+  for (let offset=0; offset<5000; offset+=100) {
     try {
-      const d = await fetchJson(`https://api.nga.gov/art/tms/objects?pageSize=100&pageNumber=${page}&hasImage=1`);
-      const items = d.data?.objects||[];
+      const d = await fetchJson(
+        `https://api.smk.dk/api/v1/art/search?keys=*&has_image=true&offset=${offset}&rows=100&filters=public_domain:true`
+      );
+      const items = d.items||[];
       if (!items.length) break;
       for (const o of items) {
-        if (!o.thumbnail) continue;
-        works.push({ source:'National Gallery of Art', source_id:String(o.objectID||o.id),
-          title:o.title||'Untitled', artist:o.attribution||'', date_text:o.displayDate||'',
-          medium:o.medium||'', thumb_url:o.thumbnail, full_url:o.largeImage||o.thumbnail,
-          detail_url:o.url||'', bio:'National Gallery of Art, Washington D.C.' });
+        if (!o.has_image||!o.image_thumbnail||!o.public_domain) continue;
+        const thumb = o.image_thumbnail.replace(/\/full\/![0-9]+,/, '/full/!400,');
+        const full = o.image_iiif_id
+          ? `${o.image_iiif_id}/full/!1200,/0/default.jpg`
+          : o.image_thumbnail;
+        const titleObj = Array.isArray(o.titles)&&o.titles.length
+          ? (o.titles.find(t=>t.language==='en')||o.titles[0]) : null;
+        const artist = Array.isArray(o.production)&&o.production.length
+          ? o.production[0].creator||'' : '';
+        const dateText = Array.isArray(o.production_date)&&o.production_date.length
+          ? o.production_date[0].period||'' : '';
+        works.push({
+          source:'SMK National Gallery of Denmark',
+          source_id:o.object_number,
+          title:titleObj?.title||'Untitled', artist, date_text:dateText,
+          medium:Array.isArray(o.techniques)&&o.techniques.length?o.techniques[0]:'',
+          department:o.responsible_department||'',
+          thumb_url:thumb, full_url:full,
+          iiif_info:o.image_iiif_info||'',
+          iiif_manifest:o.iiif_manifest||'',
+          detail_url:o.frontend_url||'',
+          bio:''
+        });
       }
       await sleep(200);
     } catch(e) { break; }
   }
-  return await upsert(sql,works);
+  return upsert(sql,works);
 }
 
 async function syncVAM(sql) {
@@ -298,7 +318,7 @@ export default async function handler(req, res) {
   await run('Art Inst. Chicago', () => syncArtic(sql));
   await run('Cleveland',         () => syncCleveland(sql));
   await run('Rijksmuseum',       () => syncRijks(sql, process.env.RIJKS_KEY));
-  await run('National Gallery',  () => syncNGA(sql));
+  await run('SMK Denmark',        () => syncSMK(sql));
   await run('V&A Museum',        () => syncVAM(sql));
   await run('Europeana',         () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
   await run('Smithsonian',       () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
