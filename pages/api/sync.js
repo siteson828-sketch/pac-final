@@ -497,37 +497,42 @@ async function syncBnF(sql) {
   return upsert(sql, works);
 }
 
-async function syncNYPL(sql, key) {
-  if (!key) return 0;
+async function syncNYPL(sql) {
   const works = [];
-  for (let page=1; page<=50; page++) {
-    try {
-      const d = await fetchJson(
-        `https://api.nypl.org/v2/items?publicDomainOnly=true&hasDigitalContent=true&q=art&per_page=100&page=${page}&token=${key}`
-      );
-      const items = d.nyplAPI?.response?.result||d.data||[];
-      if (!items.length) break;
-      for (const o of items) {
-        const uuid = o.uuid||o.id;
-        if (!uuid) continue;
-        const imageID = o.imageID||(Array.isArray(o.captures)&&o.captures[0]?.imageID);
-        if (!imageID) continue;
-        works.push({
-          source:'NYPL', source_id: uuid,
-          title: Array.isArray(o.title)?o.title[0]:(o.title||'Untitled'),
-          artist: o.name?.[0]||o.creator?.[0]||'',
-          date_text: o.date?.[0]||'',
-          medium: o.typeOfResource?.[0]||'',
-          thumb_url: `https://images.nypl.org/index.php?id=${imageID}&t=w`,
-          full_url:  `https://images.nypl.org/index.php?id=${imageID}&t=g`,
-          detail_url: o.itemLink||`https://digitalcollections.nypl.org/items/${uuid}`,
-          bio:''
-        });
-      }
-      await sleep(200);
-    } catch(e) { break; }
+  const seen = new Set();
+  const terms = ['painting','photograph','drawing','print','illustration'];
+  for (const q of terms) {
+    for (let page=1; page<=20; page++) {
+      try {
+        const d = await fetchJson(
+          `https://api.nypl.org/v2/items?publicDomainOnly=true&hasDigitalContent=true&q=${encodeURIComponent(q)}&per_page=100&page=${page}`
+        );
+        const items = d.nyplAPI?.response?.result||d.data||[];
+        if (!items.length) break;
+        for (const o of items) {
+          const uuid = o.uuid||o.id;
+          if (!uuid||seen.has(uuid)) continue;
+          seen.add(uuid);
+          const imgLinks = o.imageLinks?.[0]?.imageLink||[];
+          const thumb = imgLinks.find(u=>typeof u==='string'&&u.includes('t=w'))||imgLinks[0];
+          const full  = imgLinks.find(u=>typeof u==='string'&&u.includes('t=g'))||imgLinks[imgLinks.length-1]||thumb;
+          if (!thumb) continue;
+          works.push({
+            source:'NYPL', source_id: uuid,
+            title: Array.isArray(o.title)?o.title[0]:(o.title||'Untitled'),
+            artist: Array.isArray(o.name)?o.name[0]:(o.name||''),
+            date_text: Array.isArray(o.date)?o.date[0]:(o.date||''),
+            medium: Array.isArray(o.typeOfResource)?o.typeOfResource[0]:(o.typeOfResource||''),
+            thumb_url: thumb, full_url: full||thumb,
+            detail_url: o.collectionsURL||'',
+            bio: Array.isArray(o.note)?o.note[0]:(o.note||'')
+          });
+        }
+        await sleep(200);
+      } catch(e) { break; }
+    }
   }
-  return upsert(sql, works);
+  return await upsert(sql, works);
 }
 
 async function syncWikimedia(sql) {
@@ -651,7 +656,7 @@ export default async function handler(req, res) {
   if (src==='yale'       ||src==='all') await run('Yale Art Gallery',   () => syncYale(sql));
   if (src==='loc'        ||src==='all') await run('Library of Congress',() => syncLOC(sql));
   if (src==='bnf'        ||src==='all') await run('BnF Gallica',        () => syncBnF(sql));
-  if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql, process.env.NYPL_KEY));
+  if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql));
   if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));
   if (src==='dpla'       ||src==='all') await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
