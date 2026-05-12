@@ -83,6 +83,9 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 .gallery-title{font-family:Georgia,serif;font-size:26px;font-weight:300;line-height:1}
 .gallery-title span{color:#B8942A}
 .gallery-meta{font-size:12px;color:#8A8178}
+.btn-shuffle{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid rgba(26,23,20,0.2);color:#1A1714;background:transparent;font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn-shuffle:hover{background:rgba(26,23,20,0.06)}
+.btn-shuffle.active{background:#1A1714;color:#FAF8F4;border-color:#1A1714}
 
 .gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding:24px 32px 64px}
 .gallery-card{cursor:pointer;border-radius:8px;overflow:hidden;background:#EDE8DF;box-shadow:0 1px 4px rgba(26,23,20,0.08);transition:box-shadow .22s,transform .22s;display:flex;flex-direction:column}
@@ -192,6 +195,7 @@ export default function Home() {
   const [heroIdx, setHeroIdx] = useState(0);
   const [heroFading, setHeroFading] = useState(false);
   const [imgErrors, setImgErrors] = useState({});
+  const [order, setOrder] = useState('recent');
   const offsetRef = useRef(0);
 
   useEffect(() => {
@@ -222,13 +226,15 @@ export default function Home() {
     return () => { document.body.style.overflow = ''; };
   }, [modal]);
 
-  async function load(reset, q, src) {
+  async function load(reset, q, src, ord) {
     const off = reset ? 0 : offsetRef.current;
+    const o = ord !== undefined ? ord : order;
     setLoading(true);
     try {
       let url = `/api/artworks?limit=24&offset=${off}`;
       if (q) url += `&search=${encodeURIComponent(q)}`;
       if (src && src !== 'all') url += `&source=${encodeURIComponent(src)}`;
+      if (o === 'random') url += `&order=random`;
       const data = await fetch(url).then(r => r.json());
       const w = data.works || [];
       if (reset) {
@@ -261,10 +267,16 @@ export default function Home() {
 
   const handleSource = (src) => {
     setSource(src);
-    load(true, appliedSearch, src);
+    load(true, appliedSearch, src, order);
   };
 
-  const handleLoadMore = () => load(false, appliedSearch, source);
+  const handleShuffle = () => {
+    const next = order === 'random' ? 'recent' : 'random';
+    setOrder(next);
+    load(true, appliedSearch, source, next);
+  };
+
+  const handleLoadMore = () => load(false, appliedSearch, source, order);
 
   const hero = works[heroIdx % Math.max(works.length, 1)];
 
@@ -356,9 +368,18 @@ export default function Home() {
           {source === 'all' ? 'The Collection' : fmt(source)}
           {total !== null && <span> — {Number(total).toLocaleString()}+ works</span>}
         </h2>
-        {appliedSearch && (
-          <p className="gallery-meta">Showing results for "{appliedSearch}"</p>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {appliedSearch && (
+            <p className="gallery-meta">Results for "{appliedSearch}"</p>
+          )}
+          <button
+            className={`btn-shuffle${order === 'random' ? ' active' : ''}`}
+            onClick={handleShuffle}
+            title={order === 'random' ? 'Back to recent' : 'Shuffle artworks'}
+          >
+            ↺ {order === 'random' ? 'Shuffled' : 'Shuffle'}
+          </button>
+        </div>
       </div>
 
       {/* GALLERY */}
