@@ -419,6 +419,199 @@ async function syncYale(sql) {
   return upsert(sql, works);
 }
 
+async function syncLOC(sql) {
+  const works = [];
+  const seen = new Set();
+  const terms = ['painting','portrait','landscape','drawing','print'];
+  for (const q of terms) {
+    for (let page=1; page<=10; page++) {
+      try {
+        const d = await fetchJson(
+          `https://www.loc.gov/search/?fo=json&q=${encodeURIComponent(q)}&fa=online-format:image|rights-status:no-known-restrictions&c=100&sp=${page}&at=results,pagination`
+        );
+        const items = d.results||[];
+        if (!items.length) break;
+        for (const o of items) {
+          const id = String(o.id||o.url||'');
+          if (!id||seen.has(id)) continue;
+          const imgUrls = o.image_url||[];
+          if (!imgUrls.length) continue;
+          seen.add(id);
+          const iiifBase = imgUrls[0].replace(/\/full\/[^/]+\/0\/default\.jpg$/, '');
+          const thumb = `${iiifBase}/full/!400,400/0/default.jpg`;
+          const full  = `${iiifBase}/full/!1200,1200/0/default.jpg`;
+          const contributor = Array.isArray(o.contributor) ? o.contributor[0] : (o.contributor||'');
+          works.push({
+            source:'Library of Congress',
+            source_id: id.replace(/^https?:\/\/www\.loc\.gov\/item\//, '').replace(/\/$/, ''),
+            title: Array.isArray(o.title) ? o.title[0] : (o.title||'Untitled'),
+            artist: contributor.replace(/\s*\(.+\)$/, '').trim(),
+            date_text: o.date||'',
+            medium: Array.isArray(o.original_format) ? o.original_format[0] : '',
+            thumb_url: thumb, full_url: full,
+            detail_url: o.url||'', bio:''
+          });
+        }
+        const pg = d.pagination||{};
+        if (!pg.next) break;
+        await sleep(200);
+      } catch(e) { break; }
+    }
+  }
+  return upsert(sql, works);
+}
+
+async function syncBnF(sql) {
+  const works = [];
+  const seen = new Set();
+  for (let start=1; start<=5000; start+=50) {
+    try {
+      const res = await fetch(
+        `https://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=dc.type+all+%22image%22+and+dc.rights+all+%22domaine+public%22&maximumRecords=50&startRecord=${start}&collapsing=disabled`,
+        { headers: { 'Accept':'application/xml,text/xml,*/*', 'User-Agent':'PublicArtCollections/1.0' } }
+      );
+      if (!res.ok) break;
+      const xml = await res.text();
+      const records = xml.match(/<srw:record>[\s\S]*?<\/srw:record>/g)||[];
+      if (!records.length) break;
+      for (const rec of records) {
+        const get = tag => { const m = rec.match(new RegExp(`<dc:${tag}[^>]*>([^<]*)<\/dc:${tag}>`)); return m?m[1].trim():''; };
+        const getAll = tag => [...rec.matchAll(new RegExp(`<dc:${tag}[^>]*>([^<]*)<\/dc:${tag}>`, 'g'))].map(m=>m[1].trim());
+        const ark = getAll('identifier').find(id=>id.includes('ark:'));
+        if (!ark||seen.has(ark)) continue;
+        seen.add(ark);
+        const arkPath = ark.replace(/^https?:\/\/gallica\.bnf\.fr\//, '');
+        works.push({
+          source:'BnF Gallica', source_id: arkPath,
+          title: get('title')||'Untitled', artist: get('creator')||'',
+          date_text: get('date')||'', medium: get('format')||'',
+          thumb_url: `https://gallica.bnf.fr/${arkPath}/f1.thumbnail`,
+          full_url:  `https://gallica.bnf.fr/${arkPath}/f1.highres`,
+          detail_url: ark, bio: get('description')||''
+        });
+      }
+      if (!xml.includes('<srw:record>')) break;
+      await sleep(300);
+    } catch(e) { break; }
+  }
+  return upsert(sql, works);
+}
+
+async function syncNYPL(sql, key) {
+  if (!key) return 0;
+  const works = [];
+  for (let page=1; page<=50; page++) {
+    try {
+      const d = await fetchJson(
+        `https://api.nypl.org/v2/items?publicDomainOnly=true&hasDigitalContent=true&q=art&per_page=100&page=${page}&token=${key}`
+      );
+      const items = d.nyplAPI?.response?.result||d.data||[];
+      if (!items.length) break;
+      for (const o of items) {
+        const uuid = o.uuid||o.id;
+        if (!uuid) continue;
+        const imageID = o.imageID||(Array.isArray(o.captures)&&o.captures[0]?.imageID);
+        if (!imageID) continue;
+        works.push({
+          source:'NYPL', source_id: uuid,
+          title: Array.isArray(o.title)?o.title[0]:(o.title||'Untitled'),
+          artist: o.name?.[0]||o.creator?.[0]||'',
+          date_text: o.date?.[0]||'',
+          medium: o.typeOfResource?.[0]||'',
+          thumb_url: `https://images.nypl.org/index.php?id=${imageID}&t=w`,
+          full_url:  `https://images.nypl.org/index.php?id=${imageID}&t=g`,
+          detail_url: o.itemLink||`https://digitalcollections.nypl.org/items/${uuid}`,
+          bio:''
+        });
+      }
+      await sleep(200);
+    } catch(e) { break; }
+  }
+  return upsert(sql, works);
+}
+
+async function syncWikimedia(sql) {
+  const works = [];
+  const seen = new Set();
+  for (let offset=0; offset<5000; offset+=1000) {
+    try {
+      const query = `
+        SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?date WHERE {
+          ?item wdt:P31 wd:Q3305213;
+                wdt:P18 ?image;
+                wdt:P6216 wd:Q19652.
+          OPTIONAL { ?item wdt:P170 ?creator. }
+          OPTIONAL { ?item wdt:P571 ?date. }
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+        }
+        LIMIT 1000 OFFSET ${offset}
+      `;
+      const d = await fetchJson(
+        `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
+      );
+      const bindings = d.results?.bindings||[];
+      if (!bindings.length) break;
+      for (const r of bindings) {
+        const qid = r.item?.value.split('/').pop();
+        if (seen.has(qid)) continue;
+        seen.add(qid);
+        const imgRaw = r.image?.value||'';
+        if (!imgRaw) continue;
+        const imgHttps = imgRaw.replace('http://','https://');
+        const creator = r.creatorLabel?.value||'';
+        const year = r.date?.value ? r.date.value.replace(/^\+/,'').substring(0,4) : '';
+        works.push({
+          source:'Wikimedia Commons', source_id: qid,
+          title: r.itemLabel?.value||'Untitled',
+          artist: creator.match(/^Q\d+$/) ? '' : creator,
+          date_text: year, medium: 'Painting',
+          thumb_url: `${imgHttps}?width=400`,
+          full_url:  `${imgHttps}?width=1200`,
+          detail_url: `https://www.wikidata.org/wiki/${qid}`,
+          bio: 'Public domain via Wikimedia Commons.'
+        });
+      }
+      await sleep(1000);
+    } catch(e) { break; }
+  }
+  return upsert(sql, works);
+}
+
+async function syncDPLA(sql, key) {
+  if (!key) return 0;
+  const works = [];
+  const seen = new Set();
+  const terms = ['painting','photograph','drawing','print','watercolor'];
+  for (const q of terms) {
+    for (let page=1; page<=10; page++) {
+      try {
+        const d = await fetchJson(
+          `https://api.dp.la/v2/items?q=${encodeURIComponent(q)}&sourceResource.type=image&page=${page}&page_size=100&api_key=${key}`
+        );
+        const items = d.docs||[];
+        if (!items.length) break;
+        for (const o of items) {
+          if (!o.object||seen.has(o.id)) continue;
+          seen.add(o.id);
+          const sr = o.sourceResource||{};
+          works.push({
+            source:'DPLA', source_id: o.id,
+            title: Array.isArray(sr.title)?sr.title[0]:(sr.title||'Untitled'),
+            artist: Array.isArray(sr.creator)?sr.creator[0]:(sr.creator||''),
+            date_text: sr.date?.displayDate||sr.date?.begin||'',
+            medium: Array.isArray(sr.format)?sr.format[0]:(sr.format||''),
+            thumb_url: o.object, full_url: o.object,
+            detail_url: o.isShownAt||'',
+            bio: o.dataProvider||''
+          });
+        }
+        await sleep(200);
+      } catch(e) { break; }
+    }
+  }
+  return upsert(sql, works);
+}
+
 export default async function handler(req, res) {
   const cronAuth = req.headers['authorization'];
   const validCron   = process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`;
@@ -442,19 +635,25 @@ export default async function handler(req, res) {
     try { const n = await fn(); total += n; log.push(`${name}: ${n} saved`); }
     catch(e) { log.push(`${name} error: ${e.message}`); }
   };
-  await run('Met Museum',        () => syncMet(sql));
-  await run('Art Inst. Chicago', () => syncArtic(sql));
-  await run('Cleveland',         () => syncCleveland(sql));
-  await run('Rijksmuseum',       () => syncRijks(sql));
-  await run('SMK Denmark',        () => syncSMK(sql));
-  await run('V&A Museum',        () => syncVAM(sql));
-  await run('Europeana',         () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
-  await run('Smithsonian',       () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
-  await run('Harvard',           () => syncHarvard(sql, process.env.HARVARD_KEY));
-  await run('Getty Museum',      () => syncWikidataMuseum(sql, 'Q1700481', 'Getty Museum'));
-  await run('Walters Art Museum',() => syncWikidataMuseum(sql, 'Q210081',  'Walters Art Museum'));
-  await run('Brooklyn Museum',   () => syncBrooklyn(sql));
-  await run('Yale Art Gallery',  () => syncYale(sql));
+  const src = req.query.source || 'all';
+  if (src==='met'        ||src==='all') await run('Met Museum',         () => syncMet(sql));
+  if (src==='artic'      ||src==='all') await run('Art Inst. Chicago',  () => syncArtic(sql));
+  if (src==='cleveland'  ||src==='all') await run('Cleveland',          () => syncCleveland(sql));
+  if (src==='rijks'      ||src==='all') await run('Rijksmuseum',        () => syncRijks(sql));
+  if (src==='smk'        ||src==='all') await run('SMK Denmark',        () => syncSMK(sql));
+  if (src==='vam'        ||src==='all') await run('V&A Museum',         () => syncVAM(sql));
+  if (src==='europeana'  ||src==='all') await run('Europeana',          () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
+  if (src==='smithsonian'||src==='all') await run('Smithsonian',        () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
+  if (src==='harvard'    ||src==='all') await run('Harvard',            () => syncHarvard(sql, process.env.HARVARD_KEY));
+  if (src==='getty'      ||src==='all') await run('Getty Museum',       () => syncWikidataMuseum(sql, 'Q1700481', 'Getty Museum'));
+  if (src==='walters'    ||src==='all') await run('Walters Art Museum', () => syncWikidataMuseum(sql, 'Q210081',  'Walters Art Museum'));
+  if (src==='brooklyn'   ||src==='all') await run('Brooklyn Museum',    () => syncBrooklyn(sql));
+  if (src==='yale'       ||src==='all') await run('Yale Art Gallery',   () => syncYale(sql));
+  if (src==='loc'        ||src==='all') await run('Library of Congress',() => syncLOC(sql));
+  if (src==='bnf'        ||src==='all') await run('BnF Gallica',        () => syncBnF(sql));
+  if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql, process.env.NYPL_KEY));
+  if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));
+  if (src==='dpla'       ||src==='all') await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
