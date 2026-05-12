@@ -111,35 +111,57 @@ async function syncCleveland(sql) {
   return await upsert(sql,works);
 }
 
-async function syncRijks(sql, key) {
-  if (!key) return 0;
+async function syncRijks(sql) {
   const works = [];
-  for (let page=1; page<=20; page++) {
+  const seen = new Set();
+  // Rijksmuseum API requires a paid key; use Wikidata SPARQL instead (free, CC0 images via Wikimedia Commons)
+  for (let offset=0; offset<8000; offset+=1000) {
     try {
+      const query = `
+        SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
+          ?item wdt:P195 wd:Q190804;
+                wdt:P18 ?image.
+          OPTIONAL { ?item wdt:P217 ?inv. }
+          OPTIONAL { ?item wdt:P170 ?creator. }
+          OPTIONAL { ?item wdt:P571 ?date. }
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+        }
+        LIMIT 1000 OFFSET ${offset}
+      `;
       const d = await fetchJson(
-        `https://www.rijksmuseum.nl/api/en/collection?key=${key}&imgonly=True&ps=100&p=${page}&s=relevance`
+        `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
       );
-      const items = d.artObjects||[];
-      if (!items.length) break;
-      for (const o of items) {
-        if (!o.webImage?.url||!o.permitDownload) continue;
-        const full = o.webImage.url;
-        // Resize Google CDN URL for thumbnail
-        const thumb = full.replace(/=s\d+$/, '=w400') !== full
-          ? full.replace(/=s\d+$/, '=w400')
-          : full;
-        works.push({ source:'Rijksmuseum', source_id:o.objectNumber,
-          title:o.title||'Untitled', artist:o.principalOrFirstMaker||'',
-          date_text:'', medium:'', department:'',
+      const bindings = d.results?.bindings||[];
+      if (!bindings.length) break;
+      for (const r of bindings) {
+        const qid = r.item?.value.split('/').pop();
+        if (seen.has(qid)) continue;
+        seen.add(qid);
+        const imgRaw = r.image?.value||'';
+        if (!imgRaw) continue;
+        const imgHttps = imgRaw.replace('http://', 'https://');
+        const thumb = `${imgHttps}?width=400`;
+        const full  = `${imgHttps}?width=1200`;
+        const inv   = r.inv?.value||qid;
+        const year  = r.date?.value ? r.date.value.replace(/^\+/,'').substring(0,4) : '';
+        const creator = r.creatorLabel?.value||'';
+        works.push({
+          source:'Rijksmuseum', source_id:inv,
+          title:r.itemLabel?.value||'Untitled',
+          artist: creator.match(/^Q\d+$/) ? '' : creator,
+          date_text:year, medium:'', department:'',
           thumb_url:thumb, full_url:full,
-          iiif_manifest:`https://www.rijksmuseum.nl/api/iiif/${o.objectNumber}/manifest/json`,
-          detail_url:o.links?.web||`https://www.rijksmuseum.nl/en/collection/${o.objectNumber}`,
-          bio:'Rijksmuseum, Amsterdam.' });
+          iiif_manifest:inv.startsWith('SK')||inv.startsWith('RP')||inv.startsWith('BK')
+            ? `https://www.rijksmuseum.nl/api/iiif/${inv}/manifest/json` : '',
+          detail_url:inv ? `https://www.rijksmuseum.nl/en/collection/${inv}`
+            : `https://www.wikidata.org/wiki/${qid}`,
+          bio:'Rijksmuseum, Amsterdam.'
+        });
       }
-      await sleep(200);
+      await sleep(1000);
     } catch(e) { break; }
   }
-  return upsert(sql,works);
+  return upsert(sql, works);
 }
 
 async function syncSMK(sql) {
@@ -317,7 +339,7 @@ export default async function handler(req, res) {
   await run('Met Museum',        () => syncMet(sql));
   await run('Art Inst. Chicago', () => syncArtic(sql));
   await run('Cleveland',         () => syncCleveland(sql));
-  await run('Rijksmuseum',       () => syncRijks(sql, process.env.RIJKS_KEY));
+  await run('Rijksmuseum',       () => syncRijks(sql));
   await run('SMK Denmark',        () => syncSMK(sql));
   await run('V&A Museum',        () => syncVAM(sql));
   await run('Europeana',         () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
