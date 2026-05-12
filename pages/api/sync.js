@@ -655,6 +655,7 @@ export default async function handler(req, res) {
   if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql));
   if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));
   if (src==='dpla'       ||src==='all') await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY));
+  if (src==='tepapa'     ||src==='all') await run('Te Papa',            () => syncWikidataMuseum(sql, 'Q1474163', 'Museum of New Zealand Te Papa Tongarewa'));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
