@@ -22,6 +22,24 @@ const PRODUCTS = [
   { icon: '🛍️', name: 'Tote Bag', price: 'from $16' },
 ];
 
+function timeAgo(iso) {
+  if (!iso) return null;
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+function abbr(n) {
+  if (!n) return '0';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
+}
+
 function fmt(s) {
   return (s || '')
     .replace('Metropolitan Museum of Art', 'Met Museum')
@@ -77,6 +95,20 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 .filter-chip{padding:14px 18px;font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:#8A8178;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;font-family:inherit;flex-shrink:0}
 .filter-chip:hover{color:#1A1714}
 .filter-chip.active{color:#1A1714;border-bottom-color:#B8942A}
+.chip-count{margin-left:5px;font-size:9px;color:#B8C4B8;font-weight:400;letter-spacing:0}
+.filter-chip.active .chip-count{color:#8A8178}
+
+/* SYNC BAR */
+.sync-bar{padding:8px 32px;background:#F5F2ED;border-bottom:0.5px solid rgba(26,23,20,0.07);display:flex;align-items:center;gap:16px;font-size:11px;color:#8A8178;flex-wrap:wrap}
+.sync-source{display:flex;align-items:center;gap:5px;white-space:nowrap}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:#B8C4B8;flex-shrink:0}
+.sync-dot.fresh{background:#4ade80}
+.sync-dot.stale{background:#fbbf24}
+.sync-source-name{font-weight:500;color:#4A4540}
+.sync-divider{color:#D4CEC3;flex-shrink:0}
+.sync-bar-scroll{display:flex;align-items:center;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1}
+.sync-bar-scroll::-webkit-scrollbar{display:none}
+.sync-summary{white-space:nowrap;flex-shrink:0;padding-right:8px;border-right:0.5px solid rgba(26,23,20,0.12);margin-right:4px}
 
 /* GALLERY */
 .gallery-header{padding:32px 32px 0;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
@@ -170,6 +202,7 @@ footer{background:#2C2318;color:#B0A898;padding:52px 32px 28px}
   .hero{height:400px}
   .hero-content{padding:32px 24px 36px}
   .filter-bar{padding:0 16px}
+  .sync-bar{padding:8px 16px}
   .gallery-header{padding:24px 16px 0}
   .gallery-grid{grid-template-columns:repeat(2,1fr);gap:14px;padding:20px 16px 48px}
   .modal-layout{grid-template-columns:1fr}
@@ -196,10 +229,12 @@ export default function Home() {
   const [heroFading, setHeroFading] = useState(false);
   const [imgErrors, setImgErrors] = useState({});
   const [order, setOrder] = useState('recent');
+  const [status, setStatus] = useState(null);
   const offsetRef = useRef(0);
 
   useEffect(() => {
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotal(d.total));
+    fetch('/api/status').then(r => r.json()).then(d => setStatus(d));
     load(true, '', 'all');
   }, []);
 
@@ -351,16 +386,45 @@ export default function Home() {
 
       {/* FILTER BAR */}
       <div className="filter-bar" id="gallery">
-        {MUSEUMS.map(m => (
-          <button
-            key={m.key}
-            className={`filter-chip${source === m.key ? ' active' : ''}`}
-            onClick={() => handleSource(m.key)}
-          >
-            {m.label}
-          </button>
-        ))}
+        {MUSEUMS.map(m => {
+          const srcCount = status?.sources?.find(s => s.source === m.key)?.count;
+          return (
+            <button
+              key={m.key}
+              className={`filter-chip${source === m.key ? ' active' : ''}`}
+              onClick={() => handleSource(m.key)}
+            >
+              {m.label}
+              {m.key !== 'all' && srcCount != null && (
+                <span className="chip-count">{abbr(srcCount)}</span>
+              )}
+            </button>
+          );
+        })}
       </div>
+
+      {/* SYNC STATUS BAR */}
+      {status?.sources?.length > 0 && (
+        <div className="sync-bar">
+          <span className="sync-summary">
+            {status.sources.length} source{status.sources.length !== 1 ? 's' : ''} · synced {timeAgo(status.lastSync)}
+          </span>
+          <div className="sync-bar-scroll">
+            {status.sources.map((s, i) => {
+              const age = s.lastSync ? (Date.now() - new Date(s.lastSync).getTime()) : Infinity;
+              const fresh = age < 48 * 3600 * 1000;
+              return (
+                <span key={s.source} className="sync-source">
+                  {i > 0 && <span className="sync-divider">·</span>}
+                  <span className={`sync-dot${fresh ? ' fresh' : ' stale'}`} />
+                  <span className="sync-source-name">{fmt(s.source)}</span>
+                  <span>{abbr(s.count)}</span>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* GALLERY HEADER */}
       <div className="gallery-header">
