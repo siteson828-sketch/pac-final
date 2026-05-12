@@ -464,16 +464,21 @@ async function syncBnF(sql) {
 }
 
 async function syncNYPL(sql) {
+  const token = process.env.NYPL_TOKEN;
+  if (!token) return 0;
   const works = [];
   const seen = new Set();
   const terms = ['painting','photograph','drawing','print','illustration'];
   for (const q of terms) {
     for (let page=1; page<=10; page++) {
       try {
-        const d = await fetchJson(
-          `https://api.repo.nypl.org/api/v2/items/search.json?q=${encodeURIComponent(q)}&per_page=100&page=${page}&publicDomainOnly=true`
+        const res = await fetch(
+          `https://api.repo.nypl.org/api/v2/items/search.json?q=${encodeURIComponent(q)}&per_page=100&page=${page}&publicDomainOnly=true`,
+          { headers: { 'Authorization': `Token token="${token}"`, 'Accept': 'application/json', 'User-Agent': 'PublicArtCollections/1.0' } }
         );
-        const items = d.nyplAPI?.response?.result || d.response?.result || d.results || [];
+        if (!res.ok) break;
+        const d = await res.json();
+        const items = d.nyplAPI?.response?.result || [];
         if (!items.length) break;
         for (const o of items) {
           const uuid = o.uuid || o.id;
@@ -481,7 +486,7 @@ async function syncNYPL(sql) {
           seen.add(uuid);
           const captures = o.captures || [];
           const capture = captures.find(c => c.imageLinks) || captures[0];
-          const imgLinks = capture?.imageLinks?.imageLink || o.imageLinks?.[0]?.imageLink || [];
+          const imgLinks = capture?.imageLinks?.imageLink || [];
           const links = Array.isArray(imgLinks) ? imgLinks : [imgLinks];
           const thumb = links.find(u => typeof u === 'string' && u.includes('t=w')) || links[0];
           const full  = links.find(u => typeof u === 'string' && u.includes('t=g')) || links[links.length-1] || thumb;
@@ -493,7 +498,7 @@ async function syncNYPL(sql) {
             date_text: Array.isArray(o.date) ? o.date[0] : (o.date || ''),
             medium: Array.isArray(o.typeOfResource) ? o.typeOfResource[0] : (o.typeOfResource || ''),
             thumb_url: thumb, full_url: full || thumb,
-            detail_url: o.itemLink || o.collectionsURL || '',
+            detail_url: o.itemLink || '',
             bio: Array.isArray(o.note) ? o.note[0] : (o.note || '')
           });
         }
@@ -555,6 +560,66 @@ async function syncWikimedia(sql) {
         await sleep(400);
       } catch(e) { break; }
     }
+  }
+  return upsert(sql, works);
+}
+
+async function syncTePapa(sql) {
+  const key = process.env.TEPAPA_KEY;
+  if (!key) return 0;
+  const works = [];
+  const seen = new Set();
+  for (let from = 0; from < 3000; from += 100) {
+    try {
+      const res = await fetch('https://data.tepapa.govt.nz/collection/search', {
+        method: 'POST',
+        headers: {
+          'x-api-key': key,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'PublicArtCollections/1.0'
+        },
+        body: JSON.stringify({
+          query: { term: { type: 'Object' } },
+          filters: [{ field: 'hasRepresentation.rights.allowsDownload', keyword: 'true' }],
+          size: 100,
+          from
+        })
+      });
+      if (!res.ok) break;
+      const d = await res.json();
+      const results = d.results || [];
+      if (!results.length) break;
+      for (const o of results) {
+        const id = o.id;
+        if (!id || seen.has(String(id))) continue;
+        const repr = (o.hasRepresentation || [])[0];
+        if (!repr) continue;
+        const rightsTitle = (repr.rights?.title || '').toLowerCase();
+        if (!rightsTitle.includes('cc0') && !rightsTitle.includes('no known')) continue;
+        const media = (repr.media || [])[0] || {};
+        const thumb = repr.thumbnail || media.thumbnailUrl || '';
+        const full = media.sourceUrl || media.contentUrl || '';
+        if (!thumb && !full) continue;
+        seen.add(String(id));
+        const artist = o.production?.[0]?.contributor?.title || '';
+        const dateRaw = o.productionDates?.[0]?.date?.value || o.productionDates?.[0]?.dateTo || '';
+        works.push({
+          source: 'Museum of New Zealand Te Papa Tongarewa',
+          source_id: String(id),
+          title: o.title || 'Untitled',
+          artist,
+          date_text: String(dateRaw || ''),
+          medium: o.medium?.[0]?.value || '',
+          department: '',
+          thumb_url: thumb,
+          full_url: full || thumb,
+          detail_url: `https://collections.tepapa.govt.nz/object/${id}`,
+          bio: ''
+        });
+      }
+      await sleep(300);
+    } catch(e) { break; }
   }
   return upsert(sql, works);
 }
@@ -636,7 +701,7 @@ export default async function handler(req, res) {
   if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql));
   if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));
   if (src==='dpla'       ||src==='all') await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY));
-  if (src==='tepapa'     ||src==='all') await run('Te Papa',            () => syncWikidataMuseum(sql, 'Q1600835', 'Museum of New Zealand Te Papa Tongarewa'));
+  if (src==='tepapa'     ||src==='all') await run('Te Papa',            () => syncTePapa(sql));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
