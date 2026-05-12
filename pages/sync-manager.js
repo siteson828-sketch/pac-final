@@ -24,6 +24,7 @@ const SRCS = [
   { k: 'nypl',        l: 'NYPL' },
   { k: 'wikimedia',   l: 'Wikimedia Commons' },
   { k: 'dpla',        l: 'DPLA' },
+  { k: 'tepapa',      l: 'Museum of New Zealand Te Papa Tongarewa' },
 ];
 
 export default function SyncManager() {
