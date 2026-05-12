@@ -1,205 +1,547 @@
-export default function Home() { // v2
-  const html = `<style>
+import { useState, useEffect, useRef } from 'react';
+import Head from 'next/head';
+
+const MUSEUMS = [
+  { key: 'all', label: 'All Collections' },
+  { key: 'Metropolitan Museum of Art', label: 'Met Museum' },
+  { key: 'Art Institute of Chicago', label: 'Art Inst. Chicago' },
+  { key: 'Cleveland Museum of Art', label: 'Cleveland' },
+  { key: 'Victoria & Albert Museum', label: 'V&A Museum' },
+  { key: 'SMK National Gallery of Denmark', label: 'SMK Denmark' },
+  { key: 'Rijksmuseum', label: 'Rijksmuseum' },
+  { key: 'Smithsonian Institution', label: 'Smithsonian' },
+  { key: 'Harvard Art Museums', label: 'Harvard' },
+];
+
+const PRODUCTS = [
+  { icon: '🖼️', name: 'Fine Art Print', price: 'from $18' },
+  { icon: '🎨', name: 'Canvas Wrap', price: 'from $45' },
+  { icon: '👕', name: 'T-Shirt', price: 'from $24' },
+  { icon: '☕', name: 'Mug', price: 'from $14' },
+  { icon: '📱', name: 'Phone Case', price: 'from $19' },
+  { icon: '🛍️', name: 'Tote Bag', price: 'from $16' },
+];
+
+function fmt(s) {
+  return (s || '')
+    .replace('Metropolitan Museum of Art', 'Met Museum')
+    .replace('Art Institute of Chicago', 'Art Inst. Chicago')
+    .replace('Victoria & Albert Museum', 'V&A')
+    .replace('SMK National Gallery of Denmark', 'SMK Denmark')
+    .replace('Smithsonian Institution', 'Smithsonian')
+    .replace(/^Europeana — /, '')
+    .split(',')[0];
+}
+
+const CSS = `
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:system-ui,sans-serif;background:#FAF8F4;color:#1A1714}
-nav{position:fixed;top:0;left:0;right:0;height:64px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:rgba(250,248,244,0.95);border-bottom:0.5px solid rgba(26,23,20,0.12);z-index:100}
-.logo{font-size:20px;font-weight:400;font-family:Georgia,serif}.logo span{color:#B8942A}
-.btn{display:inline-block;padding:9px 20px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none;border:1px solid rgba(26,23,20,0.25);color:#1A1714;background:transparent;font-family:system-ui}
+html{scroll-behavior:smooth}
+body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A1714}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:100;background:rgba(250,248,244,0.97);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:0.5px solid rgba(26,23,20,0.12);height:62px;display:flex;align-items:center;gap:16px;padding:0 32px}
+.nav-logo{font-family:Georgia,serif;font-size:18px;font-weight:400;text-decoration:none;color:#1A1714;white-space:nowrap;flex-shrink:0}
+.nav-logo span{color:#B8942A}
+.nav-search{flex:1;max-width:520px;display:flex;gap:8px}
+.nav-input{flex:1;padding:8px 14px;border:0.5px solid rgba(26,23,20,0.22);border-radius:4px;font-size:13px;background:#FAF8F4;outline:none;font-family:inherit;color:#1A1714}
+.nav-input:focus{border-color:#B8942A;box-shadow:0 0 0 3px rgba(184,148,42,0.1)}
+.nav-count{font-size:12px;color:#8A8178;white-space:nowrap;margin-left:auto;flex-shrink:0}
+.btn{display:inline-flex;align-items:center;padding:8px 16px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid rgba(26,23,20,0.2);color:#1A1714;background:transparent;font-family:inherit;transition:background .15s;white-space:nowrap;text-decoration:none}
+.btn:hover{background:rgba(26,23,20,0.06)}
 .btn-dark{background:#1A1714;color:#FAF8F4;border-color:#1A1714}
-.hero{display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:48px;padding:80px 64px 48px;max-width:1280px;margin:64px auto 0}
-.hero h1{font-family:Georgia,serif;font-size:clamp(44px,5vw,72px);font-weight:300;line-height:1.05;margin-bottom:20px}
-.hero h1 em{font-style:italic;color:#B8942A}
-.hero p{font-size:15px;color:#4A4540;line-height:1.7;margin-bottom:32px;max-width:420px}
-.hero-btns{display:flex;gap:14px;flex-wrap:wrap}
-.frame{background:#2C2318;padding:16px;border-radius:2px;box-shadow:0 8px 48px rgba(26,23,20,0.2)}
-.frame-inner{aspect-ratio:4/5;overflow:hidden;background:#EDE8DF;position:relative}
-.frame-inner img{width:100%;height:100%;object-fit:cover}
-.frame-cap{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(26,23,20,0.75));color:#F0EAD8;padding:20px 14px 10px;font-size:12px}
-.frame-cap strong{display:block;font-family:Georgia,serif;font-size:15px;font-weight:400}
-.repos{background:#EDE8DF;border-top:0.5px solid rgba(26,23,20,0.12);border-bottom:0.5px solid rgba(26,23,20,0.12);padding:12px 48px;display:flex;align-items:center;gap:20px;overflow-x:auto;font-size:12px;color:#4A4540}
-.repos-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#8A8178;white-space:nowrap}
-section{max-width:1280px;margin:0 auto;padding:48px 32px}
-section h2{font-family:Georgia,serif;font-size:34px;font-weight:300;margin-bottom:24px}
-section h2 span{color:#B8942A}
-.search-row{display:flex;gap:8px;margin-bottom:28px}
-.search-row input{flex:1;padding:10px 16px;border:0.5px solid rgba(26,23,20,0.25);border-radius:4px;font-size:14px;background:#FAF8F4;outline:none;font-family:system-ui}
-.search-row input:focus{border-color:#B8942A}
-#grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:40px}
-.card{cursor:pointer;transition:transform .2s}
-.card:hover{transform:translateY(-3px)}
-.card-thumb{aspect-ratio:3/4;background:#EDE8DF;overflow:hidden;position:relative;margin-bottom:10px}
-.card-thumb img{width:100%;height:100%;object-fit:cover}
-.card-source{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#B8942A;margin-bottom:3px}
-.card-title{font-family:Georgia,serif;font-size:17px;font-weight:400;margin-bottom:2px;line-height:1.2}
-.card-artist{font-size:11px;color:#8A8178;margin-bottom:5px}
+.btn-dark:hover{background:#2C2318}
+.btn-icon{padding:8px 10px;font-size:16px;line-height:1}
+
+/* HERO */
+.hero{position:relative;height:500px;overflow:hidden;background:#2C2318}
+.hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.55;transition:opacity 1s ease}
+.hero-img.fade{opacity:0}
+.hero-gradient{position:absolute;inset:0;background:linear-gradient(105deg,rgba(26,23,20,0.88) 0%,rgba(26,23,20,0.45) 55%,rgba(26,23,20,0.15) 100%)}
+.hero-content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:52px 56px 48px}
+.hero-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#B8942A;margin-bottom:14px;font-weight:500}
+.hero-title{font-family:Georgia,serif;font-size:clamp(30px,3.8vw,56px);font-weight:300;line-height:1.08;color:#F3EFE8;margin-bottom:10px;max-width:560px}
+.hero-title em{font-style:italic;color:#C9A84C}
+.hero-sub{font-size:14px;color:rgba(240,234,216,0.65);margin-bottom:28px;max-width:420px;line-height:1.6}
+.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
+.hero-btn{padding:11px 24px;font-size:13px;font-weight:500;border-radius:4px;cursor:pointer;font-family:inherit;transition:all .18s;text-decoration:none;border:none}
+.hero-btn-light{background:#FAF8F4;color:#1A1714}
+.hero-btn-light:hover{background:#EDE8DF}
+.hero-btn-outline{background:transparent;color:#F3EFE8;border:0.5px solid rgba(240,234,216,0.4)}
+.hero-btn-outline:hover{background:rgba(240,234,216,0.08);border-color:rgba(240,234,216,0.7)}
+.hero-caption{position:absolute;bottom:20px;right:32px;font-size:11px;color:rgba(240,234,216,0.45);text-align:right;max-width:260px;line-height:1.5}
+.hero-caption strong{display:block;font-family:Georgia,serif;font-size:13px;font-weight:400;color:rgba(240,234,216,0.7)}
+
+/* FILTER BAR */
+.filter-bar{background:#FAF8F4;border-bottom:0.5px solid rgba(26,23,20,0.1);padding:0 32px;display:flex;align-items:stretch;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.filter-bar::-webkit-scrollbar{display:none}
+.filter-chip{padding:14px 18px;font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:#8A8178;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;font-family:inherit;flex-shrink:0}
+.filter-chip:hover{color:#1A1714}
+.filter-chip.active{color:#1A1714;border-bottom-color:#B8942A}
+
+/* GALLERY */
+.gallery-header{padding:32px 32px 0;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.gallery-title{font-family:Georgia,serif;font-size:26px;font-weight:300;line-height:1}
+.gallery-title span{color:#B8942A}
+.gallery-meta{font-size:12px;color:#8A8178}
+
+.gallery-grid{columns:4 220px;column-gap:16px;padding:24px 32px 64px}
+.gallery-card{break-inside:avoid;margin-bottom:16px;cursor:pointer;border-radius:6px;overflow:hidden;background:#EDE8DF;box-shadow:0 1px 4px rgba(26,23,20,0.08);transition:box-shadow .22s,transform .22s}
+.gallery-card:hover{box-shadow:0 10px 40px rgba(26,23,20,0.18);transform:translateY(-2px)}
+.card-img-wrap{position:relative;overflow:hidden;background:#D4CEC3}
+.card-img-wrap img{width:100%;display:block;transition:transform .4s ease}
+.gallery-card:hover .card-img-wrap img{transform:scale(1.04)}
+.card-hover{position:absolute;inset:0;background:linear-gradient(transparent 50%,rgba(26,23,20,0.75));opacity:0;transition:opacity .22s;display:flex;align-items:flex-end;padding:12px}
+.gallery-card:hover .card-hover{opacity:1}
+.card-hover-label{font-size:11px;font-weight:500;color:#FAF8F4;letter-spacing:.05em}
+.card-placeholder{aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;font-size:48px;color:#B8942A;background:#EDE8DF}
+.card-body{padding:12px 14px 14px;background:#FAF8F4}
+.card-museum{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#B8942A;margin-bottom:4px;font-weight:500}
+.card-title{font-family:Georgia,serif;font-size:14px;font-weight:400;line-height:1.3;margin-bottom:3px;color:#1A1714;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-artist{font-size:11px;color:#8A8178;margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-foot{display:flex;align-items:center;justify-content:space-between}
-.badge{font-size:10px;padding:2px 6px;border-radius:10px;background:#DCFCE7;color:#166534}
-.load-more{text-align:center;padding-bottom:32px}
-.empty{grid-column:1/-1;padding:64px 0;text-align:center;color:#8A8178}
-.empty p{font-family:Georgia,serif;font-size:24px;font-weight:300;margin-top:12px}
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(26,23,20,0.65);z-index:200;align-items:center;justify-content:center;padding:20px}
-.modal-bg.open{display:flex}
-.modal{background:#FAF8F4;border-radius:10px;max-width:800px;width:100%;max-height:90vh;overflow-y:auto;position:relative}
-.modal-layout{display:grid;grid-template-columns:1fr 1fr}
-.modal-img{background:#EDE8DF;min-height:380px}
-.modal-img img{width:100%;height:100%;object-fit:cover}
-.modal-info{padding:32px 24px;display:flex;flex-direction:column;gap:10px}
-.modal-close{position:absolute;top:12px;right:16px;background:none;border:none;font-size:28px;cursor:pointer;color:#8A8178;z-index:1}
-.modal-source{font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#B8942A}
-.modal-title{font-family:Georgia,serif;font-size:28px;font-weight:300;line-height:1.15}
-.modal-artist{font-size:13px;color:#4A4540}
-.modal-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px 0;border-top:0.5px solid rgba(26,23,20,0.12);border-bottom:0.5px solid rgba(26,23,20,0.12)}
-.meta-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#8A8178;margin-bottom:2px}
-.meta-value{font-size:13px;font-weight:500}
-.modal-bio{font-size:12px;color:#4A4540;line-height:1.7}
-.prods-label{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:#8A8178;margin-bottom:8px}
-.prods{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
-.prod{background:#EDE8DF;border-radius:4px;padding:8px 4px;text-align:center;cursor:pointer;font-size:11px;color:#4A4540;border:none;transition:all .15s;font-family:system-ui}
+.card-price{font-size:11px;font-weight:500;color:#4A4540}
+.card-badge{font-size:9px;padding:2px 7px;border-radius:10px;background:#DCFCE7;color:#166534;font-weight:500;letter-spacing:.04em;white-space:nowrap}
+
+/* SKELETON */
+.skeleton{animation:pulse 1.5s ease-in-out infinite}
+.skeleton-card{break-inside:avoid;margin-bottom:16px;border-radius:6px;overflow:hidden}
+.skeleton-img{background:#E0DAD0}
+.skeleton-body{padding:12px 14px 14px;background:#EDE8DF}
+.skeleton-line{height:10px;background:#D4CEC3;border-radius:3px;margin-bottom:8px}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* LOAD MORE */
+.load-more{text-align:center;padding:0 0 64px}
+
+/* EMPTY */
+.empty-state{padding:96px 32px;text-align:center;color:#8A8178}
+.empty-icon{font-size:52px;margin-bottom:16px}
+.empty-text{font-family:Georgia,serif;font-size:22px;font-weight:300;margin-bottom:20px}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(26,23,20,0.72);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.modal{background:#FAF8F4;border-radius:12px;max-width:900px;width:100%;max-height:92vh;overflow:hidden;position:relative;box-shadow:0 32px 80px rgba(26,23,20,0.35);display:flex;flex-direction:column}
+.modal-layout{display:grid;grid-template-columns:1fr 1fr;overflow-y:auto;max-height:92vh}
+.modal-img-side{background:#2C2318;display:flex;align-items:center;justify-content:center;min-height:420px;position:relative;overflow:hidden}
+.modal-img-side img{width:100%;height:100%;object-fit:contain;max-height:680px}
+.modal-img-placeholder{font-size:72px;color:#B8942A}
+.modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(26,23,20,0.55);border:none;color:#FAF8F4;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:background .15s;line-height:1}
+.modal-close:hover{background:rgba(26,23,20,0.85)}
+.modal-detail{padding:32px 28px 28px;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.modal-museum{font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:#B8942A;margin-bottom:10px;font-weight:500}
+.modal-title{font-family:Georgia,serif;font-size:24px;font-weight:300;line-height:1.15;margin-bottom:6px}
+.modal-artist{font-size:13px;color:#4A4540;margin-bottom:20px}
+.divider{height:0.5px;background:rgba(26,23,20,0.1);margin:16px 0}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.meta-item label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#8A8178;display:block;margin-bottom:3px}
+.meta-item span{font-size:13px;font-weight:500;color:#1A1714}
+.modal-bio{font-size:12px;color:#4A4540;line-height:1.78}
+.products-label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#8A8178;margin-bottom:10px}
+.products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px}
+.prod{background:#EDE8DF;border:none;border-radius:5px;padding:10px 4px;text-align:center;cursor:pointer;font-size:11px;color:#4A4540;transition:all .15s;font-family:inherit;line-height:1.4}
 .prod:hover{background:#1A1714;color:#FAF8F4}
-.modal-actions{display:flex;flex-direction:column;gap:8px;margin-top:4px}
-footer{background:#2C2318;color:#B0A898;padding:40px 32px 24px}
-.footer-inner{max-width:1280px;margin:0 auto}
+.prod-icon{font-size:18px;display:block;margin-bottom:2px}
+.prod-price{opacity:.65;font-size:10px}
+.modal-cta{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:4px}
+.cta-btn{display:block;text-align:center;padding:12px;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;border:none}
+.cta-primary{background:#1A1714;color:#FAF8F4}
+.cta-primary:hover{background:#2C2318}
+.cta-secondary{background:transparent;color:#1A1714;border:0.5px solid rgba(26,23,20,0.22);text-decoration:none}
+.cta-secondary:hover{background:rgba(26,23,20,0.05)}
+
+/* FOOTER */
+footer{background:#2C2318;color:#B0A898;padding:52px 32px 28px}
+.footer-grid{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:48px}
 .footer-logo{font-family:Georgia,serif;font-size:20px;color:#F3EFE8;margin-bottom:10px}
 .footer-logo span{color:#B8942A}
-.footer-bottom{border-top:0.5px solid rgba(240,234,214,0.1);padding-top:16px;margin-top:16px;font-size:12px;color:#6A6058}
-@media(max-width:900px){.hero{grid-template-columns:1fr;padding:80px 24px 40px}#grid{grid-template-columns:repeat(2,1fr)}.modal-layout{grid-template-columns:1fr}}
-@media(max-width:540px){#grid{grid-template-columns:1fr}}
-</style>
-<nav>
-  <span class="logo">Public Art <span>Collections</span></span>
-  <span id="total-count" style="font-size:13px;color:#8A8178"></span>
-  <a href="/api/artworks" class="btn">API</a>
-</nav>
-<div class="hero">
-  <div>
-    <p id="hero-eyebrow" style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:#8A8178;margin-bottom:16px">Loading...</p>
-    <h1>The world's art,<br/><em>in your home</em></h1>
-    <p>Browse museum masterpieces. Buy any piece as a fine art print, canvas, mug, or tee — shipped to your door.</p>
-    <div class="hero-btns">
-      <a href="#gallery" class="btn btn-dark">Browse collection</a>
-      <a href="/api/artworks" class="btn">View API</a>
-    </div>
-  </div>
-  <div class="frame">
-    <div class="frame-inner" id="hero-frame">
-      <div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:80px;color:#B8942A">🖼️</div>
-    </div>
-  </div>
-</div>
-<div class="repos">
-  <span class="repos-label">Sources</span>
-  <span>Met Museum · Art Institute of Chicago · Cleveland Museum · V&A Museum · SMK Denmark · Smithsonian</span>
-</div>
-<section id="gallery">
-  <h2>Browse the collection <span id="count-label"></span></h2>
-  <div class="search-row">
-    <input id="search-input" type="text" placeholder="Search by title, artist, or keyword…" onkeydown="if(event.key==='Enter')doSearch()"/>
-    <button class="btn btn-dark" onclick="doSearch()">Search</button>
-    <button class="btn" id="clear-btn" style="display:none" onclick="clearSearch()">Clear</button>
-  </div>
-  <div id="grid"><div class="empty"><div style="font-size:32px">⏳</div><p>Loading artworks…</p></div></div>
-  <div class="load-more" id="load-more" style="display:none">
-    <button class="btn" onclick="loadMore()">Load more works</button>
-  </div>
-</section>
-<footer>
-  <div class="footer-inner">
-    <div class="footer-logo">Public Art <span>Collections</span></div>
-    <p style="font-size:13px;line-height:1.7;margin-bottom:16px">Museum-quality art for every home. All works public domain.</p>
-    <div class="footer-bottom">© 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful</div>
-  </div>
-</footer>
-<div class="modal-bg" id="modal" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal()">×</button>
-    <div class="modal-layout">
-      <div class="modal-img" id="modal-img"></div>
-      <div class="modal-info">
-        <div class="modal-source" id="modal-source"></div>
-        <div class="modal-title" id="modal-title"></div>
-        <div class="modal-artist" id="modal-artist"></div>
-        <div class="modal-meta" id="modal-meta"></div>
-        <div class="modal-bio" id="modal-bio"></div>
-        <div>
-          <div class="prods-label">Order as</div>
-          <div class="prods">
-            <button class="prod">🖼️<br/>Fine art print<br/><span style="opacity:.7;font-size:10px">from $18</span></button>
-            <button class="prod">🎨<br/>Canvas wrap<br/><span style="opacity:.7;font-size:10px">from $45</span></button>
-            <button class="prod">👕<br/>T-shirt<br/><span style="opacity:.7;font-size:10px">from $24</span></button>
-            <button class="prod">☕<br/>Mug<br/><span style="opacity:.7;font-size:10px">from $14</span></button>
-            <button class="prod">📱<br/>Phone case<br/><span style="opacity:.7;font-size:10px">from $19</span></button>
-            <button class="prod">🛍️<br/>Tote bag<br/><span style="opacity:.7;font-size:10px">from $16</span></button>
-          </div>
-        </div>
-        <div class="modal-actions">
-          <button class="btn btn-dark">Order a print →</button>
-          <a id="modal-link" href="#" target="_blank" rel="noopener" class="btn" style="text-align:center;display:none">View on museum website ↗</a>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-<script>
-var works=[],offset=0,search='',heroIdx=0,heroTimer=null;
-function ss(s){return(s||'').replace('Victoria & Albert Museum','V&A').replace('Metropolitan Museum of Art','Met Museum').replace('Art Institute of Chicago','Art Inst. Chicago').replace('SMK National Gallery of Denmark','SMK Denmark').replace('Smithsonian Institution','Smithsonian').replace(/^Europeana — /,'').split(',')[0];}
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-function load(reset){
-  if(reset){offset=0;works=[];}
-  var url='/api/artworks?limit=24&offset='+offset+(search?'&search='+encodeURIComponent(search):'');
-  fetch(url).then(function(r){return r.json();}).then(function(d){
-    var w=d.works||[];
-    works=reset?w:works.concat(w);
-    offset+=w.length;
-    render(reset?w:works);
-    document.getElementById('load-more').style.display=w.length===24?'block':'none';
-    if(reset&&w.length>0)startHero(w);
-  }).catch(function(){document.getElementById('grid').innerHTML='<div class="empty"><p>Could not load artworks</p></div>';});
+.footer-desc{font-size:13px;line-height:1.75;color:#6A6058}
+.footer-col-title{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#6A6058;margin-bottom:14px}
+.footer-link{display:block;font-size:13px;color:#8A8178;text-decoration:none;margin-bottom:7px;cursor:pointer;background:none;border:none;font-family:inherit;padding:0;text-align:left;transition:color .15s}
+.footer-link:hover{color:#F3EFE8}
+.footer-bottom{max-width:1280px;margin:32px auto 0;border-top:0.5px solid rgba(240,234,214,0.08);padding-top:20px;font-size:12px;color:#4A4540}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.gallery-grid{columns:3 200px}}
+@media(max-width:800px){
+  .nav{padding:0 16px;gap:10px}
+  .hero{height:400px}
+  .hero-content{padding:32px 24px 36px}
+  .filter-bar{padding:0 16px}
+  .gallery-header{padding:24px 16px 0}
+  .gallery-grid{columns:2 160px;column-gap:12px;padding:20px 16px 48px}
+  .gallery-grid .skeleton-card,.gallery-grid .gallery-card{margin-bottom:12px}
+  .modal-layout{grid-template-columns:1fr}
+  .modal-img-side{min-height:260px}
+  .footer-grid{grid-template-columns:1fr;gap:32px}
 }
-function render(w){
-  var g=document.getElementById('grid');
-  if(!w.length){g.innerHTML='<div class="empty"><div style="font-size:40px">🔍</div><p>No works found</p></div>';return;}
-  g.innerHTML=w.map(function(x,i){return'<div class="card" onclick="openModal('+i+'"><div class="card-thumb">'+(x.thumb_url?'<img src="'+esc(x.thumb_url)+'" loading="lazy" onerror="this.parentNode.innerHTML=\'<div style=\\\"display:flex;align-items:center;justify-content:center;height:100%;font-size:40px;color:#B8942A\\\">&#128–/div>\'">':'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:40px;color:#B8942A">🖼️</div>')+'</div><div class="card-source">'+esc(ss(x.source))+'</div><div class="card-title">'+esc(x.title)+'</div><div class="card-artist">'+esc(x.artist||'Artist unknown')+(x.date_text?' · '+esc(x.date_text):'')+'</div><div class="card-foot"><span style="font-size:12px;font-weight:500">Prints from $18</span><span class="badge">'+esc(x.rights_label||'CC0')+'</span></div></div>';}).join('');
+@media(max-width:500px){
+  .nav-count{display:none}
+  .gallery-grid{columns:1;padding:16px 12px 40px}
+  .hero-title{font-size:28px}
 }
-function startHero(w){
-  updateHero(w);
-  if(heroTimer)clearInterval(heroTimer);
-  heroTimer=setInterval(function(){heroIdx=(heroIdx+1)%Math.min(works.length,8);updateHero(works);},5000);
-}
-function updateHero(w){
-  var x=w[heroIdx%w.length];
-  document.getElementById('hero-frame').innerHTML=x.thumb_url?'<img src="'+esc(x.thumb_url)+'" onerror="this.style.display=\'none\'"><div class="frame-cap"><strong>'+esc(x.title)+'</strong>'+esc(x.artist||'')+'</div>':'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:80px;color:#B8942A">🖼️</div>';
-}
-function openModal(i){
-  var x=works[i];if(!x)return;
-  document.getElementById('modal-img').innerHTML=x.thumb_url?'<img src="'+esc(x.full_url||x.thumb_url)+'" style="width:100%;height:100%;object-fit:cover" onerror="this.src=\''+esc(x.thumb_url)+'\'">':'<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:80px">🖼️</div>';
-  document.getElementById('modal-source').textContent=ss(x.source);
-  document.getElementById('modal-title').textContent=x.title;
-  document.getElementById('modal-artist').textContent=[x.artist,x.date_text].filter(Boolean).join(' · ');
-  document.getElementById('modal-meta').innerHTML='<div><div class="meta-label">Medium</div><div class="meta-value">'+esc(x.medium||'—')+'</div></div><div><div class="meta-label">Rights</div><div class="meta-value" style="color:#16a34a">'+esc(x.rights_label||'CC0')+'</div></div><div><div class="meta-label">Source</div><div class="meta-value">'+esc(ss(x.source))+'</div></div><div><div class="meta-label">Date</div><div class="meta-value">'+esc(x.date_text||'—')+'</div></div>';
-  document.getElementById('modal-bio').textContent=x.bio?x.bio.slice(0,280):'';
-  var lnk=document.getElementById('modal-link');
-  lnk.style.display=x.detail_url?'block':'none';
-  if(x.detail_url)lnk.href=x.detail_url;
-  document.getElementById('modal').classList.add('open');
-  document.body.style.overflow='hidden';
-}
-function closeModal(){document.getElementById('modal').classList.remove('open');document.body.style.overflow='';}
-function doSearch(){search=document.getElementById('search-input').value.trim();document.getElementById('clear-btn').style.display=search?'inline-block':'none';load(true);}
-function clearSearch(){search='';document.getElementById('search-input').value='';document.getElementById('clear-btn').style.display='none';load(true);}
-function loadMore(){load(false);}
-document.addEventListener('keydown',function(e){if(e.key==='Escape')closeModal();});
-fetch('/api/artworks?count=true').then(function(r){return r.json();}).then(function(d){
-  if(d.total){
-    document.getElementById('total-count').textContent=Number(d.total).toLocaleString()+' works';
-    document.getElementById('hero-eyebrow').textContent=Number(d.total).toLocaleString()+'+ works · 7 museum sources';
-    document.getElementById('count-label').textContent='— '+Number(d.total).toLocaleString()+'+ works';
-    document.getElementById('count-label').style.color='#B8942A';
+`;
+
+export default function Home() {
+  const [works, setWorks] = useState([]);
+  const [searchInput, setSearchInput] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [source, setSource] = useState('all');
+  const [loading, setLoading] = useState(false);
+  const [total, setTotal] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [modal, setModal] = useState(null);
+  const [heroIdx, setHeroIdx] = useState(0);
+  const [heroFading, setHeroFading] = useState(false);
+  const [imgErrors, setImgErrors] = useState({});
+  const offsetRef = useRef(0);
+
+  useEffect(() => {
+    fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotal(d.total));
+    load(true, '', 'all');
+  }, []);
+
+  useEffect(() => {
+    if (works.length < 2) return;
+    const t = setInterval(() => {
+      setHeroFading(true);
+      setTimeout(() => {
+        setHeroIdx(i => (i + 1) % Math.min(works.length, 8));
+        setHeroFading(false);
+      }, 600);
+    }, 6000);
+    return () => clearInterval(t);
+  }, [works.length]);
+
+  useEffect(() => {
+    const fn = e => { if (e.key === 'Escape') setModal(null); };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+  }, []);
+
+  useEffect(() => {
+    document.body.style.overflow = modal ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [modal]);
+
+  async function load(reset, q, src) {
+    const off = reset ? 0 : offsetRef.current;
+    setLoading(true);
+    try {
+      let url = `/api/artworks?limit=24&offset=${off}`;
+      if (q) url += `&search=${encodeURIComponent(q)}`;
+      if (src && src !== 'all') url += `&source=${encodeURIComponent(src)}`;
+      const data = await fetch(url).then(r => r.json());
+      const w = data.works || [];
+      if (reset) {
+        setWorks(w);
+        offsetRef.current = w.length;
+      } else {
+        setWorks(prev => {
+          const merged = [...prev, ...w];
+          offsetRef.current = merged.length;
+          return merged;
+        });
+      }
+      setHasMore(w.length === 24);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
   }
-});
-load(true);
-</script>`;
+
+  const handleSearch = () => {
+    setAppliedSearch(searchInput);
+    load(true, searchInput, source);
+  };
+
+  const handleClear = () => {
+    setSearchInput('');
+    setAppliedSearch('');
+    load(true, '', source);
+  };
+
+  const handleSource = (src) => {
+    setSource(src);
+    load(true, appliedSearch, src);
+  };
+
+  const handleLoadMore = () => load(false, appliedSearch, source);
+
+  const hero = works[heroIdx % Math.max(works.length, 1)];
+
+  const skeletonHeights = [240, 320, 200, 360, 280, 220, 300, 240, 360, 200, 320, 260];
 
   return (
-    <div dangerouslySetInnerHTML={{ __html: html }} />
+    <>
+      <Head>
+        <title>Public Art Collections — Museum Prints & Art Marketplace</title>
+        <meta name="description" content="Browse museum masterpieces from the Met, V&A, Rijksmuseum and more. Buy any artwork as a fine art print, canvas, or gift." />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </Head>
+      <style>{CSS}</style>
+
+      {/* NAV */}
+      <nav className="nav">
+        <a href="/" className="nav-logo">Public Art <span>Collections</span></a>
+        <div className="nav-search">
+          <input
+            className="nav-input"
+            type="text"
+            placeholder="Search title, artist, medium…"
+            value={searchInput}
+            onChange={e => setSearchInput(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          />
+          <button className="btn btn-dark" onClick={handleSearch}>Search</button>
+          {appliedSearch && (
+            <button className="btn btn-icon" onClick={handleClear} title="Clear search">×</button>
+          )}
+        </div>
+        {total !== null && (
+          <span className="nav-count">{Number(total).toLocaleString()} works</span>
+        )}
+      </nav>
+
+      {/* HERO */}
+      {hero && (
+        <div className="hero">
+          {hero.thumb_url && (
+            <img
+              key={hero.id}
+              src={hero.full_url || hero.thumb_url}
+              alt={hero.title}
+              className={`hero-img${heroFading ? ' fade' : ''}`}
+            />
+          )}
+          <div className="hero-gradient" />
+          <div className="hero-content">
+            <p className="hero-eyebrow">{fmt(hero.source)}</p>
+            <h1 className="hero-title">
+              The world's art,<br /><em>in your home</em>
+            </h1>
+            <p className="hero-sub">
+              {total ? `${Number(total).toLocaleString()}+ museum masterpieces` : 'Museum masterpieces'} — available as fine art prints, canvas wraps, and gifts.
+            </p>
+            <div className="hero-actions">
+              <a href="#gallery" className="hero-btn hero-btn-light">Browse Collection</a>
+              <button className="hero-btn hero-btn-outline" onClick={() => setModal(hero)}>
+                View This Work
+              </button>
+            </div>
+          </div>
+          {hero.title && (
+            <div className="hero-caption">
+              <strong>{hero.title}</strong>
+              {hero.artist || ''}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* FILTER BAR */}
+      <div className="filter-bar" id="gallery">
+        {MUSEUMS.map(m => (
+          <button
+            key={m.key}
+            className={`filter-chip${source === m.key ? ' active' : ''}`}
+            onClick={() => handleSource(m.key)}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
+
+      {/* GALLERY HEADER */}
+      <div className="gallery-header">
+        <h2 className="gallery-title">
+          {source === 'all' ? 'The Collection' : fmt(source)}
+          {total !== null && <span> — {Number(total).toLocaleString()}+ works</span>}
+        </h2>
+        {appliedSearch && (
+          <p className="gallery-meta">Showing results for "{appliedSearch}"</p>
+        )}
+      </div>
+
+      {/* GALLERY */}
+      {loading && works.length === 0 ? (
+        <div className="gallery-grid">
+          {skeletonHeights.map((h, i) => (
+            <div key={i} className="skeleton-card skeleton">
+              <div className="skeleton-img" style={{ height: h }} />
+              <div className="skeleton-body">
+                <div className="skeleton-line" style={{ width: '50%' }} />
+                <div className="skeleton-line" style={{ width: '75%' }} />
+                <div className="skeleton-line" style={{ width: '35%' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : works.length === 0 ? (
+        <div className="empty-state">
+          <div className="empty-icon">🔍</div>
+          <p className="empty-text">No artworks found</p>
+          <button className="btn" onClick={handleClear}>Clear filters</button>
+        </div>
+      ) : (
+        <div className="gallery-grid">
+          {works.map(w => (
+            <div key={w.id} className="gallery-card" onClick={() => setModal(w)}>
+              <div className="card-img-wrap">
+                {w.thumb_url && !imgErrors[w.id] ? (
+                  <img
+                    src={w.thumb_url}
+                    alt={w.title}
+                    loading="lazy"
+                    onError={() => setImgErrors(e => ({ ...e, [w.id]: true }))}
+                  />
+                ) : (
+                  <div className="card-placeholder">🖼️</div>
+                )}
+                <div className="card-hover">
+                  <span className="card-hover-label">View &amp; Order →</span>
+                </div>
+              </div>
+              <div className="card-body">
+                <div className="card-museum">{fmt(w.source)}</div>
+                <div className="card-title">{w.title}</div>
+                <div className="card-artist">
+                  {w.artist || 'Artist unknown'}{w.date_text ? ` · ${w.date_text}` : ''}
+                </div>
+                <div className="card-foot">
+                  <span className="card-price">Prints from $18</span>
+                  <span className="card-badge">{(w.rights_label || 'CC0').split('—')[0].trim()}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* LOAD MORE */}
+      {hasMore && (
+        <div className="load-more">
+          <button className="btn" onClick={handleLoadMore} disabled={loading}>
+            {loading ? 'Loading…' : 'Load more works'}
+          </button>
+        </div>
+      )}
+
+      {/* FOOTER */}
+      <footer>
+        <div className="footer-grid">
+          <div>
+            <div className="footer-logo">Public Art <span>Collections</span></div>
+            <p className="footer-desc">
+              Museum-quality art for every home. All works public domain — ethically sourced from the world's great collections.
+            </p>
+          </div>
+          <div>
+            <div className="footer-col-title">Collections</div>
+            {MUSEUMS.slice(1).map(m => (
+              <button key={m.key} className="footer-link" onClick={() => handleSource(m.key)}>
+                {m.label}
+              </button>
+            ))}
+          </div>
+          <div>
+            <div className="footer-col-title">Info</div>
+            <a href="/api/artworks" className="footer-link">API Access</a>
+            <a href="#" className="footer-link">How Prints Work</a>
+            <a href="#" className="footer-link">Shipping &amp; Returns</a>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          © 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful
+        </div>
+      </footer>
+
+      {/* MODAL */}
+      {modal && (
+        <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(null)}>
+          <div className="modal">
+            <button className="modal-close" onClick={() => setModal(null)}>×</button>
+            <div className="modal-layout">
+              <div className="modal-img-side">
+                {(modal.full_url || modal.thumb_url) ? (
+                  <img
+                    src={modal.full_url || modal.thumb_url}
+                    alt={modal.title}
+                    onError={e => {
+                      if (modal.thumb_url && e.target.src !== modal.thumb_url) {
+                        e.target.src = modal.thumb_url;
+                      }
+                    }}
+                  />
+                ) : (
+                  <div className="modal-img-placeholder">🖼️</div>
+                )}
+              </div>
+              <div className="modal-detail">
+                <div className="modal-museum">{fmt(modal.source)}</div>
+                <h2 className="modal-title">{modal.title}</h2>
+                <p className="modal-artist">
+                  {[modal.artist, modal.date_text].filter(Boolean).join(' · ') || 'Unknown artist'}
+                </p>
+                <div className="divider" />
+                <div className="meta-grid">
+                  {modal.medium && (
+                    <div className="meta-item">
+                      <label>Medium</label>
+                      <span>{modal.medium}</span>
+                    </div>
+                  )}
+                  <div className="meta-item">
+                    <label>Rights</label>
+                    <span style={{ color: '#16a34a' }}>{modal.rights_label || 'CC0'}</span>
+                  </div>
+                  {modal.department && (
+                    <div className="meta-item">
+                      <label>Department</label>
+                      <span>{modal.department}</span>
+                    </div>
+                  )}
+                  {modal.country && (
+                    <div className="meta-item">
+                      <label>Origin</label>
+                      <span>{modal.country}</span>
+                    </div>
+                  )}
+                </div>
+                {modal.bio && (
+                  <>
+                    <div className="divider" />
+                    <p className="modal-bio">{modal.bio.slice(0, 340)}</p>
+                  </>
+                )}
+                <div className="divider" />
+                <div className="products-label">Order as</div>
+                <div className="products-grid">
+                  {PRODUCTS.map(p => (
+                    <button key={p.name} className="prod">
+                      <span className="prod-icon">{p.icon}</span>
+                      {p.name}<br />
+                      <span className="prod-price">{p.price}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="modal-cta">
+                  <button className="cta-btn cta-primary">Order a Print →</button>
+                  {modal.detail_url && (
+                    <a
+                      href={modal.detail_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="cta-btn cta-secondary"
+                    >
+                      View on museum website ↗
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
