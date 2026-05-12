@@ -313,6 +313,112 @@ async function syncHarvard(sql, key) {
   return await upsert(sql,works);
 }
 
+async function syncWikidataMuseum(sql, qid, sourceName) {
+  const works = [];
+  const seen = new Set();
+  for (let offset=0; offset<5000; offset+=1000) {
+    try {
+      const query = `
+        SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
+          ?item wdt:P195 wd:${qid};
+                wdt:P18 ?image.
+          OPTIONAL { ?item wdt:P217 ?inv. }
+          OPTIONAL { ?item wdt:P170 ?creator. }
+          OPTIONAL { ?item wdt:P571 ?date. }
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+        }
+        LIMIT 1000 OFFSET ${offset}
+      `;
+      const d = await fetchJson(
+        `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
+      );
+      const bindings = d.results?.bindings||[];
+      if (!bindings.length) break;
+      for (const r of bindings) {
+        const qidItem = r.item?.value.split('/').pop();
+        if (seen.has(qidItem)) continue;
+        seen.add(qidItem);
+        const imgRaw = r.image?.value||'';
+        if (!imgRaw) continue;
+        const imgHttps = imgRaw.replace('http://', 'https://');
+        const thumb = `${imgHttps}?width=400`;
+        const full  = `${imgHttps}?width=1200`;
+        const inv   = r.inv?.value||qidItem;
+        const year  = r.date?.value ? r.date.value.replace(/^\+/,'').substring(0,4) : '';
+        const creator = r.creatorLabel?.value||'';
+        works.push({
+          source: sourceName, source_id: inv,
+          title: r.itemLabel?.value||'Untitled',
+          artist: creator.match(/^Q\d+$/) ? '' : creator,
+          date_text: year, medium: '', department: '',
+          thumb_url: thumb, full_url: full,
+          iiif_manifest: '',
+          detail_url: `https://www.wikidata.org/wiki/${qidItem}`,
+          bio: `${sourceName}.`
+        });
+      }
+      await sleep(1000);
+    } catch(e) { break; }
+  }
+  return upsert(sql, works);
+}
+
+async function syncBrooklyn(sql) {
+  const works = [];
+  for (let page=1; page<=50; page++) {
+    try {
+      const d = await fetchJson(
+        `https://www.brooklynmuseum.org/api/v2/objects/?has_images=1&page=${page}&page_size=100`
+      );
+      const items = d.data||[];
+      if (!items.length) break;
+      for (const o of items) {
+        if (!o.primary_image) continue;
+        const artist = Array.isArray(o.artists)&&o.artists.length
+          ? (o.artists[0].name||o.artists[0].full_name||'') : '';
+        works.push({
+          source:'Brooklyn Museum', source_id:String(o.id),
+          title:o.title||'Untitled', artist, date_text:o.date||'',
+          medium:o.medium||'', department:o.museum_location?.name||'',
+          thumb_url:o.primary_image_thumbnail||o.primary_image,
+          full_url:o.primary_image,
+          detail_url:`https://www.brooklynmuseum.org/opencollection/objects/${o.id}`,
+          bio:''
+        });
+      }
+      await sleep(200);
+    } catch(e) { break; }
+  }
+  return upsert(sql, works);
+}
+
+async function syncYale(sql) {
+  const works = [];
+  for (let page=1; page<=100; page++) {
+    try {
+      const d = await fetchJson(
+        `https://public.api.yale.edu/api/v1/artworks?hasImages=true&isPublicDomain=true&page=${page}&size=100`
+      );
+      const items = d.artworks||d.data||d||[];
+      if (!Array.isArray(items)||!items.length) break;
+      for (const o of items) {
+        if (!o.primaryImageSmall&&!o.primaryImage) continue;
+        works.push({
+          source:'Yale University Art Gallery', source_id:String(o.id),
+          title:o.title||'Untitled', artist:o.artist||'',
+          date_text:o.date||'', medium:o.medium||'',
+          thumb_url:o.primaryImageSmall||o.primaryImage,
+          full_url:o.primaryImage||o.primaryImageSmall,
+          detail_url:o.url||`https://artgallery.yale.edu/collections/objects/${o.id}`,
+          bio:''
+        });
+      }
+      await sleep(200);
+    } catch(e) { break; }
+  }
+  return upsert(sql, works);
+}
+
 export default async function handler(req, res) {
   const cronAuth = req.headers['authorization'];
   const validCron   = process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`;
@@ -345,6 +451,10 @@ export default async function handler(req, res) {
   await run('Europeana',         () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
   await run('Smithsonian',       () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
   await run('Harvard',           () => syncHarvard(sql, process.env.HARVARD_KEY));
+  await run('Getty Museum',      () => syncWikidataMuseum(sql, 'Q1700481', 'Getty Museum'));
+  await run('Walters Art Museum',() => syncWikidataMuseum(sql, 'Q210081',  'Walters Art Museum'));
+  await run('Brooklyn Museum',   () => syncBrooklyn(sql));
+  await run('Yale Art Gallery',  () => syncYale(sql));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
