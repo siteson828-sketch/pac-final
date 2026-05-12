@@ -546,6 +546,7 @@ export default function Home() {
                 </div>
                 <div className="modal-cta">
                   <button className="cta-btn cta-primary">Order a Print →</button>
+                  <a href={`/artwork/${modal.id}`} className="cta-btn cta-secondary">View full page →</a>
                   {modal.detail_url && (
                     <a
                       href={modal.detail_url}
