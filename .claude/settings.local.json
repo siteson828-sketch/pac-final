@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git rm *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(vercel env *)",
+      "Bash(npx vercel *)",
+      "Bash(git commit *)",
+      "WebFetch(domain:api.nga.gov)",
+      "WebFetch(domain:www.rijksmuseum.nl)",
+      "WebFetch(domain:www.nga.gov)",
+      "Bash(curl -s \"https://api.smk.dk/api/v1/art/search?keys=*&has_image=true&image_orientation=landscape&offset=0&rows=3&filters=public_domain:true\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); items=d.get\\('items',[]\\); print\\('keys:',list\\(d.keys\\(\\)\\)\\); print\\('first item keys:',list\\(items[0].keys\\(\\)\\) if items else 'none'\\)\")",
+      "Bash(curl -s \"https://api.smk.dk/api/v1/art/search?keys=*&has_image=true&offset=0&rows=3&filters=public_domain:true\")",
+      "Bash(curl -s \"https://openaccess-api.clevelandart.org/api/artworks/?has_image=1&cc0=1&limit=1\")",
+      "Bash(curl -sI \"https://api.nga.gov/\")",
+      "Bash(curl -s \"https://api.smk.dk/api/v1/art?object_number=KKS5261\")",
+      "Bash(curl -s \"https://api.smk.dk/api/v1/art/search?keys=*&has_image=true&offset=0&rows=2&filters=public_domain:true\")",
+      "Bash(curl *)",
+      "Bash(Start-Sleep -Seconds 30)",
+      "WebFetch(domain:data.getty.edu)",
+      "WebFetch(domain:artgallery.yale.edu)",
+      "WebFetch(domain:www.brooklynmuseum.org)"
+    ]
+  }
+}

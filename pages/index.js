@@ -10,6 +10,10 @@ const MUSEUMS = [
   { key: 'SMK National Gallery of Denmark',  label: 'SMK Denmark' },
   { key: 'Smithsonian Institution',          label: 'Smithsonian' },
   { key: 'Harvard Art Museums',              label: 'Harvard' },
+  { key: 'Getty Museum',                     label: 'Getty Museum' },
+  { key: 'Walters Art Museum',               label: 'Walters' },
+  { key: 'Brooklyn Museum',                  label: 'Brooklyn' },
+  { key: 'Yale University Art Gallery',      label: 'Yale' },
 ];
 
 const PRODUCTS = [
