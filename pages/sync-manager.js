@@ -17,7 +17,7 @@ const SRCS = [
   { k: 'harvard',     l: 'Harvard Art Museums' },
   { k: 'getty',       l: 'Getty Museum' },
   { k: 'walters',     l: 'Walters Art Museum' },
-  { k: 'brooklyn',    l: 'Brooklyn Museum' },
+  { k: 'mia',         l: 'Minneapolis Institute of Art' },
   { k: 'yale',        l: 'Yale University Art Gallery' },
   { k: 'loc',         l: 'Library of Congress' },
   { k: 'bnf',         l: 'BnF Gallica' },
