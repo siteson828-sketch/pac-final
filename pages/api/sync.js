@@ -538,49 +538,59 @@ async function syncNYPL(sql) {
 async function syncWikimedia(sql) {
   const works = [];
   const seen = new Set();
-  for (let offset=0; offset<500; offset+=50) {
-    try {
-      const query = `
-        SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?date WHERE {
-          ?item wdt:P31 wd:Q3305213;
-                wdt:P18 ?image;
-                wdt:P6216 wd:Q19652.
-          OPTIONAL { ?item wdt:P170 ?creator. }
-          OPTIONAL { ?item wdt:P571 ?date. }
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+  const categories = ['Public_domain_paintings', 'CC0_artworks'];
+  for (const category of categories) {
+    let cmcontinue = '';
+    let pages = 0;
+    while (pages < 10) {
+      try {
+        pages++;
+        const contParam = cmcontinue ? `&cmcontinue=${encodeURIComponent(cmcontinue)}` : '';
+        const d = await fetchJson(
+          `https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:${encodeURIComponent(category)}&cmtype=file&cmlimit=50&format=json${contParam}`
+        );
+        const members = d.query?.categorymembers || [];
+        for (const member of members) {
+          try {
+            const title = member.title;
+            if (seen.has(title)) continue;
+            seen.add(title);
+            const metaRes = await fetchJson(
+              `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(title)}&prop=imageinfo&iiprop=url|extmetadata|thumburl&iiurlwidth=400&format=json`
+            );
+            const pageData = Object.values(metaRes.query?.pages || {})[0];
+            const ii = pageData?.imageinfo?.[0];
+            if (!ii?.url) continue;
+            const meta = ii.extmetadata || {};
+            const artist = meta.Artist?.value?.replace(/<[^>]+>/g, '') || '';
+            const dateStr = meta.DateTimeOriginal?.value || meta.DateTime?.value || '';
+            const year = dateStr.match(/\d{4}/)?.[0] || '';
+            const rightsLabel = meta.LicenseShortName?.value || 'CC0';
+            const fileName = title.replace(/^File:/, '');
+            works.push({
+              source: 'Wikimedia Commons',
+              source_id: title,
+              title: meta.ObjectName?.value || fileName.replace(/\.[^.]+$/, '').replace(/_/g, ' '),
+              artist,
+              date_text: year,
+              medium: meta.Medium?.value || '',
+              thumb_url: ii.thumburl || ii.url,
+              full_url: ii.url,
+              detail_url: `https://commons.wikimedia.org/wiki/${encodeURIComponent(title)}`,
+              rights: 'https://creativecommons.org/publicdomain/zero/1.0/',
+              rights_label: rightsLabel,
+              bio: meta.ImageDescription?.value?.replace(/<[^>]+>/g, '') || '',
+            });
+            await sleep(150);
+          } catch(e) {}
         }
-        LIMIT 50 OFFSET ${offset}
-      `;
-      const d = await fetchJson(
-        `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
-      );
-      const bindings = d.results?.bindings||[];
-      if (!bindings.length) break;
-      for (const r of bindings) {
-        const qid = r.item?.value.split('/').pop();
-        if (seen.has(qid)) continue;
-        seen.add(qid);
-        const imgRaw = r.image?.value||'';
-        if (!imgRaw) continue;
-        const imgHttps = imgRaw.replace('http://','https://');
-        const creator = r.creatorLabel?.value||'';
-        const year = r.date?.value ? r.date.value.replace(/^\+/,'').substring(0,4) : '';
-        works.push({
-          source:'Wikimedia Commons', source_id: qid,
-          title: r.itemLabel?.value||'Untitled',
-          artist: creator.match(/^Q\d+$/) ? '' : creator,
-          date_text: year, medium: 'Painting',
-          thumb_url: `${imgHttps}?width=400`,
-          full_url:  `${imgHttps}?width=1200`,
-          detail_url: `https://www.wikidata.org/wiki/${qid}`,
-          bio: 'Public domain via Wikimedia Commons.'
-        });
-        await sleep(200);
-      }
-      await sleep(500);
-    } catch(e) { break; }
+        cmcontinue = d.continue?.cmcontinue || '';
+        if (!cmcontinue) break;
+        await sleep(400);
+      } catch(e) { break; }
+    }
   }
-  return upsert(sql, works);
+  return await upsert(sql, works);
 }
 
 async function syncDPLA(sql, key) {
