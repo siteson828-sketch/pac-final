@@ -363,58 +363,43 @@ async function syncWikidataMuseum(sql, qid, sourceName) {
   return upsert(sql, works);
 }
 
-async function syncBrooklyn(sql) {
+async function syncMia(sql) {
+  // Minneapolis Institute of Art — free keyless JSON search API
   const works = [];
-  for (let page=1; page<=50; page++) {
-    try {
-      const d = await fetchJson(
-        `https://www.brooklynmuseum.org/api/v2/objects/?has_images=1&page=${page}&page_size=100`
-      );
-      const items = d.data||[];
-      if (!items.length) break;
-      for (const o of items) {
-        if (!o.primary_image) continue;
-        const artist = Array.isArray(o.artists)&&o.artists.length
-          ? (o.artists[0].name||o.artists[0].full_name||'') : '';
-        works.push({
-          source:'Brooklyn Museum', source_id:String(o.id),
-          title:o.title||'Untitled', artist, date_text:o.date||'',
-          medium:o.medium||'', department:o.museum_location?.name||'',
-          thumb_url:o.primary_image_thumbnail||o.primary_image,
-          full_url:o.primary_image,
-          detail_url:`https://www.brooklynmuseum.org/opencollection/objects/${o.id}`,
-          bio:''
-        });
-      }
-      await sleep(200);
-    } catch(e) { break; }
-  }
-  return upsert(sql, works);
-}
-
-async function syncYale(sql) {
-  const works = [];
-  for (let page=1; page<=100; page++) {
-    try {
-      const d = await fetchJson(
-        `https://public.api.yale.edu/api/v1/artworks?hasImages=true&isPublicDomain=true&page=${page}&size=100`
-      );
-      const items = d.artworks||d.data||d||[];
-      if (!Array.isArray(items)||!items.length) break;
-      for (const o of items) {
-        if (!o.primaryImageSmall&&!o.primaryImage) continue;
-        works.push({
-          source:'Yale University Art Gallery', source_id:String(o.id),
-          title:o.title||'Untitled', artist:o.artist||'',
-          date_text:o.date||'', medium:o.medium||'',
-          thumb_url:o.primaryImageSmall||o.primaryImage,
-          full_url:o.primaryImage||o.primaryImageSmall,
-          detail_url:o.url||`https://artgallery.yale.edu/collections/objects/${o.id}`,
-          bio:''
-        });
-      }
-      await sleep(200);
-    } catch(e) { break; }
+  const seen = new Set();
+  const terms = ['painting','drawing','watercolor','print','portrait','landscape'];
+  for (const term of terms) {
+    for (let page=1; page<=8; page++) {
+      try {
+        const d = await fetchJson(
+          `https://search.artsmia.org/${encodeURIComponent(term)}?size=100&p=${page}`
+        );
+        const hits = d.hits?.hits||[];
+        if (!hits.length) break;
+        for (const h of hits) {
+          const o = h._source;
+          if (!o?.id||seen.has(String(o.id))) continue;
+          if (o.rights_type !== 'Public Domain') continue;
+          if (o.image !== 'valid') continue;
+          seen.add(String(o.id));
+          const id = o.id;
+          works.push({
+            source:'Minneapolis Institute of Art', source_id:String(id),
+            title:o.title||'Untitled',
+            artist:o.artist||o.attribution||'',
+            date_text:o.dated||'', medium:o.medium||'',
+            department:o.department||'',
+            thumb_url:`https://iiif.artsmia.org/${id}/full/!400,400/0/default.jpg`,
+            full_url:`https://iiif.artsmia.org/${id}/full/full/0/default.jpg`,
+            iiif_info:`https://iiif.artsmia.org/${id}/info.json`,
+            detail_url:`https://collections.artsmia.org/art/${id}`,
+            bio:o.text||''
+          });
+        }
+        if (hits.length < 100) break;
+        await sleep(300);
+      } catch(e) { break; }
+    }
   }
   return upsert(sql, works);
 }
@@ -663,8 +648,8 @@ export default async function handler(req, res) {
   if (src==='harvard'    ||src==='all') await run('Harvard',            () => syncHarvard(sql, process.env.HARVARD_KEY));
   if (src==='getty'      ||src==='all') await run('Getty Museum',       () => syncWikidataMuseum(sql, 'Q1700481', 'Getty Museum'));
   if (src==='walters'    ||src==='all') await run('Walters Art Museum', () => syncWikidataMuseum(sql, 'Q210081',  'Walters Art Museum'));
-  if (src==='brooklyn'   ||src==='all') await run('Brooklyn Museum',    () => syncBrooklyn(sql));
-  if (src==='yale'       ||src==='all') await run('Yale Art Gallery',   () => syncYale(sql));
+  if (src==='mia'        ||src==='all') await run('Minneapolis Inst. of Art', () => syncMia(sql));
+  if (src==='yale'       ||src==='all') await run('Yale Art Gallery',   () => syncWikidataMuseum(sql, 'Q1568434', 'Yale University Art Gallery'));
   if (src==='loc'        ||src==='all') await run('Library of Congress',() => syncLOC(sql));
   if (src==='bnf'        ||src==='all') await run('BnF Gallica',        () => syncBnF(sql));
   if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql));
