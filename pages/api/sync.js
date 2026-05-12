@@ -272,7 +272,10 @@ async function syncHarvard(sql, key) {
 }
 
 export default async function handler(req, res) {
-  if (!req?.query || req.query.secret !== process.env.SYNC_SECRET) {
+  const cronAuth = req.headers['authorization'];
+  const validCron   = process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`;
+  const validSecret = req?.query?.secret && req.query.secret === process.env.SYNC_SECRET;
+  if (!validCron && !validSecret) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const sql = neon(process.env.DATABASE_URL);
