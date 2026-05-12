@@ -264,7 +264,7 @@ async function syncHarvard(sql, key) {
 }
 
 export default async function handler(req, res) {
-  if (req.query.secret !== process.env.SYNC_SECRET) {
+  if (!req?.query || req.query.secret !== process.env.SYNC_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const sql = neon(process.env.DATABASE_URL);

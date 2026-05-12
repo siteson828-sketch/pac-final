@@ -2,43 +2,25 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 
 const MUSEUMS = [
-  { key: 'all', label: 'All Collections' },
-  { key: 'Metropolitan Museum of Art', label: 'Met Museum' },
-  { key: 'Art Institute of Chicago', label: 'Art Inst. Chicago' },
-  { key: 'Cleveland Museum of Art', label: 'Cleveland' },
-  { key: 'Victoria & Albert Museum', label: 'V&A Museum' },
-  { key: 'SMK National Gallery of Denmark', label: 'SMK Denmark' },
-  { key: 'Rijksmuseum', label: 'Rijksmuseum' },
-  { key: 'Smithsonian Institution', label: 'Smithsonian' },
-  { key: 'Harvard Art Museums', label: 'Harvard' },
+  { key: 'all',                              label: 'All Collections' },
+  { key: 'Metropolitan Museum of Art',       label: 'Met Museum' },
+  { key: 'Art Institute of Chicago',         label: 'Art Inst. Chicago' },
+  { key: 'Cleveland Museum of Art',          label: 'Cleveland' },
+  { key: 'Victoria & Albert Museum',         label: 'V&A Museum' },
+  { key: 'SMK National Gallery of Denmark',  label: 'SMK Denmark' },
+  { key: 'Rijksmuseum',                      label: 'Rijksmuseum' },
+  { key: 'Smithsonian Institution',          label: 'Smithsonian' },
+  { key: 'Harvard Art Museums',              label: 'Harvard' },
 ];
 
 const PRODUCTS = [
   { icon: '🖼️', name: 'Fine Art Print', price: 'from $18' },
-  { icon: '🎨', name: 'Canvas Wrap', price: 'from $45' },
-  { icon: '👕', name: 'T-Shirt', price: 'from $24' },
-  { icon: '☕', name: 'Mug', price: 'from $14' },
-  { icon: '📱', name: 'Phone Case', price: 'from $19' },
-  { icon: '🛍️', name: 'Tote Bag', price: 'from $16' },
+  { icon: '🎨', name: 'Canvas Wrap',    price: 'from $45' },
+  { icon: '👕', name: 'T-Shirt',        price: 'from $24' },
+  { icon: '☕', name: 'Mug',            price: 'from $14' },
+  { icon: '📱', name: 'Phone Case',     price: 'from $19' },
+  { icon: '🛍️', name: 'Tote Bag',      price: 'from $16' },
 ];
-
-function timeAgo(iso) {
-  if (!iso) return null;
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
-}
-
-function abbr(n) {
-  if (!n) return '0';
-  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
-  return String(n);
-}
 
 function fmt(s) {
   return (s || '')
@@ -49,6 +31,22 @@ function fmt(s) {
     .replace('Smithsonian Institution', 'Smithsonian')
     .replace(/^Europeana — /, '')
     .split(',')[0];
+}
+
+function timeAgo(iso) {
+  if (!iso) return null;
+  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (m < 1)  return 'just now';
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
+}
+
+function abbr(n) {
+  if (!n) return '0';
+  if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+  return String(n);
 }
 
 const CSS = `
@@ -90,7 +88,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 .hero-caption strong{display:block;font-family:Georgia,serif;font-size:13px;font-weight:400;color:rgba(240,234,216,0.7)}
 
 /* FILTER BAR */
-.filter-bar{background:#FAF8F4;border-bottom:0.5px solid rgba(26,23,20,0.1);padding:0 32px;display:flex;align-items:stretch;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.filter-bar{background:#FAF8F4;border-bottom:0.5px solid rgba(26,23,20,0.1);padding:0 32px;display:flex;align-items:stretch;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .filter-bar::-webkit-scrollbar{display:none}
 .filter-chip{padding:14px 18px;font-size:11px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:#8A8178;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;font-family:inherit;flex-shrink:0}
 .filter-chip:hover{color:#1A1714}
@@ -99,26 +97,26 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 .filter-chip.active .chip-count{color:#8A8178}
 
 /* SYNC BAR */
-.sync-bar{padding:8px 32px;background:#F5F2ED;border-bottom:0.5px solid rgba(26,23,20,0.07);display:flex;align-items:center;gap:16px;font-size:11px;color:#8A8178;flex-wrap:wrap}
-.sync-source{display:flex;align-items:center;gap:5px;white-space:nowrap}
-.sync-dot{width:6px;height:6px;border-radius:50%;background:#B8C4B8;flex-shrink:0}
-.sync-dot.fresh{background:#4ade80}
+.sync-bar{padding:8px 32px;background:#F5F2ED;border-bottom:0.5px solid rgba(26,23,20,0.07);display:flex;align-items:center;gap:12px;font-size:11px;color:#8A8178;flex-wrap:nowrap;overflow:hidden}
+.sync-summary{white-space:nowrap;flex-shrink:0;padding-right:12px;border-right:0.5px solid rgba(26,23,20,0.12)}
+.sync-sources{display:flex;align-items:center;gap:12px;overflow-x:auto;scrollbar-width:none;flex:1}
+.sync-sources::-webkit-scrollbar{display:none}
+.sync-source{display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0}
+.sync-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:#B8C4B8}
+.sync-dot.ok{background:#4ade80}
 .sync-dot.stale{background:#fbbf24}
-.sync-source-name{font-weight:500;color:#4A4540}
-.sync-divider{color:#D4CEC3;flex-shrink:0}
-.sync-bar-scroll{display:flex;align-items:center;gap:12px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;flex:1}
-.sync-bar-scroll::-webkit-scrollbar{display:none}
-.sync-summary{white-space:nowrap;flex-shrink:0;padding-right:8px;border-right:0.5px solid rgba(26,23,20,0.12);margin-right:4px}
+.sync-name{font-weight:500;color:#4A4540}
 
-/* GALLERY */
+/* GALLERY HEADER */
 .gallery-header{padding:32px 32px 0;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.gallery-title{font-family:Georgia,serif;font-size:26px;font-weight:300;line-height:1}
+.gallery-title{font-family:Georgia,serif;font-size:26px;font-weight:300}
 .gallery-title span{color:#B8942A}
 .gallery-meta{font-size:12px;color:#8A8178}
-.btn-shuffle{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid rgba(26,23,20,0.2);color:#1A1714;background:transparent;font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn-shuffle{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid rgba(26,23,20,0.2);color:#1A1714;background:transparent;font-family:inherit;transition:all .15s}
 .btn-shuffle:hover{background:rgba(26,23,20,0.06)}
 .btn-shuffle.active{background:#1A1714;color:#FAF8F4;border-color:#1A1714}
 
+/* GALLERY GRID */
 .gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding:24px 32px 64px}
 .gallery-card{cursor:pointer;border-radius:8px;overflow:hidden;background:#EDE8DF;box-shadow:0 1px 4px rgba(26,23,20,0.08);transition:box-shadow .22s,transform .22s;display:flex;flex-direction:column}
 .gallery-card:hover{box-shadow:0 12px 40px rgba(26,23,20,0.18);transform:translateY(-3px)}
@@ -128,8 +126,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 .card-hover{position:absolute;inset:0;background:linear-gradient(transparent 50%,rgba(26,23,20,0.75));opacity:0;transition:opacity .22s;display:flex;align-items:flex-end;padding:12px}
 .gallery-card:hover .card-hover{opacity:1}
 .card-hover-label{font-size:11px;font-weight:500;color:#FAF8F4;letter-spacing:.05em}
-.card-placeholder{aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;font-size:48px;color:#B8942A;background:#EDE8DF}
-.card-body{padding:12px 14px 14px;background:#FAF8F4}
+.card-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;color:#B8942A}
+.card-body{padding:12px 14px 14px;background:#FAF8F4;flex:1}
 .card-museum{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#B8942A;margin-bottom:4px;font-weight:500}
 .card-title{font-family:Georgia,serif;font-size:14px;font-weight:400;line-height:1.3;margin-bottom:3px;color:#1A1714;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .card-artist{font-size:11px;color:#8A8178;margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -145,24 +143,22 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 .skeleton-line{height:10px;background:#D4CEC3;border-radius:3px;margin-bottom:8px}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
 
-/* LOAD MORE */
+/* LOAD MORE / EMPTY */
 .load-more{text-align:center;padding:0 0 64px}
-
-/* EMPTY */
 .empty-state{padding:96px 32px;text-align:center;color:#8A8178}
 .empty-icon{font-size:52px;margin-bottom:16px}
 .empty-text{font-family:Georgia,serif;font-size:22px;font-weight:300;margin-bottom:20px}
 
 /* MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(26,23,20,0.72);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.modal{background:#FAF8F4;border-radius:12px;max-width:900px;width:100%;max-height:92vh;overflow:hidden;position:relative;box-shadow:0 32px 80px rgba(26,23,20,0.35);display:flex;flex-direction:column}
-.modal-layout{display:grid;grid-template-columns:1fr 1fr;overflow-y:auto;max-height:92vh}
-.modal-img-side{background:#2C2318;display:flex;align-items:center;justify-content:center;min-height:420px;position:relative;overflow:hidden}
+.modal{background:#FAF8F4;border-radius:12px;max-width:900px;width:100%;max-height:92vh;overflow:hidden;position:relative;box-shadow:0 32px 80px rgba(26,23,20,0.35)}
+.modal-layout{display:grid;grid-template-columns:1fr 1fr;max-height:92vh;overflow-y:auto}
+.modal-img-side{background:#2C2318;display:flex;align-items:center;justify-content:center;min-height:420px;position:sticky;top:0}
 .modal-img-side img{width:100%;height:100%;object-fit:contain;max-height:680px}
-.modal-img-placeholder{font-size:72px;color:#B8942A}
+.modal-img-ph{font-size:72px;color:#B8942A}
 .modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(26,23,20,0.55);border:none;color:#FAF8F4;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:background .15s;line-height:1}
 .modal-close:hover{background:rgba(26,23,20,0.85)}
-.modal-detail{padding:32px 28px 28px;overflow-y:auto;display:flex;flex-direction:column;gap:0}
+.modal-detail{padding:32px 28px 28px;overflow-y:auto;display:flex;flex-direction:column}
 .modal-museum{font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:#B8942A;margin-bottom:10px;font-weight:500}
 .modal-title{font-family:Georgia,serif;font-size:24px;font-weight:300;line-height:1.15;margin-bottom:6px}
 .modal-artist{font-size:13px;color:#4A4540;margin-bottom:20px}
@@ -178,10 +174,10 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A
 .prod-icon{font-size:18px;display:block;margin-bottom:2px}
 .prod-price{opacity:.65;font-size:10px}
 .modal-cta{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:4px}
-.cta-btn{display:block;text-align:center;padding:12px;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;border:none}
+.cta-btn{display:block;text-align:center;padding:12px;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;border:none;text-decoration:none}
 .cta-primary{background:#1A1714;color:#FAF8F4}
 .cta-primary:hover{background:#2C2318}
-.cta-secondary{background:transparent;color:#1A1714;border:0.5px solid rgba(26,23,20,0.22);text-decoration:none}
+.cta-secondary{background:transparent;color:#1A1714;border:0.5px solid rgba(26,23,20,0.22)}
 .cta-secondary:hover{background:rgba(26,23,20,0.05)}
 
 /* FOOTER */
@@ -193,7 +189,7 @@ footer{background:#2C2318;color:#B0A898;padding:52px 32px 28px}
 .footer-col-title{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#6A6058;margin-bottom:14px}
 .footer-link{display:block;font-size:13px;color:#8A8178;text-decoration:none;margin-bottom:7px;cursor:pointer;background:none;border:none;font-family:inherit;padding:0;text-align:left;transition:color .15s}
 .footer-link:hover{color:#F3EFE8}
-.footer-bottom{max-width:1280px;margin:32px auto 0;border-top:0.5px solid rgba(240,234,214,0.08);padding-top:20px;font-size:12px;color:#4A4540}
+.footer-bottom{max-width:1280px;margin:28px auto 0;border-top:0.5px solid rgba(240,234,214,0.08);padding-top:20px;font-size:12px;color:#4A4540}
 
 /* RESPONSIVE */
 @media(max-width:1200px){.gallery-grid{grid-template-columns:repeat(3,1fr)}}
@@ -201,61 +197,61 @@ footer{background:#2C2318;color:#B0A898;padding:52px 32px 28px}
   .nav{padding:0 16px;gap:10px}
   .hero{height:400px}
   .hero-content{padding:32px 24px 36px}
-  .filter-bar{padding:0 16px}
-  .sync-bar{padding:8px 16px}
+  .filter-bar,.sync-bar{padding-left:16px;padding-right:16px}
   .gallery-header{padding:24px 16px 0}
   .gallery-grid{grid-template-columns:repeat(2,1fr);gap:14px;padding:20px 16px 48px}
   .modal-layout{grid-template-columns:1fr}
-  .modal-img-side{min-height:260px}
+  .modal-img-side{position:relative;min-height:260px}
   .footer-grid{grid-template-columns:1fr;gap:32px}
 }
 @media(max-width:500px){
   .nav-count{display:none}
-  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:16px 12px 40px}
   .hero-title{font-size:28px}
+  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:16px 12px 40px}
 }
 `;
 
 export default function Home() {
-  const [works, setWorks] = useState([]);
-  const [searchInput, setSearchInput] = useState('');
+  const [works, setWorks]               = useState([]);
+  const [searchInput, setSearchInput]   = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
-  const [source, setSource] = useState('all');
-  const [loading, setLoading] = useState(false);
-  const [total, setTotal] = useState(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [modal, setModal] = useState(null);
-  const [heroIdx, setHeroIdx] = useState(0);
-  const [heroFading, setHeroFading] = useState(false);
-  const [imgErrors, setImgErrors] = useState({});
-  const [order, setOrder] = useState('recent');
-  const [status, setStatus] = useState(null);
-  const offsetRef = useRef(0);
+  const [source, setSource]             = useState('all');
+  const [order, setOrder]               = useState('recent');
+  const [loading, setLoading]           = useState(false);
+  const [total, setTotal]               = useState(null);
+  const [hasMore, setHasMore]           = useState(false);
+  const [modal, setModal]               = useState(null);
+  const [heroIdx, setHeroIdx]           = useState(0);
+  const [heroFading, setHeroFading]     = useState(false);
+  const [imgErrors, setImgErrors]       = useState({});
+  const [status, setStatus]             = useState(null);
+  const offsetRef                       = useRef(0);
 
+  // Initial load
   useEffect(() => {
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotal(d.total));
     fetch('/api/status').then(r => r.json()).then(d => setStatus(d));
-    load(true, '', 'all');
+    load(true, '', 'all', 'recent');
   }, []);
 
+  // Hero rotation
   useEffect(() => {
     if (works.length < 2) return;
     const t = setInterval(() => {
       setHeroFading(true);
-      setTimeout(() => {
-        setHeroIdx(i => (i + 1) % Math.min(works.length, 8));
-        setHeroFading(false);
-      }, 600);
+      setTimeout(() => { setHeroIdx(i => (i + 1) % Math.min(works.length, 8)); setHeroFading(false); }, 600);
     }, 6000);
     return () => clearInterval(t);
   }, [works.length]);
 
+  // Escape key closes modal
   useEffect(() => {
     const fn = e => { if (e.key === 'Escape') setModal(null); };
     window.addEventListener('keydown', fn);
     return () => window.removeEventListener('keydown', fn);
   }, []);
 
+  // Lock body scroll when modal is open
   useEffect(() => {
     document.body.style.overflow = modal ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
@@ -263,24 +259,19 @@ export default function Home() {
 
   async function load(reset, q, src, ord) {
     const off = reset ? 0 : offsetRef.current;
-    const o = ord !== undefined ? ord : order;
     setLoading(true);
     try {
       let url = `/api/artworks?limit=24&offset=${off}`;
-      if (q) url += `&search=${encodeURIComponent(q)}`;
-      if (src && src !== 'all') url += `&source=${encodeURIComponent(src)}`;
-      if (o === 'random') url += `&order=random`;
+      if (q)               url += `&search=${encodeURIComponent(q)}`;
+      if (src !== 'all')   url += `&source=${encodeURIComponent(src)}`;
+      if (ord === 'random') url += `&order=random`;
       const data = await fetch(url).then(r => r.json());
       const w = data.works || [];
       if (reset) {
         setWorks(w);
         offsetRef.current = w.length;
       } else {
-        setWorks(prev => {
-          const merged = [...prev, ...w];
-          offsetRef.current = merged.length;
-          return merged;
-        });
+        setWorks(prev => { const m = [...prev, ...w]; offsetRef.current = m.length; return m; });
       }
       setHasMore(w.length === 24);
     } catch (e) {
@@ -289,44 +280,28 @@ export default function Home() {
     setLoading(false);
   }
 
-  const handleSearch = () => {
-    setAppliedSearch(searchInput);
-    load(true, searchInput, source);
-  };
-
-  const handleClear = () => {
-    setSearchInput('');
-    setAppliedSearch('');
-    load(true, '', source);
-  };
-
-  const handleSource = (src) => {
-    setSource(src);
-    load(true, appliedSearch, src, order);
-  };
-
-  const handleShuffle = () => {
+  const handleSearch   = () => { setAppliedSearch(searchInput); load(true, searchInput, source, order); };
+  const handleClear    = () => { setSearchInput(''); setAppliedSearch(''); load(true, '', source, order); };
+  const handleSource   = src  => { setSource(src);  load(true, appliedSearch, src, order); };
+  const handleShuffle  = ()   => {
     const next = order === 'random' ? 'recent' : 'random';
     setOrder(next);
     load(true, appliedSearch, source, next);
   };
-
   const handleLoadMore = () => load(false, appliedSearch, source, order);
 
   const hero = works[heroIdx % Math.max(works.length, 1)];
 
-  const SKELETON_COUNT = 12;
-
   return (
     <>
       <Head>
-        <title>Public Art Collections — Museum Prints & Art Marketplace</title>
+        <title>Public Art Collections — Museum Prints &amp; Art Marketplace</title>
         <meta name="description" content="Browse museum masterpieces from the Met, V&A, Rijksmuseum and more. Buy any artwork as a fine art print, canvas, or gift." />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <style>{CSS}</style>
 
-      {/* NAV */}
+      {/* ── NAV ── */}
       <nav className="nav">
         <a href="/" className="nav-logo">Public Art <span>Collections</span></a>
         <div className="nav-search">
@@ -339,16 +314,12 @@ export default function Home() {
             onKeyDown={e => e.key === 'Enter' && handleSearch()}
           />
           <button className="btn btn-dark" onClick={handleSearch}>Search</button>
-          {appliedSearch && (
-            <button className="btn btn-icon" onClick={handleClear} title="Clear search">×</button>
-          )}
+          {appliedSearch && <button className="btn btn-icon" onClick={handleClear} title="Clear">×</button>}
         </div>
-        {total !== null && (
-          <span className="nav-count">{Number(total).toLocaleString()} works</span>
-        )}
+        {total !== null && <span className="nav-count">{Number(total).toLocaleString()} works</span>}
       </nav>
 
-      {/* HERO */}
+      {/* ── HERO ── */}
       {hero && (
         <div className="hero">
           {hero.thumb_url && (
@@ -362,32 +333,27 @@ export default function Home() {
           <div className="hero-gradient" />
           <div className="hero-content">
             <p className="hero-eyebrow">{fmt(hero.source)}</p>
-            <h1 className="hero-title">
-              The world's art,<br /><em>in your home</em>
-            </h1>
+            <h1 className="hero-title">The world's art,<br /><em>in your home</em></h1>
             <p className="hero-sub">
               {total ? `${Number(total).toLocaleString()}+ museum masterpieces` : 'Museum masterpieces'} — available as fine art prints, canvas wraps, and gifts.
             </p>
             <div className="hero-actions">
               <a href="#gallery" className="hero-btn hero-btn-light">Browse Collection</a>
-              <button className="hero-btn hero-btn-outline" onClick={() => setModal(hero)}>
-                View This Work
-              </button>
+              <button className="hero-btn hero-btn-outline" onClick={() => setModal(hero)}>View This Work</button>
             </div>
           </div>
           {hero.title && (
             <div className="hero-caption">
-              <strong>{hero.title}</strong>
-              {hero.artist || ''}
+              <strong>{hero.title}</strong>{hero.artist || ''}
             </div>
           )}
         </div>
       )}
 
-      {/* FILTER BAR */}
+      {/* ── FILTER BAR ── */}
       <div className="filter-bar" id="gallery">
         {MUSEUMS.map(m => {
-          const srcCount = status?.sources?.find(s => s.source === m.key)?.count;
+          const cnt = status?.sources?.find(s => s.source === m.key)?.count;
           return (
             <button
               key={m.key}
@@ -395,29 +361,25 @@ export default function Home() {
               onClick={() => handleSource(m.key)}
             >
               {m.label}
-              {m.key !== 'all' && srcCount != null && (
-                <span className="chip-count">{abbr(srcCount)}</span>
-              )}
+              {m.key !== 'all' && cnt != null && <span className="chip-count">{abbr(cnt)}</span>}
             </button>
           );
         })}
       </div>
 
-      {/* SYNC STATUS BAR */}
+      {/* ── SYNC STATUS BAR ── */}
       {status?.sources?.length > 0 && (
         <div className="sync-bar">
           <span className="sync-summary">
-            {status.sources.length} source{status.sources.length !== 1 ? 's' : ''} · synced {timeAgo(status.lastSync)}
+            {status.sources.length} sources · synced {timeAgo(status.lastSync)}
           </span>
-          <div className="sync-bar-scroll">
-            {status.sources.map((s, i) => {
-              const age = s.lastSync ? (Date.now() - new Date(s.lastSync).getTime()) : Infinity;
-              const fresh = age < 48 * 3600 * 1000;
+          <div className="sync-sources">
+            {status.sources.map(s => {
+              const fresh = s.lastSync && (Date.now() - new Date(s.lastSync).getTime()) < 48 * 3600 * 1000;
               return (
                 <span key={s.source} className="sync-source">
-                  {i > 0 && <span className="sync-divider">·</span>}
-                  <span className={`sync-dot${fresh ? ' fresh' : ' stale'}`} />
-                  <span className="sync-source-name">{fmt(s.source)}</span>
+                  <span className={`sync-dot${fresh ? ' ok' : ' stale'}`} />
+                  <span className="sync-name">{fmt(s.source)}</span>
                   <span>{abbr(s.count)}</span>
                 </span>
               );
@@ -426,30 +388,28 @@ export default function Home() {
         </div>
       )}
 
-      {/* GALLERY HEADER */}
+      {/* ── GALLERY HEADER ── */}
       <div className="gallery-header">
         <h2 className="gallery-title">
           {source === 'all' ? 'The Collection' : fmt(source)}
           {total !== null && <span> — {Number(total).toLocaleString()}+ works</span>}
         </h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {appliedSearch && (
-            <p className="gallery-meta">Results for "{appliedSearch}"</p>
-          )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          {appliedSearch && <p className="gallery-meta">Results for "{appliedSearch}"</p>}
           <button
             className={`btn-shuffle${order === 'random' ? ' active' : ''}`}
             onClick={handleShuffle}
-            title={order === 'random' ? 'Back to recent' : 'Shuffle artworks'}
+            title={order === 'random' ? 'Back to recent' : 'Shuffle'}
           >
             ↺ {order === 'random' ? 'Shuffled' : 'Shuffle'}
           </button>
         </div>
       </div>
 
-      {/* GALLERY */}
+      {/* ── GALLERY ── */}
       {loading && works.length === 0 ? (
         <div className="gallery-grid">
-          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
+          {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="skeleton-card skeleton">
               <div className="skeleton-img" />
               <div className="skeleton-body">
@@ -501,7 +461,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* LOAD MORE */}
+      {/* ── LOAD MORE ── */}
       {hasMore && (
         <div className="load-more">
           <button className="btn" onClick={handleLoadMore} disabled={loading}>
@@ -510,21 +470,17 @@ export default function Home() {
         </div>
       )}
 
-      {/* FOOTER */}
+      {/* ── FOOTER ── */}
       <footer>
         <div className="footer-grid">
           <div>
             <div className="footer-logo">Public Art <span>Collections</span></div>
-            <p className="footer-desc">
-              Museum-quality art for every home. All works public domain — ethically sourced from the world's great collections.
-            </p>
+            <p className="footer-desc">Museum-quality art for every home. All works public domain — ethically sourced from the world's great collections.</p>
           </div>
           <div>
             <div className="footer-col-title">Collections</div>
             {MUSEUMS.slice(1).map(m => (
-              <button key={m.key} className="footer-link" onClick={() => handleSource(m.key)}>
-                {m.label}
-              </button>
+              <button key={m.key} className="footer-link" onClick={() => handleSource(m.key)}>{m.label}</button>
             ))}
           </div>
           <div>
@@ -534,12 +490,10 @@ export default function Home() {
             <a href="#" className="footer-link">Shipping &amp; Returns</a>
           </div>
         </div>
-        <div className="footer-bottom">
-          © 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful
-        </div>
+        <div className="footer-bottom">© 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful</div>
       </footer>
 
-      {/* MODAL */}
+      {/* ── MODAL ── */}
       {modal && (
         <div className="modal-bg" onClick={e => e.target === e.currentTarget && setModal(null)}>
           <div className="modal">
@@ -550,14 +504,10 @@ export default function Home() {
                   <img
                     src={modal.full_url || modal.thumb_url}
                     alt={modal.title}
-                    onError={e => {
-                      if (modal.thumb_url && e.target.src !== modal.thumb_url) {
-                        e.target.src = modal.thumb_url;
-                      }
-                    }}
+                    onError={e => { if (modal.thumb_url && e.target.src !== modal.thumb_url) e.target.src = modal.thumb_url; }}
                   />
                 ) : (
-                  <div className="modal-img-placeholder">🖼️</div>
+                  <div className="modal-img-ph">🖼️</div>
                 )}
               </div>
               <div className="modal-detail">
@@ -568,28 +518,10 @@ export default function Home() {
                 </p>
                 <div className="divider" />
                 <div className="meta-grid">
-                  {modal.medium && (
-                    <div className="meta-item">
-                      <label>Medium</label>
-                      <span>{modal.medium}</span>
-                    </div>
-                  )}
-                  <div className="meta-item">
-                    <label>Rights</label>
-                    <span style={{ color: '#16a34a' }}>{modal.rights_label || 'CC0'}</span>
-                  </div>
-                  {modal.department && (
-                    <div className="meta-item">
-                      <label>Department</label>
-                      <span>{modal.department}</span>
-                    </div>
-                  )}
-                  {modal.country && (
-                    <div className="meta-item">
-                      <label>Origin</label>
-                      <span>{modal.country}</span>
-                    </div>
-                  )}
+                  {modal.medium && <div className="meta-item"><label>Medium</label><span>{modal.medium}</span></div>}
+                  <div className="meta-item"><label>Rights</label><span style={{ color: '#16a34a' }}>{modal.rights_label || 'CC0'}</span></div>
+                  {modal.department && <div className="meta-item"><label>Department</label><span>{modal.department}</span></div>}
+                  {modal.country && <div className="meta-item"><label>Origin</label><span>{modal.country}</span></div>}
                 </div>
                 {modal.bio && (
                   <>
@@ -612,12 +544,7 @@ export default function Home() {
                   <button className="cta-btn cta-primary">Order a Print →</button>
                   <a href={`/artwork/${modal.id}`} className="cta-btn cta-secondary">View full page →</a>
                   {modal.detail_url && (
-                    <a
-                      href={modal.detail_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="cta-btn cta-secondary"
-                    >
+                    <a href={modal.detail_url} target="_blank" rel="noopener noreferrer" className="cta-btn cta-secondary">
                       View on museum website ↗
                     </a>
                   )}
