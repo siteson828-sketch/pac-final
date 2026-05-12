@@ -290,8 +290,8 @@ async function syncSmithsonian(sql, key) {
 }
 
 async function syncHarvard(sql) {
-  // Harvard Art Museums via Wikidata SPARQL (Q2469706) — keyless, same pattern as Yale
-  return syncWikidataMuseum(sql, 'Q2469706', 'Harvard Art Museums');
+  // Fogg Art Museum (Q847508) — Harvard's primary collection, 271 items in Wikidata
+  return syncWikidataMuseum(sql, 'Q847508', 'Harvard Art Museums');
 }
 
 async function syncWikidataMuseum(sql, qid, sourceName) {
@@ -507,53 +507,49 @@ async function syncNYPL(sql) {
 async function syncWikimedia(sql) {
   const works = [];
   const seen = new Set();
-  const query = `
-    SELECT ?file ?thumb ?title ?creator ?date WHERE {
-      ?file wdt:P31 wd:Q18011172 .
-      ?file schema:url ?thumb .
-      OPTIONAL { ?file wdt:P1476 ?title } .
-      OPTIONAL { ?file wdt:P170 ?creator } .
-      OPTIONAL { ?file wdt:P571 ?date }
-    } LIMIT 500
-  `;
-  try {
-    const res = await fetch(
-      `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}`,
-      { headers: { 'Accept': 'application/json', 'User-Agent': 'PublicArtCollections/1.0' } }
-    );
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const d = await res.json();
-    const bindings = d.results?.bindings || [];
-    for (const r of bindings) {
-      const fileId = r.file?.value.split('/').pop();
-      if (!fileId || seen.has(fileId)) continue;
-      seen.add(fileId);
-      const thumbRaw = r.thumb?.value || '';
-      if (!thumbRaw) continue;
-      // Convert Commons file page URL → Special:FilePath for direct image access
-      const imageBase = thumbRaw.includes('/wiki/File:')
-        ? thumbRaw.replace('/wiki/File:', '/wiki/Special:FilePath/')
-        : thumbRaw;
-      const titleVal = r.title?.value || decodeURIComponent(
-        thumbRaw.split('/wiki/File:')[1] || fileId
-      ).replace(/_/g, ' ').replace(/\.[^.]+$/, '');
-      const creatorVal = r.creator?.value || '';
-      const year = (r.date?.value || '').match(/\d{4}/)?.[0] || '';
-      works.push({
-        source: 'Wikimedia Commons',
-        source_id: fileId,
-        title: titleVal || 'Untitled',
-        artist: creatorVal.includes('wikidata.org') ? '' : creatorVal,
-        date_text: year,
-        medium: '',
-        thumb_url: `${imageBase}?width=400`,
-        full_url: `${imageBase}?width=1200`,
-        detail_url: `https://www.wikidata.org/wiki/${fileId}`,
-        bio: 'Public domain via Wikimedia Commons.',
-      });
-      await sleep(50);
-    }
-  } catch(e) {}
+  for (let offset = 0; offset < 2000; offset += 500) {
+    try {
+      const query = `
+        SELECT ?item ?itemLabel ?image ?creatorLabel ?date WHERE {
+          ?item wdt:P31 wd:Q3305213;
+                wdt:P18 ?image;
+                wdt:P6216 wd:Q19652.
+          OPTIONAL { ?item wdt:P170 ?creator. }
+          OPTIONAL { ?item wdt:P571 ?date. }
+          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+        } LIMIT 500 OFFSET ${offset}
+      `;
+      const res = await fetch(
+        `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}`,
+        { headers: { 'Accept': 'application/json', 'User-Agent': 'PublicArtCollections/1.0' } }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      const bindings = d.results?.bindings || [];
+      if (!bindings.length) break;
+      for (const r of bindings) {
+        const qid = r.item?.value.split('/').pop();
+        if (!qid || seen.has(qid)) continue;
+        seen.add(qid);
+        const imgRaw = r.image?.value || '';
+        if (!imgRaw) continue;
+        const imgHttps = imgRaw.replace('http://', 'https://');
+        const creator = r.creatorLabel?.value || '';
+        const year = (r.date?.value || '').replace(/^\+/, '').substring(0, 4);
+        works.push({
+          source: 'Wikimedia Commons', source_id: qid,
+          title: r.itemLabel?.value || 'Untitled',
+          artist: creator.match(/^Q\d+$/) ? '' : creator,
+          date_text: year, medium: 'Painting',
+          thumb_url: `${imgHttps}?width=400`,
+          full_url:  `${imgHttps}?width=1200`,
+          detail_url: `https://www.wikidata.org/wiki/${qid}`,
+          bio: 'Public domain via Wikimedia Commons.',
+        });
+      }
+      await sleep(600);
+    } catch(e) { break; }
+  }
   return upsert(sql, works);
 }
 
