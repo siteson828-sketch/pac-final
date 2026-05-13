@@ -41,6 +41,17 @@ const SOURCES = [
   { key: 'phila',       label: 'Philadelphia Museum' },
   { key: 'mfa',         label: 'Boston MFA' },
   { key: 'detroit',     label: 'Detroit Institute' },
+  { key: 'ngvic',       label: 'National Gallery Victoria' },
+  { key: 'auckland',    label: 'Auckland Art Gallery' },
+  { key: 'picassobcn',  label: 'Museu Picasso Barcelona' },
+  { key: 'brera',       label: 'Pinacoteca Brera' },
+  { key: 'vasariano',   label: 'Corridoio Vasariano' },
+  { key: 'pitti',       label: 'Palazzo Pitti' },
+  { key: 'doria',       label: 'Galleria Doria Pamphilj' },
+  { key: 'spada',       label: 'Galleria Spada' },
+  { key: 'capodimonte', label: 'Capodimonte Naples' },
+  { key: 'romano',      label: 'Museo Nazionale Romano' },
+  { key: 'vatican',     label: 'Vatican Museums' },
 ];
 
 export default async function handler(req, res) {

@@ -719,6 +719,17 @@ export default async function handler(req, res) {
   if (src==='phila'      ||src==='all') await run('Philadelphia Museum', () => syncWikidataMuseum(sql, 'Q510324',  'Philadelphia Museum of Art'));
   if (src==='mfa'        ||src==='all') await run('Boston MFA',          () => syncWikidataMuseum(sql, 'Q49133',   'Museum of Fine Arts Boston'));
   if (src==='detroit'    ||src==='all') await run('Detroit Institute',   () => syncWikidataMuseum(sql, 'Q1201549', 'Detroit Institute of Arts'));
+  if (src==='ngvic'      ||src==='all') await run('National Gallery Victoria', () => syncWikidataMuseum(sql, 'Q1416077', 'National Gallery of Victoria'));
+  if (src==='auckland'   ||src==='all') await run('Auckland Art Gallery', () => syncWikidataMuseum(sql, 'Q1364777', 'Auckland Art Gallery'));
+  if (src==='picassobcn' ||src==='all') await run('Museu Picasso Barcelona', () => syncWikidataMuseum(sql, 'Q861252',  'Museu Picasso Barcelona'));
+  if (src==='brera'      ||src==='all') await run('Pinacoteca Brera',    () => syncWikidataMuseum(sql, 'Q46995',   'Pinacoteca di Brera'));
+  if (src==='vasariano'  ||src==='all') await run('Corridoio Vasariano', () => syncWikidataMuseum(sql, 'Q51252',   'Corridoio Vasariano'));
+  if (src==='pitti'      ||src==='all') await run('Palazzo Pitti',       () => syncWikidataMuseum(sql, 'Q164703',  'Palazzo Pitti'));
+  if (src==='doria'      ||src==='all') await run('Galleria Doria Pamphilj', () => syncWikidataMuseum(sql, 'Q1421633', 'Galleria Doria Pamphilj'));
+  if (src==='spada'      ||src==='all') await run('Galleria Spada',      () => syncWikidataMuseum(sql, 'Q1421619', 'Galleria Spada'));
+  if (src==='capodimonte'||src==='all') await run('Capodimonte Naples',  () => syncWikidataMuseum(sql, 'Q1320069', 'Museo di Capodimonte'));
+  if (src==='romano'     ||src==='all') await run('Museo Nazionale Romano', () => syncWikidataMuseum(sql, 'Q1378635', 'Museo Nazionale Romano'));
+  if (src==='vatican'    ||src==='all') await run('Vatican Museums',     () => syncWikidataMuseum(sql, 'Q182955',  'Vatican Museums'));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
