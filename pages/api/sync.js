@@ -324,6 +324,64 @@ async function syncHarvard(sql) {
   return syncWikidataMuseum(sql, 'Q847508', 'Harvard Art Museums');
 }
 
+async function syncInternetArchive(sql) {
+  const works = [];
+  const seen = new Set();
+  const queries = [
+    'subject:(painting) AND mediatype:image',
+    'subject:(drawing) AND mediatype:image',
+    'subject:(portrait) AND mediatype:image',
+    'subject:(landscape painting) AND mediatype:image',
+    'subject:(watercolor) AND mediatype:image',
+    'subject:(engraving) AND mediatype:image',
+    'subject:(etching) AND mediatype:image',
+    'subject:(illustration) AND mediatype:image',
+  ];
+  for (const q of queries) {
+    for (let page = 0; page < 5; page++) {
+      try {
+        const url = 'https://archive.org/advancedsearch.php?q=' +
+          encodeURIComponent(q) +
+          '&fl[]=identifier,title,creator,date,description,licenseurl' +
+          '&rows=200&page=' + (page + 1) + '&output=json&save=yes';
+        const d = await fetchJson(url);
+        const items = d.response?.docs || [];
+        if (!items.length) break;
+        for (const o of items) {
+          const id = o.identifier;
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          const thumb = `https://archive.org/services/img/${id}`;
+          const detail = `https://archive.org/details/${id}`;
+          const license = Array.isArray(o.licenseurl) ? o.licenseurl[0] : (o.licenseurl || '');
+          const title = Array.isArray(o.title) ? o.title[0] : (o.title || 'Untitled');
+          const artist = Array.isArray(o.creator) ? o.creator[0] : (o.creator || '');
+          const dateText = Array.isArray(o.date) ? o.date[0] : (o.date || '');
+          const bio = Array.isArray(o.description) ? o.description[0] : (o.description || '');
+          works.push({
+            source: 'Internet Archive',
+            source_id: id,
+            title,
+            artist,
+            date_text: dateText,
+            thumb_url: thumb,
+            full_url: thumb,
+            detail_url: detail,
+            rights: license || 'https://creativecommons.org/publicdomain/mark/1.0/',
+            rights_label: 'Public Domain',
+            commercial_ok: true,
+            bio,
+          });
+        }
+        await sleep(500);
+        if (works.length >= 5000) break;
+      } catch(e) { break; }
+    }
+    if (works.length >= 5000) break;
+  }
+  return upsert(sql, works);
+}
+
 async function syncWikidataMuseum(sql, qid, sourceName) {
   const works = [];
   const seen = new Set();
@@ -762,6 +820,7 @@ export default async function handler(req, res) {
   if (src==='capodimonte'||src==='all') await run('Capodimonte Naples',  () => syncWikidataMuseum(sql, 'Q1320069', 'Museo di Capodimonte'));
   if (src==='romano'     ||src==='all') await run('Museo Nazionale Romano', () => syncWikidataMuseum(sql, 'Q1378635', 'Museo Nazionale Romano'));
   if (src==='vatican'    ||src==='all') await run('Vatican Museums',     () => syncWikidataMuseum(sql, 'Q182955',  'Vatican Museums'));
+  if (src==='internetarchive'||src==='all') await run('Internet Archive', () => syncInternetArchive(sql));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
