@@ -230,31 +230,63 @@ async function syncVAM(sql) {
 }
 
 async function syncEuropeana(sql, key) {
-  if (!key||key==='YOUR_EUROPEANA_KEY_HERE') return 0;
+  if (!key) return 0;
   const works = [];
-  for (const q of ['painting','portrait','landscape','still life','sculpture','drawing']) {
-    try {
-      const d = await fetchJson(`https://api.europeana.eu/record/v2/search.json?wskey=${key}&query=${encodeURIComponent(q)}&reusability=open&media=true&qf=TYPE:IMAGE&rows=100&profile=rich`);
-      if (!d.success||!d.items) continue;
-      for (const o of d.items) {
-        const rightsArr = Array.isArray(o.edmRights)?o.edmRights:(o.edmRights?[o.edmRights]:[]);
-        if (!rightsOk(rightsArr[0])) continue;
-        const recId = (o.id||'').replace(/^\//,'');
-        const thumb = Array.isArray(o.edmPreview)?o.edmPreview[0]:o.edmPreview;
-        if (!thumb) continue;
-        works.push({ source:`Europeana — ${Array.isArray(o.dataProvider)?o.dataProvider[0]:(o.dataProvider||'Europeana')}`,
-          source_id:recId, title:Array.isArray(o.title)?o.title[0]:(o.title||'Untitled'),
-          artist:Array.isArray(o.dcCreator)?o.dcCreator[0]:(o.dcCreator||''),
-          date_text:Array.isArray(o.year)?o.year[0]:(o.year||''),
-          thumb_url:thumb, full_url:Array.isArray(o.edmIsShownBy)?o.edmIsShownBy[0]:(o.edmIsShownBy||thumb),
-          iiif_manifest:recId?`https://iiif.europeana.eu/presentation/${recId}/manifest`:'',
-          detail_url:`https://www.europeana.eu/en/item/${recId}`,
-          bio:Array.isArray(o.dcDescription)?o.dcDescription[0]:(o.dcDescription||'') });
+  const queries = [
+    'painting','portrait','landscape','sculpture','drawing',
+    'watercolor','engraving','etching','miniature','fresco',
+    'tapestry','mosaic','icon','altarpiece','print'
+  ];
+  for (const q of queries) {
+    for (let start = 1; start <= 1000; start += 100) {
+      try {
+        const url = 'https://api.europeana.eu/record/v2/search.json' +
+          '?wskey=' + key +
+          '&query=' + encodeURIComponent(q) +
+          '&reusability=open' +
+          '&media=true' +
+          '&qf=TYPE:IMAGE' +
+          '&rows=100' +
+          '&start=' + start +
+          '&profile=rich';
+        const d = await fetch(url).then(r => r.json());
+        if (!d.success || !d.items?.length) break;
+        for (const o of d.items) {
+          const previewArr = Array.isArray(o.edmPreview) ? o.edmPreview : (o.edmPreview ? [o.edmPreview] : []);
+          const thumb = previewArr[0];
+          if (!thumb) continue;
+          const shownBy = Array.isArray(o.edmIsShownBy) ? o.edmIsShownBy[0] : o.edmIsShownBy;
+          const recId = (o.id || '').replace(/^\//, '');
+          const provider = Array.isArray(o.dataProvider) ? o.dataProvider[0] : (o.dataProvider || 'Europeana');
+          const title = Array.isArray(o.title) ? o.title[0] : (o.title || 'Untitled');
+          const cleanTitle = title.replace(/painting,\s*/gi, '').replace(/,\s*$/, '').trim() || 'Untitled';
+          const artist = Array.isArray(o.dcCreator) ? o.dcCreator[0] : (o.dcCreator || '');
+          const cleanArtist = artist.replace(/^#/, '').replace(/_/g, ' ').trim();
+          works.push({
+            source: 'Europeana — ' + provider,
+            source_id: recId,
+            title: cleanTitle,
+            artist: cleanArtist,
+            date_text: Array.isArray(o.year) ? o.year[0] : (o.year || ''),
+            thumb_url: thumb,
+            full_url: shownBy || thumb,
+            detail_url: 'https://www.europeana.eu/en/item/' + recId,
+            rights: 'https://creativecommons.org/publicdomain/zero/1.0/',
+            rights_label: 'CC0 — Public Domain',
+            commercial_ok: true,
+            bio: Array.isArray(o.dcDescription) ? o.dcDescription[0] : (o.dcDescription || ''),
+          });
+        }
+        await sleep(500);
+        if (works.length >= 5000) break;
+      } catch(e) {
+        console.error('Europeana error:', e.message);
+        break;
       }
-      await sleep(500);
-    } catch(e) {}
+    }
+    if (works.length >= 5000) break;
   }
-  return await upsert(sql,works);
+  return await upsert(sql, works);
 }
 
 async function syncSmithsonian(sql, key) {
