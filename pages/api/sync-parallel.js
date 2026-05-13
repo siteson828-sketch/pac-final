@@ -48,7 +48,8 @@ export default async function handler(req, res) {
 
   const results = await Promise.allSettled(
     SOURCES.map(async ({ key }) => {
-      const r = await fetch(`${baseUrl}/api/sync?source=${key}${secretParam}`, { headers: subHeaders });
+      const signal = AbortSignal.timeout(270_000);
+      const r = await fetch(`${baseUrl}/api/sync?source=${key}${secretParam}`, { headers: subHeaders, signal });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
       return { key, newWorks: d.newWorks || 0, log: d.log || [] };
