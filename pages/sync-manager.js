@@ -136,26 +136,19 @@ async function syncAll(){
   document.getElementById('bstop').disabled=true;
   SRCS.forEach(function(s){dot(s.k,'s');stat(s.k,'syncing…','a');});
   log('Parallel sync started — all '+SRCS.length+' sources firing simultaneously','w');
-  try{
-    var r=await fetch('/api/sync-parallel?secret='+encodeURIComponent(SECRET));
-    var d=await r.json();
-    if(!r.ok)throw new Error(d.error||'HTTP '+r.status);
-    var srcs=d.sources||{};
-    SRCS.forEach(function(s){
-      var src=srcs[s.k];
-      if(!src){dot(s.k,'');stat(s.k,'','');}
-      else if(src.error){dot(s.k,'er');stat(s.k,'error','r');}
-      else{dot(s.k,'ok');stat(s.k,src.saved+' saved','g');}
-    });
-    (d.log||[]).forEach(function(entry){
-      log(entry,entry.toLowerCase().includes('error')?'e':'o');
-    });
-    log('Parallel sync complete — '+(d.newWorks||0)+' new works, '+(d.totalInDb||0).toLocaleString()+' total in DB','o');
-    checkCount();
-  }catch(e){
-    SRCS.forEach(function(s){dot(s.k,'er');stat(s.k,'error','r');});
-    log('Parallel sync error: '+e.message,'e');
-  }
+  var promises=SRCS.map(function(s){
+    return fetch('/api/sync?secret='+encodeURIComponent(SECRET)+'&source='+encodeURIComponent(s.k))
+      .then(function(r){return r.json().then(function(d){return{src:s,d:d,ok:r.ok};});})
+      .then(function(res){
+        if(!res.ok){dot(res.src.k,'er');stat(res.src.k,'error','r');log(res.src.l+' error: '+(res.d.error||'HTTP error'),'e');}
+        else{var n=res.d.newWorks||0;dot(res.src.k,'ok');stat(res.src.k,n+' saved','g');log(res.src.l+' — '+n+' saved','o');}
+        return res;
+      })
+      .catch(function(e){dot(s.k,'er');stat(s.k,'error','r');log(s.l+' error: '+e.message,'e');});
+  });
+  await Promise.allSettled(promises);
+  log('All sources done.','o');
+  checkCount();
   running=false;
   document.getElementById('ball').disabled=false;
 }
