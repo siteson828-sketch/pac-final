@@ -31,6 +31,16 @@ const SOURCES = [
   { key: 'uffizi',      label: 'Uffizi' },
   { key: 'hermitage',   label: 'Hermitage' },
   { key: 'moma',        label: 'MoMA' },
+  { key: 'rijkswiki',   label: 'Rijksmuseum (Wiki)' },
+  { key: 'khm',         label: 'KHM Vienna' },
+  { key: 'cluny',       label: 'Musée de Cluny' },
+  { key: 'vawiki',      label: 'V&A (Wiki)' },
+  { key: 'npm',         label: 'National Palace Museum' },
+  { key: 'tokyo',       label: 'Tokyo National Museum' },
+  { key: 'saam',        label: 'Smithsonian American Art' },
+  { key: 'phila',       label: 'Philadelphia Museum' },
+  { key: 'mfa',         label: 'Boston MFA' },
+  { key: 'detroit',     label: 'Detroit Institute' },
 ];
 
 export default async function handler(req, res) {

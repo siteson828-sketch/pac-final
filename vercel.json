@@ -1,14 +1,24 @@
 {
   "crons": [
-    { "path": "/api/sync-parallel",           "schedule": "0 0 * * *" },
-    { "path": "/api/sync?source=louvre",      "schedule": "0 2 * * *" },
-    { "path": "/api/sync?source=british",     "schedule": "0 3 * * *" },
-    { "path": "/api/sync?source=national",    "schedule": "0 4 * * *" },
-    { "path": "/api/sync?source=tate",        "schedule": "0 5 * * *" },
-    { "path": "/api/sync?source=orsay",       "schedule": "0 6 * * *" },
-    { "path": "/api/sync?source=prado",       "schedule": "0 7 * * *" },
-    { "path": "/api/sync?source=uffizi",      "schedule": "0 8 * * *" },
-    { "path": "/api/sync?source=hermitage",   "schedule": "0 9 * * *" },
-    { "path": "/api/sync?source=moma",        "schedule": "0 10 * * *" }
+    { "path": "/api/sync-parallel",              "schedule": "0 0 * * *" },
+    { "path": "/api/sync?source=louvre",         "schedule": "0 2 * * *" },
+    { "path": "/api/sync?source=british",        "schedule": "0 3 * * *" },
+    { "path": "/api/sync?source=national",       "schedule": "0 4 * * *" },
+    { "path": "/api/sync?source=tate",           "schedule": "0 5 * * *" },
+    { "path": "/api/sync?source=orsay",          "schedule": "0 6 * * *" },
+    { "path": "/api/sync?source=prado",          "schedule": "0 7 * * *" },
+    { "path": "/api/sync?source=uffizi",         "schedule": "0 8 * * *" },
+    { "path": "/api/sync?source=hermitage",      "schedule": "0 9 * * *" },
+    { "path": "/api/sync?source=moma",           "schedule": "0 10 * * *" },
+    { "path": "/api/sync?source=rijkswiki",      "schedule": "0 11 * * *" },
+    { "path": "/api/sync?source=khm",            "schedule": "0 12 * * *" },
+    { "path": "/api/sync?source=cluny",          "schedule": "0 13 * * *" },
+    { "path": "/api/sync?source=vawiki",         "schedule": "0 14 * * *" },
+    { "path": "/api/sync?source=npm",            "schedule": "0 15 * * *" },
+    { "path": "/api/sync?source=tokyo",          "schedule": "0 16 * * *" },
+    { "path": "/api/sync?source=saam",           "schedule": "0 17 * * *" },
+    { "path": "/api/sync?source=phila",          "schedule": "0 18 * * *" },
+    { "path": "/api/sync?source=mfa",            "schedule": "0 19 * * *" },
+    { "path": "/api/sync?source=detroit",        "schedule": "0 20 * * *" }
   ]
 }

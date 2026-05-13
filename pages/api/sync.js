@@ -709,6 +709,16 @@ export default async function handler(req, res) {
   if (src==='uffizi'     ||src==='all') await run('Uffizi',             () => syncWikidataMuseum(sql, 'Q51252',   'Uffizi'));
   if (src==='hermitage'  ||src==='all') await run('Hermitage',          () => syncWikidataMuseum(sql, 'Q132783',  'Hermitage'));
   if (src==='moma'       ||src==='all') await run('MoMA',               () => syncWikidataMuseum(sql, 'Q188740',  'MoMA'));
+  if (src==='rijkswiki'  ||src==='all') await run('Rijksmuseum (Wiki)', () => syncWikidataMuseum(sql, 'Q190804',  'Rijksmuseum Amsterdam'));
+  if (src==='khm'        ||src==='all') await run('KHM Vienna',         () => syncWikidataMuseum(sql, 'Q95569',   'Kunsthistorisches Museum'));
+  if (src==='cluny'      ||src==='all') await run('Musée de Cluny',     () => syncWikidataMuseum(sql, 'Q1536',    'Musée de Cluny'));
+  if (src==='vawiki'     ||src==='all') await run('V&A (Wiki)',          () => syncWikidataMuseum(sql, 'Q213322',  'Victoria and Albert Museum'));
+  if (src==='npm'        ||src==='all') await run('National Palace Museum', () => syncWikidataMuseum(sql, 'Q718746', 'National Palace Museum'));
+  if (src==='tokyo'      ||src==='all') await run('Tokyo National Museum',  () => syncWikidataMuseum(sql, 'Q907174', 'Tokyo National Museum'));
+  if (src==='saam'       ||src==='all') await run('Smithsonian American Art', () => syncWikidataMuseum(sql, 'Q1192305', 'Smithsonian American Art Museum'));
+  if (src==='phila'      ||src==='all') await run('Philadelphia Museum', () => syncWikidataMuseum(sql, 'Q510324',  'Philadelphia Museum of Art'));
+  if (src==='mfa'        ||src==='all') await run('Boston MFA',          () => syncWikidataMuseum(sql, 'Q49133',   'Museum of Fine Arts Boston'));
+  if (src==='detroit'    ||src==='all') await run('Detroit Institute',   () => syncWikidataMuseum(sql, 'Q1201549', 'Detroit Institute of Arts'));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
