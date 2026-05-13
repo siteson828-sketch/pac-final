@@ -22,6 +22,15 @@ const SOURCES = [
   { key: 'wikimedia',   label: 'Wikimedia Commons' },
   { key: 'dpla',        label: 'DPLA' },
   { key: 'tepapa',      label: 'Te Papa' },
+  { key: 'louvre',      label: 'Louvre' },
+  { key: 'british',     label: 'British Museum' },
+  { key: 'national',    label: 'National Gallery' },
+  { key: 'tate',        label: 'Tate' },
+  { key: 'orsay',       label: 'Musée d\'Orsay' },
+  { key: 'prado',       label: 'Prado' },
+  { key: 'uffizi',      label: 'Uffizi' },
+  { key: 'hermitage',   label: 'Hermitage' },
+  { key: 'moma',        label: 'MoMA' },
 ];
 
 export default async function handler(req, res) {

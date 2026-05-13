@@ -700,6 +700,15 @@ export default async function handler(req, res) {
   if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));
   if (src==='dpla'       ||src==='all') await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY));
   if (src==='tepapa'     ||src==='all') await run('Te Papa',            () => syncTePapa(sql));
+  if (src==='louvre'     ||src==='all') await run('Louvre',             () => syncWikidataMuseum(sql, 'Q19675',   'Louvre'));
+  if (src==='british'    ||src==='all') await run('British Museum',     () => syncWikidataMuseum(sql, 'Q6373',    'British Museum'));
+  if (src==='national'   ||src==='all') await run('National Gallery',   () => syncWikidataMuseum(sql, 'Q180788',  'National Gallery'));
+  if (src==='tate'       ||src==='all') await run('Tate',               () => syncWikidataMuseum(sql, 'Q430682',  'Tate'));
+  if (src==='orsay'      ||src==='all') await run('Musée d\'Orsay',     () => syncWikidataMuseum(sql, 'Q23402',   'Musée d\'Orsay'));
+  if (src==='prado'      ||src==='all') await run('Prado',              () => syncWikidataMuseum(sql, 'Q160112',  'Prado'));
+  if (src==='uffizi'     ||src==='all') await run('Uffizi',             () => syncWikidataMuseum(sql, 'Q51252',   'Uffizi'));
+  if (src==='hermitage'  ||src==='all') await run('Hermitage',          () => syncWikidataMuseum(sql, 'Q132783',  'Hermitage'));
+  if (src==='moma'       ||src==='all') await run('MoMA',               () => syncWikidataMuseum(sql, 'Q188740',  'MoMA'));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
