@@ -93,7 +93,7 @@ async function syncArtic(sql) {
 
 async function syncCleveland(sql) {
   const works = [];
-  for (let skip=0; skip<5000; skip+=100) {
+  for (let skip=0; skip<61000; skip+=100) {
     try {
       const d = await fetchJson(`https://openaccess-api.clevelandart.org/api/artworks/?has_image=1&cc0=1&limit=100&skip=${skip}`);
       if (!d.data?.length) break;
@@ -115,7 +115,7 @@ async function syncRijks(sql) {
   const works = [];
   const seen = new Set();
   // Rijksmuseum API requires a paid key; use Wikidata SPARQL instead (free, CC0 images via Wikimedia Commons)
-  for (let offset=0; offset<8000; offset+=1000) {
+  for (let offset=0; offset<200000; offset+=1000) {
     try {
       const query = `
         SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
@@ -166,7 +166,7 @@ async function syncRijks(sql) {
 
 async function syncSMK(sql) {
   const works = [];
-  for (let offset=0; offset<5000; offset+=100) {
+  for (let offset=0; offset<15000; offset+=100) {
     try {
       const d = await fetchJson(
         `https://api.smk.dk/api/v1/art/search?keys=*&has_image=true&offset=${offset}&rows=100&filters=public_domain:true`
@@ -206,7 +206,7 @@ async function syncSMK(sql) {
 
 async function syncVAM(sql) {
   const works = [];
-  for (let page=1; page<=20; page++) {
+  for (let page=1; page<=200; page++) {
     try {
       const d = await fetchJson(`https://api.vam.ac.uk/v2/objects/search?images_exist=1&page_size=100&page=${page}&q=art`);
       const items = d.records||[];
@@ -297,7 +297,7 @@ async function syncHarvard(sql) {
 async function syncWikidataMuseum(sql, qid, sourceName) {
   const works = [];
   const seen = new Set();
-  for (let offset=0; offset<5000; offset+=1000) {
+  for (let offset=0; offset<25000; offset+=5000) {
     try {
       const query = `
         SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
@@ -308,7 +308,7 @@ async function syncWikidataMuseum(sql, qid, sourceName) {
           OPTIONAL { ?item wdt:P571 ?date. }
           SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
         }
-        LIMIT 1000 OFFSET ${offset}
+        LIMIT 5000 OFFSET ${offset}
       `;
       const d = await fetchJson(
         `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
@@ -350,7 +350,7 @@ async function syncMia(sql) {
   const seen = new Set();
   const terms = ['painting','drawing','watercolor','print','portrait','landscape'];
   for (const term of terms) {
-    for (let page=1; page<=8; page++) {
+    for (let page=1; page<=500; page++) {
       try {
         const d = await fetchJson(
           `https://search.artsmia.org/${encodeURIComponent(term)}?size=100&p=${page}`
@@ -390,7 +390,7 @@ async function syncLOC(sql) {
   const seen = new Set();
   const terms = ['painting','portrait','landscape','drawing','print'];
   for (const q of terms) {
-    for (let page=1; page<=5; page++) {
+    for (let page=1; page<=20; page++) {
       try {
         const d = await fetchJson(
           `https://www.loc.gov/search/?fo=json&q=${encodeURIComponent(q)}&fa=online-format:image|rights-status:no-known-restrictions&c=50&sp=${page}&at=results,pagination`
@@ -628,9 +628,9 @@ async function syncDPLA(sql, key) {
   if (!key) return 0;
   const works = [];
   const seen = new Set();
-  const terms = ['painting','photograph','drawing','print','watercolor'];
+  const terms = ['painting','drawing','sculpture','photograph','print','textile','watercolor','portrait','landscape','still life'];
   for (const q of terms) {
-    for (let page=1; page<=2; page++) {
+    for (let page=1; page<=10; page++) {
       try {
         const d = await fetchJson(
           `https://api.dp.la/v2/items?q=${encodeURIComponent(q)}&sourceResource.type=image&page=${page}&page_size=100&api_key=${key}`
