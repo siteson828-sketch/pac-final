@@ -105,7 +105,7 @@ hr{border:none;border-top:1px solid #1e1b18;margin:1.5rem 0}
 <script>
 var SECRET=new URLSearchParams(location.search).get('secret')||'';
 var SRCS=${JSON.stringify(SRCS)};
-var stopped=false,running=false;
+var running=false;
 function log(m,t){
   var b=document.getElementById('log');if(!b)return;
   var ts=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -131,24 +131,36 @@ async function syncSrc(k){
 }
 async function syncAll(){
   if(running)return;
-  running=true;stopped=false;
+  running=true;
   document.getElementById('ball').disabled=true;
-  document.getElementById('bstop').disabled=false;
-  log('Full sync started — '+SRCS.length+' sources','w');
-  for(var i=0;i<SRCS.length;i++){
-    if(stopped){log('Stopped by user.','w');break;}
-    await syncSrc(SRCS[i].k);
-    if(!stopped&&i<SRCS.length-1)await new Promise(function(r){setTimeout(r,600);});
+  document.getElementById('bstop').disabled=true;
+  SRCS.forEach(function(s){dot(s.k,'s');stat(s.k,'syncing…','a');});
+  log('Parallel sync started — all '+SRCS.length+' sources firing simultaneously','w');
+  try{
+    var r=await fetch('/api/sync-parallel?secret='+encodeURIComponent(SECRET));
+    var d=await r.json();
+    if(!r.ok)throw new Error(d.error||'HTTP '+r.status);
+    var srcs=d.sources||{};
+    SRCS.forEach(function(s){
+      var src=srcs[s.k];
+      if(!src){dot(s.k,'');stat(s.k,'','');}
+      else if(src.error){dot(s.k,'er');stat(s.k,'error','r');}
+      else{dot(s.k,'ok');stat(s.k,src.saved+' saved','g');}
+    });
+    (d.log||[]).forEach(function(entry){
+      log(entry,entry.toLowerCase().includes('error')?'e':'o');
+    });
+    log('Parallel sync complete — '+(d.newWorks||0)+' new works, '+(d.totalInDb||0).toLocaleString()+' total in DB','o');
+    checkCount();
+  }catch(e){
+    SRCS.forEach(function(s){dot(s.k,'er');stat(s.k,'error','r');});
+    log('Parallel sync error: '+e.message,'e');
   }
-  if(!stopped)log('Full sync complete.','o');
   running=false;
   document.getElementById('ball').disabled=false;
-  document.getElementById('bstop').disabled=true;
 }
 function stopSync(){
-  stopped=true;
-  log('Stopping...','i');
-  SRCS.forEach(s=>dot(s.k,''));
+  log('Cannot stop a parallel sync in flight.','i');
 }
 function render(){SRCS.forEach(s=>dot(s.k,''));}
 function checkCount(){
