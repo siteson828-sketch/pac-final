@@ -93,7 +93,7 @@ async function syncArtic(sql) {
 
 async function syncCleveland(sql) {
   const works = [];
-  for (let skip=0; skip<61000; skip+=100) {
+  for (let skip=0; skip<5000; skip+=100) {
     try {
       const d = await fetchJson(`https://openaccess-api.clevelandart.org/api/artworks/?has_image=1&cc0=1&limit=100&skip=${skip}`);
       if (!d.data?.length) break;
@@ -261,30 +261,28 @@ async function syncSmithsonian(sql, key) {
   if (!key) return 0;
   const works = [];
   const seen = new Set();
-  const terms = ['painting', 'portrait', 'landscape', 'watercolor', 'drawing', 'print'];
-  for (const term of terms) {
-    for (let start=0; start<500; start+=100) {
-      try {
-        const d = await fetchJson(`https://api.si.edu/openaccess/api/v1.0/search?q=${encodeURIComponent(term)}&rows=100&start=${start}&api_key=${key}`);
-        const rows = d.response?.rows||[];
-        if (!rows.length) break;
-        for (const o of rows) {
-          if (seen.has(o.id)) continue;
-          // Check all media items for CC0, not just the first
-          const allMedia = o.content?.descriptiveNonRepeating?.online_media?.media||[];
-          const cc0 = allMedia.find(m => m?.thumbnail && m?.usage?.access==='CC0');
-          if (!cc0) continue;
-          seen.add(o.id);
-          works.push({ source:'Smithsonian Institution', source_id:o.id,
-            title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
-            date_text:o.content?.freetext?.date?.[0]?.content||'',
-            medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
-            thumb_url:cc0.thumbnail, full_url:cc0.content||'',
-            detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
-        }
-        await sleep(300);
-      } catch(e) { break; }
-    }
+  const units = ['nmah','nmaahc','nasm','nmnh','npg','hmsg','saam','chndm','fsg'];
+  for (const unit of units) {
+    try {
+      const d = await fetchJson(
+        `https://api.si.edu/openaccess/api/v1.0/search?unit_code=${unit}&rows=100&api_key=${key}`
+      );
+      const rows = d.response?.rows||[];
+      for (const o of rows) {
+        if (seen.has(o.id)) continue;
+        const allMedia = o.content?.descriptiveNonRepeating?.online_media?.media||[];
+        const media = allMedia.find(m => m?.thumbnail);
+        if (!media) continue;
+        seen.add(o.id);
+        works.push({ source:'Smithsonian Institution', source_id:o.id,
+          title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
+          date_text:o.content?.freetext?.date?.[0]?.content||'',
+          medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
+          thumb_url:media.thumbnail, full_url:media.content||'',
+          detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
+      }
+      await sleep(300);
+    } catch(e) {}
   }
   return upsert(sql,works);
 }
@@ -350,7 +348,7 @@ async function syncMia(sql) {
   const seen = new Set();
   const terms = ['painting','drawing','watercolor','print','portrait','landscape'];
   for (const term of terms) {
-    for (let page=1; page<=500; page++) {
+    for (let page=1; page<=10; page++) {
       try {
         const d = await fetchJson(
           `https://search.artsmia.org/${encodeURIComponent(term)}?size=100&p=${page}`
