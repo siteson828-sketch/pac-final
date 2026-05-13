@@ -382,6 +382,48 @@ async function syncInternetArchive(sql) {
   return upsert(sql, works);
 }
 
+async function syncWikidataGlobal(sql, startOffset) {
+  const works = [];
+  const seen = new Set();
+  try {
+    const query = `
+      SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
+        ?item wdt:P18 ?image;
+              wdt:P170 ?creator.
+        OPTIONAL { ?item wdt:P217 ?inv. }
+        OPTIONAL { ?item wdt:P571 ?date. }
+        SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+      }
+      LIMIT 5000 OFFSET ${startOffset}
+    `;
+    const d = await fetchJson(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`);
+    const bindings = d.results?.bindings || [];
+    for (const b of bindings) {
+      const itemUri = b.item?.value || '';
+      const qid = itemUri.replace('http://www.wikidata.org/entity/', '');
+      const image = b.image?.value || '';
+      if (!image || seen.has(qid)) continue;
+      seen.add(qid);
+      const thumb = image.replace(/\/commons\//, '/commons/thumb/').replace(/([^/]+)$/, '400px-$1');
+      works.push({
+        source: 'Wikidata Global',
+        source_id: qid,
+        title: b.itemLabel?.value || 'Untitled',
+        artist: b.creatorLabel?.value || '',
+        date_text: b.date?.value?.substring(0, 10) || '',
+        thumb_url: thumb,
+        full_url: image,
+        detail_url: `https://www.wikidata.org/wiki/${qid}`,
+        rights: 'https://creativecommons.org/publicdomain/mark/1.0/',
+        rights_label: 'Public Domain',
+        commercial_ok: true,
+        bio: '',
+      });
+    }
+  } catch(e) { /* swallow — return whatever was collected */ }
+  return upsert(sql, works);
+}
+
 async function syncWikidataMuseum(sql, qid, sourceName) {
   const works = [];
   const seen = new Set();
@@ -771,6 +813,7 @@ export default async function handler(req, res) {
     catch(e) { log.push(`${name} error: ${e.message}`); }
   };
   const src = req.query.source || 'all';
+  const offset = parseInt(req.query.offset || '0', 10) || 0;
   if (src==='met'        ||src==='all') await run('Met Museum',         () => syncMet(sql));
   if (src==='artic'      ||src==='all') await run('Art Inst. Chicago',  () => syncArtic(sql));
   if (src==='cleveland'  ||src==='all') await run('Cleveland',          () => syncCleveland(sql));
@@ -821,6 +864,7 @@ export default async function handler(req, res) {
   if (src==='romano'     ||src==='all') await run('Museo Nazionale Romano', () => syncWikidataMuseum(sql, 'Q1378635', 'Museo Nazionale Romano'));
   if (src==='vatican'    ||src==='all') await run('Vatican Museums',     () => syncWikidataMuseum(sql, 'Q182955',  'Vatican Museums'));
   if (src==='internetarchive'||src==='all') await run('Internet Archive', () => syncInternetArchive(sql));
+  if (src==='wikidataglobal') await run(`Wikidata Global (offset ${offset})`, () => syncWikidataGlobal(sql, offset));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
