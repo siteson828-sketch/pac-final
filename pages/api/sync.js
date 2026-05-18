@@ -382,46 +382,48 @@ async function syncInternetArchive(sql) {
   return upsert(sql, works);
 }
 
-async function syncWikidataGlobal(sql, startOffset) {
+async function syncWikidataGlobal(sql, offset = 0) {
   const works = [];
-  const seen = new Set();
+  const sparql = `
+    SELECT ?item ?itemLabel ?image ?creatorLabel ?inception WHERE {
+      ?item wdt:P18 ?image .
+      ?item wdt:P31 wd:Q3305213 .
+      OPTIONAL { ?item wdt:P170 ?creator }
+      OPTIONAL { ?item wdt:P571 ?inception }
+      SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
+    }
+    LIMIT 3000
+    OFFSET ${offset}
+  `;
   try {
-    const query = `
-      SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
-        ?item wdt:P18 ?image;
-              wdt:P170 ?creator.
-        OPTIONAL { ?item wdt:P217 ?inv. }
-        OPTIONAL { ?item wdt:P571 ?date. }
-        SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+    const url = 'https://query.wikidata.org/sparql?query=' + encodeURIComponent(sparql);
+    const d = await fetch(url, {
+      headers: {
+        'Accept': 'application/sparql-results+json',
+        'User-Agent': 'PublicArtCollections/1.0 (https://pac-final.vercel.app)'
       }
-      LIMIT 5000 OFFSET ${startOffset}
-    `;
-    const d = await fetchJson(`https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`);
+    }).then(r => r.json());
     const bindings = d.results?.bindings || [];
     for (const b of bindings) {
-      const itemUri = b.item?.value || '';
-      const qid = itemUri.replace('http://www.wikidata.org/entity/', '');
-      const image = b.image?.value || '';
-      if (!image || seen.has(qid)) continue;
-      seen.add(qid);
-      const thumb = image.replace(/\/commons\//, '/commons/thumb/').replace(/([^/]+)$/, '400px-$1');
+      const img = b.image?.value;
+      if (!img) continue;
       works.push({
         source: 'Wikidata Global',
-        source_id: qid,
+        source_id: b.item?.value?.split('/').pop(),
         title: b.itemLabel?.value || 'Untitled',
         artist: b.creatorLabel?.value || '',
-        date_text: b.date?.value?.substring(0, 10) || '',
-        thumb_url: thumb,
-        full_url: image,
-        detail_url: `https://www.wikidata.org/wiki/${qid}`,
-        rights: 'https://creativecommons.org/publicdomain/mark/1.0/',
-        rights_label: 'Public Domain',
+        date_text: b.inception?.value?.slice(0,4) || '',
+        thumb_url: img.replace('http://', 'https://'),
+        full_url: img.replace('http://', 'https://'),
+        detail_url: b.item?.value || '',
+        rights: 'https://creativecommons.org/publicdomain/zero/1.0/',
+        rights_label: 'CC0 — Public Domain',
         commercial_ok: true,
-        bio: '',
       });
     }
-  } catch(e) { /* swallow — return whatever was collected */ }
-  return upsert(sql, works);
+    await sleep(1000);
+  } catch(e) { console.error('Wikidata global error:', e.message); }
+  return await upsert(sql, works);
 }
 
 async function syncWikidataMuseum(sql, qid, sourceName) {
