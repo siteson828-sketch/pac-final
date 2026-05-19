@@ -474,7 +474,7 @@ export default function Viewer() {
                     {emoji:'🛍️', name:'Tote Bag',       price:'from $16'},
                   ].map(p => (
                     <div key={p.name}
-                      onClick={() => window.location.href = `/shop?product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url||modal.thumb_url||'')}`}
+                      onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url||modal.thumb_url||'')}`}
                       style={{background:'#2C2318',border:'0.5px solid #3A3028',borderRadius:6,padding:'10px 8px',textAlign:'center',cursor:'pointer',transition:'all .15s',color:'#F0EAD8'}}
                       onMouseEnter={e=>{e.currentTarget.style.background='#B8942A';e.currentTarget.style.color='#1A1714';}}
                       onMouseLeave={e=>{e.currentTarget.style.background='#2C2318';e.currentTarget.style.color='#F0EAD8';}}>

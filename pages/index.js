@@ -573,7 +573,7 @@ export default function Home() {
                     <div
                       key={p.name}
                       className="prod-item"
-                      onClick={() => window.location.href = `/shop?product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}`}
+                      onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}`}
                     >
                       <div className="prod-emoji">{p.emoji}</div>
                       <div className="prod-name">{p.name}</div>
