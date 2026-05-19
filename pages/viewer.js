@@ -462,6 +462,30 @@ export default function Viewer() {
                 </>
               )}
               <div className="divider" />
+              <div>
+                <div style={{fontSize:10,textTransform:'uppercase',letterSpacing:'.1em',color:'#8A8178',marginBottom:10}}>Order as</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                  {[
+                    {emoji:'🖼️', name:'Fine Art Print', price:'from $18'},
+                    {emoji:'🎨', name:'Canvas Wrap',    price:'from $45'},
+                    {emoji:'👕', name:'T-Shirt',        price:'from $24'},
+                    {emoji:'☕', name:'Mug',            price:'from $14'},
+                    {emoji:'📱', name:'Phone Case',     price:'from $19'},
+                    {emoji:'🛍️', name:'Tote Bag',       price:'from $16'},
+                  ].map(p => (
+                    <div key={p.name}
+                      onClick={() => window.location.href = `/shop?product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url||modal.thumb_url||'')}`}
+                      style={{background:'#2C2318',border:'0.5px solid #3A3028',borderRadius:6,padding:'10px 8px',textAlign:'center',cursor:'pointer',transition:'all .15s',color:'#F0EAD8'}}
+                      onMouseEnter={e=>{e.currentTarget.style.background='#B8942A';e.currentTarget.style.color='#1A1714';}}
+                      onMouseLeave={e=>{e.currentTarget.style.background='#2C2318';e.currentTarget.style.color='#F0EAD8';}}>
+                      <div style={{fontSize:20,marginBottom:4}}>{p.emoji}</div>
+                      <div style={{fontSize:11,fontWeight:500,marginBottom:2}}>{p.name}</div>
+                      <div style={{fontSize:10,opacity:.7}}>{p.price}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="divider" />
               <div className="modal-links">
                 <a href={`/artwork/${modal.id}`} className="mlink mlink-primary">View full page →</a>
                 {modal.detail_url && (
