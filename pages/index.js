@@ -89,6 +89,22 @@ body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4
 .nav-link{font-size:13px;color:#4A4540;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color .15s}
 .nav-link:hover{color:#1A1714}
 
+/* ORDER BANNER */
+.order-banner{background:#2C2318;color:#F0EAD8;padding:14px 32px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.order-banner-img{width:52px;height:52px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#3A3028}
+.order-banner-info{flex:1;min-width:0}
+.order-banner-label{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#B8942A;margin-bottom:3px}
+.order-banner-work{font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-banner-prod{font-size:12px;color:#B0A898;margin-top:2px}
+.order-banner-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.order-qty{display:flex;align-items:center;gap:6px;font-size:13px}
+.order-qty button{width:26px;height:26px;border-radius:50%;border:0.5px solid rgba(240,234,216,0.25);background:transparent;color:#F0EAD8;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.order-qty button:hover{background:rgba(240,234,216,0.1)}
+.order-confirm{padding:8px 20px;background:#B8942A;color:#1A1714;border:none;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:background .15s}
+.order-confirm:hover{background:#C9A84C}
+.order-dismiss{background:none;border:none;color:#6A6058;font-size:20px;cursor:pointer;line-height:1;padding:4px;transition:color .15s;flex-shrink:0}
+.order-dismiss:hover{color:#F0EAD8}
+
 /* HERO */
 .hero{position:relative;height:540px;overflow:hidden;background:#2C2318}
 .hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.55;transition:opacity 1s ease}
@@ -241,6 +257,12 @@ export default function Home() {
   const [heroIdx, setHeroIdx]           = useState(0);
   const [heroFading, setHeroFading]     = useState(false);
   const [imgErrors, setImgErrors]       = useState({});
+  const [activeTab, setActiveTab]       = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedFrame, setSelectedFrame]     = useState(null);
+  const [quantity, setQuantity]               = useState(1);
+  const [orderWork, setOrderWork]             = useState('');
+  const [orderImg, setOrderImg]               = useState('');
 
   const load = useCallback(async (reset, q, src, ord, coll, currentOffset = 0) => {
     const off = reset ? 0 : currentOffset;
@@ -287,6 +309,22 @@ export default function Home() {
     document.body.style.overflow = modal ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [modal]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('order') === '1') {
+      const productName = params.get('product');
+      const work = params.get('work') || '';
+      const img  = params.get('img')  || '';
+      const found = PRODUCTS.find(p => p.name === productName) || PRODUCTS[0];
+      setSelectedProduct(found);
+      setSelectedFrame(found.frames?.[0] || null);
+      setQuantity(1);
+      setOrderWork(work);
+      setOrderImg(img);
+      setActiveTab('order');
+    }
+  }, []);
 
   const handleSearch = () => {
     setAppliedSearch(searchInput);
@@ -343,6 +381,27 @@ export default function Home() {
         {total !== null && <span className="nav-count">{Number(total).toLocaleString()} works</span>}
         <a href="/viewer" className="nav-link">Browse by Museum →</a>
       </nav>
+
+      {/* ORDER BANNER */}
+      {activeTab === 'order' && selectedProduct && (
+        <div className="order-banner">
+          {orderImg && <img src={orderImg} alt={orderWork} className="order-banner-img" onError={e => { e.target.style.display = 'none'; }} />}
+          <div className="order-banner-info">
+            <div className="order-banner-label">Ordering as {selectedProduct.emoji} {selectedProduct.name}</div>
+            <div className="order-banner-work">{orderWork || 'Selected artwork'}</div>
+            <div className="order-banner-prod">{selectedProduct.price} · Public domain · Ships worldwide</div>
+          </div>
+          <div className="order-banner-actions">
+            <div className="order-qty">
+              <button onClick={() => setQuantity(q => Math.max(1, q - 1))}>−</button>
+              <span>{quantity}</span>
+              <button onClick={() => setQuantity(q => q + 1)}>+</button>
+            </div>
+            <button className="order-confirm">Confirm Order →</button>
+          </div>
+          <button className="order-dismiss" onClick={() => setActiveTab(null)} title="Dismiss">×</button>
+        </div>
+      )}
 
       {/* HERO */}
       {hero && (
