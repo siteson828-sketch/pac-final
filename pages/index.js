@@ -1,31 +1,49 @@
 import { useState, useEffect, useCallback } from 'react';
 
-const MUSEUMS = [
-  { key: 'all',                              label: 'All Collections' },
-  { key: 'Metropolitan Museum of Art',       label: 'Met Museum' },
-  { key: 'Art Institute of Chicago',         label: 'Art Inst. Chicago' },
-  { key: 'Cleveland Museum of Art',          label: 'Cleveland' },
-  { key: 'Victoria & Albert Museum',         label: 'V&A Museum' },
-  { key: 'Rijksmuseum',                      label: 'Rijksmuseum' },
-  { key: 'SMK National Gallery of Denmark',  label: 'SMK Denmark' },
-  { key: 'Smithsonian Institution',          label: 'Smithsonian' },
-  { key: 'Harvard Art Museums',              label: 'Harvard' },
-  { key: 'Getty Museum',                     label: 'Getty Museum' },
-  { key: 'Walters Art Museum',               label: 'Walters' },
-  { key: 'Brooklyn Museum',                  label: 'Brooklyn' },
-  { key: 'Yale University Art Gallery',      label: 'Yale' },
+const COLLECTIONS = [
+  { label: 'All',           search: '',              source: '' },
+  { label: 'Impressionism', search: 'impressionism', source: '' },
+  { label: 'Baroque',       search: 'baroque',       source: '' },
+  { label: 'Renaissance',   search: 'renaissance',   source: '' },
+  { label: 'Modern Art',    search: 'modern',        source: '' },
+  { label: 'Photography',   search: 'photograph',    source: '' },
+  { label: 'Portraits',     search: 'portrait',      source: '' },
+  { label: 'Landscapes',    search: 'landscape',     source: '' },
 ];
 
 const PRODUCTS = [
-  { icon: '👕', name: 'T-Shirt',    price: 'from $24' },
-  { icon: '☕', name: 'Mug',        price: 'from $14' },
-  { icon: '📱', name: 'Phone Case', price: 'from $19' },
-  { icon: '🛍️', name: 'Tote Bag',  price: 'from $16' },
+  { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18' },
+  { emoji: '🎨', name: 'Canvas Wrap',    price: 'from $45' },
+  { emoji: '👕', name: 'T-Shirt',        price: 'from $24' },
+  { emoji: '☕', name: 'Mug',            price: 'from $14' },
+  { emoji: '📱', name: 'Phone Case',     price: 'from $19' },
+  { emoji: '🛍️', name: 'Tote Bag',       price: 'from $16' },
+];
+
+const MUSEUMS = [
+  { key: 'Metropolitan Museum of Art',      label: 'Met Museum' },
+  { key: 'Art Institute of Chicago',        label: 'Art Inst. Chicago' },
+  { key: 'Cleveland Museum of Art',         label: 'Cleveland' },
+  { key: 'Victoria & Albert Museum',        label: 'V&A Museum' },
+  { key: 'Rijksmuseum',                     label: 'Rijksmuseum' },
+  { key: 'SMK National Gallery of Denmark', label: 'SMK Denmark' },
+  { key: 'Smithsonian Institution',         label: 'Smithsonian' },
+  { key: 'Harvard Art Museums',             label: 'Harvard' },
+  { key: 'Getty Museum',                    label: 'Getty' },
+  { key: 'Louvre',                          label: 'Louvre' },
+  { key: 'British Museum',                  label: 'British Museum' },
+  { key: 'National Gallery',                label: 'National Gallery' },
+  { key: 'Prado',                           label: 'Prado' },
+  { key: 'Uffizi',                          label: 'Uffizi' },
+  { key: 'Hermitage',                       label: 'Hermitage' },
+  { key: 'Library of Congress',             label: 'Lib. of Congress' },
+  { key: 'Wikimedia Commons',               label: 'Wikimedia' },
+  { key: 'Internet Archive',                label: 'Internet Archive' },
 ];
 
 function fmt(s) {
   return (s || '')
-    .replace('Metropolitan Museum of Art', 'Met Museum')
+    .replace('Metropolitan Museum of Art', 'Met')
     .replace('Art Institute of Chicago', 'Art Inst. Chicago')
     .replace('Victoria & Albert Museum', 'V&A')
     .replace('Smithsonian Institution', 'Smithsonian')
@@ -51,7 +69,6 @@ function abbr(n) {
 
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500&display=swap');
-
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
 body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A1714}
@@ -63,54 +80,50 @@ body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4
 .nav-search{flex:1;max-width:520px;display:flex;gap:8px}
 .nav-input{flex:1;padding:8px 14px;border:0.5px solid rgba(26,23,20,0.22);border-radius:4px;font-size:13px;background:#FAF8F4;outline:none;font-family:'DM Sans',sans-serif;color:#1A1714}
 .nav-input:focus{border-color:#B8942A;box-shadow:0 0 0 3px rgba(184,148,42,0.1)}
-.nav-count{font-size:12px;color:#8A8178;white-space:nowrap;margin-left:auto;flex-shrink:0}
+.nav-count{font-size:12px;color:#8A8178;white-space:nowrap;flex-shrink:0;margin-left:auto}
 .btn{display:inline-flex;align-items:center;padding:8px 16px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid rgba(26,23,20,0.2);color:#1A1714;background:transparent;font-family:'DM Sans',sans-serif;transition:background .15s;white-space:nowrap;text-decoration:none}
 .btn:hover{background:rgba(26,23,20,0.06)}
 .btn-dark{background:#1A1714;color:#FAF8F4;border-color:#1A1714}
 .btn-dark:hover{background:#2C2318}
 .btn-icon{padding:8px 10px;font-size:16px;line-height:1}
+.nav-link{font-size:13px;color:#4A4540;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color .15s}
+.nav-link:hover{color:#1A1714}
 
 /* HERO */
-.hero{position:relative;height:520px;overflow:hidden;background:#2C2318}
+.hero{position:relative;height:540px;overflow:hidden;background:#2C2318}
 .hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.55;transition:opacity 1s ease}
 .hero-img.fade{opacity:0}
-.hero-gradient{position:absolute;inset:0;background:linear-gradient(105deg,rgba(26,23,20,0.9) 0%,rgba(26,23,20,0.5) 55%,rgba(26,23,20,0.18) 100%)}
-.hero-content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:52px 56px 52px}
+.hero-gradient{position:absolute;inset:0;background:linear-gradient(105deg,rgba(26,23,20,0.92) 0%,rgba(26,23,20,0.5) 55%,rgba(26,23,20,0.18) 100%)}
+.hero-content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:52px 56px}
 .hero-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.2em;color:#B8942A;margin-bottom:16px;font-weight:500}
-.hero-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(36px,4.5vw,68px);font-weight:300;line-height:1.06;color:#F3EFE8;margin-bottom:12px;max-width:600px}
+.hero-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(38px,5vw,72px);font-weight:300;line-height:1.04;color:#F3EFE8;margin-bottom:14px;max-width:640px}
 .hero-title em{font-style:italic;color:#C9A84C}
-.hero-sub{font-size:14px;color:rgba(240,234,216,0.62);margin-bottom:32px;max-width:420px;line-height:1.65;font-family:'DM Sans',sans-serif}
+.hero-sub{font-size:14px;color:rgba(240,234,216,0.65);margin-bottom:32px;max-width:440px;line-height:1.7}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
-.hero-btn{padding:12px 26px;font-size:13px;font-weight:500;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .18s;text-decoration:none;border:none;letter-spacing:.01em}
+.hero-btn{padding:12px 28px;font-size:13px;font-weight:500;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .18s;text-decoration:none;border:none;letter-spacing:.01em}
 .hero-btn-light{background:#FAF8F4;color:#1A1714}
 .hero-btn-light:hover{background:#EDE8DF}
-.hero-btn-outline{background:transparent;color:#F3EFE8;border:0.5px solid rgba(240,234,216,0.4)}
-.hero-btn-outline:hover{background:rgba(240,234,216,0.08);border-color:rgba(240,234,216,0.7)}
-.hero-caption{position:absolute;bottom:20px;right:32px;font-size:11px;color:rgba(240,234,216,0.42);text-align:right;max-width:260px;line-height:1.5}
-.hero-caption strong{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:400;color:rgba(240,234,216,0.68)}
+.hero-btn-outline{background:transparent;color:#F3EFE8;border:0.5px solid rgba(240,234,216,0.45)}
+.hero-btn-outline:hover{background:rgba(240,234,216,0.08);border-color:rgba(240,234,216,0.75)}
+.hero-caption{position:absolute;bottom:22px;right:32px;font-size:11px;color:rgba(240,234,216,0.4);text-align:right;max-width:260px;line-height:1.5}
+.hero-caption strong{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:400;color:rgba(240,234,216,0.7)}
 
-/* FILTER BAR */
-.filter-bar{background:#FAF8F4;border-bottom:0.5px solid rgba(26,23,20,0.1);padding:0 32px;display:flex;align-items:stretch;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.filter-bar::-webkit-scrollbar{display:none}
-.filter-chip{padding:14px 18px;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#8A8178;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;font-family:'DM Sans',sans-serif;flex-shrink:0}
-.filter-chip:hover{color:#1A1714}
-.filter-chip.active{color:#1A1714;border-bottom-color:#B8942A}
-.chip-count{margin-left:5px;font-size:9px;color:#B8C4B8;font-weight:400;letter-spacing:0}
-.filter-chip.active .chip-count{color:#8A8178}
+/* COLLECTION BAR */
+.coll-bar{background:#FAF8F4;border-bottom:0.5px solid rgba(26,23,20,0.1);padding:0 32px;display:flex;align-items:stretch;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.coll-bar::-webkit-scrollbar{display:none}
+.coll-chip{padding:14px 18px;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#8A8178;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;font-family:'DM Sans',sans-serif;flex-shrink:0}
+.coll-chip:hover{color:#1A1714}
+.coll-chip.active{color:#1A1714;border-bottom-color:#B8942A}
 
-/* SYNC BAR */
-.sync-bar{padding:8px 32px;background:#F5F2ED;border-bottom:0.5px solid rgba(26,23,20,0.07);display:flex;align-items:center;gap:12px;font-size:11px;color:#8A8178;flex-wrap:nowrap;overflow:hidden}
-.sync-summary{white-space:nowrap;flex-shrink:0;padding-right:12px;border-right:0.5px solid rgba(26,23,20,0.12)}
-.sync-sources{display:flex;align-items:center;gap:12px;overflow-x:auto;scrollbar-width:none;flex:1}
-.sync-sources::-webkit-scrollbar{display:none}
-.sync-source{display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0}
-.sync-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;background:#B8C4B8}
-.sync-dot.ok{background:#4ade80}
-.sync-dot.stale{background:#fbbf24}
-.sync-name{font-weight:500;color:#4A4540}
+/* MUSEUM BAR */
+.museum-bar{background:#F5F2ED;border-bottom:0.5px solid rgba(26,23,20,0.07);padding:0 32px;display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none;gap:0}
+.museum-bar::-webkit-scrollbar{display:none}
+.museum-chip{padding:10px 14px;font-size:11px;color:#6A6058;cursor:pointer;background:none;border:none;white-space:nowrap;font-family:'DM Sans',sans-serif;flex-shrink:0;border-bottom:1.5px solid transparent;transition:color .15s,border-color .15s}
+.museum-chip:hover{color:#1A1714}
+.museum-chip.active{color:#1A1714;border-bottom-color:#B8942A;font-weight:500}
 
 /* GALLERY HEADER */
-.gallery-header{padding:32px 32px 0;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.gallery-header{padding:32px 32px 0;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px}
 .gallery-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:28px;font-weight:300;letter-spacing:.01em}
 .gallery-title span{color:#B8942A}
 .gallery-meta{font-size:12px;color:#8A8178}
@@ -129,9 +142,9 @@ body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4
 .gallery-card:hover .card-hover{opacity:1}
 .card-hover-label{font-size:11px;font-weight:500;color:#FAF8F4;letter-spacing:.05em}
 .card-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;color:#B8942A}
-.card-body{padding:12px 14px 14px;background:#FAF8F4;flex:1}
+.card-body{padding:12px 14px 14px;background:#FAF8F4;flex:1;display:flex;flex-direction:column}
 .card-museum{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#B8942A;margin-bottom:4px;font-weight:500}
-.card-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:15px;font-weight:400;line-height:1.3;margin-bottom:3px;color:#1A1714;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:15px;font-weight:400;line-height:1.3;margin-bottom:3px;color:#1A1714;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1}
 .card-artist{font-size:11px;color:#8A8178;margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .card-foot{display:flex;align-items:center;justify-content:space-between}
 .card-price{font-size:11px;font-weight:500;color:#4A4540}
@@ -153,30 +166,30 @@ body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4
 
 /* MODAL */
 .modal-bg{position:fixed;inset:0;background:rgba(26,23,20,0.72);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.modal{background:#FAF8F4;border-radius:12px;max-width:860px;width:100%;max-height:92vh;overflow:hidden;position:relative;box-shadow:0 32px 80px rgba(26,23,20,0.35)}
+.modal{background:#FAF8F4;border-radius:12px;max-width:880px;width:100%;max-height:92vh;overflow:hidden;position:relative;box-shadow:0 32px 80px rgba(26,23,20,0.35)}
 .modal-layout{display:grid;grid-template-columns:1fr 1fr;max-height:92vh;overflow-y:auto}
-.modal-img-side{background:#2C2318;display:flex;align-items:center;justify-content:center;min-height:400px;position:sticky;top:0}
-.modal-img-side img{width:100%;height:100%;object-fit:contain;max-height:640px}
+.modal-img-side{background:#2C2318;display:flex;align-items:center;justify-content:center;min-height:400px;position:sticky;top:0;max-height:92vh}
+.modal-img-side img{width:100%;height:100%;object-fit:contain;max-height:92vh}
 .modal-img-ph{font-size:72px;color:#B8942A}
 .modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(26,23,20,0.55);border:none;color:#FAF8F4;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:background .15s;line-height:1}
 .modal-close:hover{background:rgba(26,23,20,0.85)}
-.modal-detail{padding:32px 28px 28px;overflow-y:auto;display:flex;flex-direction:column}
-.modal-museum{font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:#B8942A;margin-bottom:10px;font-weight:500}
-.modal-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:26px;font-weight:300;line-height:1.12;margin-bottom:6px}
-.modal-artist{font-size:13px;color:#4A4540;margin-bottom:20px}
-.divider{height:0.5px;background:rgba(26,23,20,0.1);margin:16px 0}
+.modal-detail{padding:28px 24px 24px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.modal-museum{font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:#B8942A;font-weight:500}
+.modal-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:300;line-height:1.1}
+.modal-artist{font-size:13px;color:#4A4540}
+.divider{height:0.5px;background:rgba(26,23,20,0.1);flex-shrink:0}
 .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .meta-item label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#8A8178;display:block;margin-bottom:3px}
 .meta-item span{font-size:13px;font-weight:500;color:#1A1714}
 .modal-bio{font-size:12px;color:#4A4540;line-height:1.78}
-.products-label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#8A8178;margin-bottom:10px}
-.products-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:16px}
-.prod{background:#EDE8DF;border:none;border-radius:5px;padding:12px 4px;text-align:center;cursor:pointer;font-size:11px;color:#4A4540;transition:all .15s;font-family:'DM Sans',sans-serif;line-height:1.4}
-.prod:hover{background:#1A1714;color:#FAF8F4}
-.prod-icon{font-size:18px;display:block;margin-bottom:3px}
-.prod-price{opacity:.65;font-size:10px}
-.modal-cta{display:flex;flex-direction:column;gap:8px;margin-top:auto;padding-top:4px}
-.cta-btn{display:block;text-align:center;padding:12px;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;border:none;text-decoration:none}
+.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.prod-item{background:#2C2318;border:0.5px solid #3A3028;border-radius:6px;padding:10px 8px;text-align:center;cursor:pointer;transition:all .15s;color:#F0EAD8}
+.prod-item:hover{background:#B8942A;color:#1A1714}
+.prod-emoji{font-size:20px;margin-bottom:4px}
+.prod-name{font-size:11px;font-weight:500;margin-bottom:2px;font-family:'DM Sans',sans-serif}
+.prod-price{font-size:10px;opacity:.7;font-family:'DM Sans',sans-serif}
+.modal-cta{display:flex;flex-direction:column;gap:8px;margin-top:auto}
+.cta-btn{display:block;text-align:center;padding:11px;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;border:none;text-decoration:none}
 .cta-primary{background:#1A1714;color:#FAF8F4}
 .cta-primary:hover{background:#2C2318}
 .cta-secondary{background:transparent;color:#1A1714;border:0.5px solid rgba(26,23,20,0.22)}
@@ -184,31 +197,32 @@ body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4
 
 /* FOOTER */
 footer{background:#2C2318;color:#B0A898;padding:52px 32px 28px}
-.footer-grid{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:48px}
+.footer-inner{max-width:1280px;margin:0 auto}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:40px}
 .footer-logo{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;color:#F3EFE8;margin-bottom:10px;font-weight:300}
 .footer-logo span{color:#B8942A}
 .footer-desc{font-size:13px;line-height:1.75;color:#6A6058}
 .footer-col-title{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#6A6058;margin-bottom:14px}
 .footer-link{display:block;font-size:13px;color:#8A8178;text-decoration:none;margin-bottom:7px;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;padding:0;text-align:left;transition:color .15s}
 .footer-link:hover{color:#F3EFE8}
-.footer-bottom{max-width:1280px;margin:28px auto 0;border-top:0.5px solid rgba(240,234,214,0.08);padding-top:20px;font-size:12px;color:#4A4540}
+.footer-bottom{border-top:0.5px solid rgba(240,234,214,0.08);padding-top:16px;font-size:12px;color:#6A6058}
 
 /* RESPONSIVE */
 @media(max-width:1200px){.gallery-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;gap:32px}}
 @media(max-width:800px){
   .nav{padding:0 16px;gap:10px}
-  .hero{height:420px}
+  .hero{height:440px}
   .hero-content{padding:32px 24px 40px}
-  .filter-bar,.sync-bar{padding-left:16px;padding-right:16px}
+  .coll-bar,.museum-bar{padding-left:16px;padding-right:16px}
   .gallery-header{padding:24px 16px 0}
   .gallery-grid{grid-template-columns:repeat(2,1fr);gap:14px;padding:20px 16px 48px}
   .modal-layout{grid-template-columns:1fr}
-  .modal-img-side{position:relative;min-height:260px}
-  .footer-grid{grid-template-columns:1fr;gap:32px}
+  .modal-img-side{position:relative;min-height:260px;max-height:300px}
+  .footer-grid{grid-template-columns:1fr;gap:28px}
 }
 @media(max-width:500px){
-  .nav-count{display:none}
-  .hero-title{font-size:34px}
+  .nav-count,.nav-link{display:none}
   .gallery-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:16px 12px 40px}
 }
 `;
@@ -217,7 +231,8 @@ export default function Home() {
   const [works, setWorks]               = useState([]);
   const [searchInput, setSearchInput]   = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
-  const [source, setSource]             = useState('all');
+  const [collection, setCollection]     = useState(COLLECTIONS[0]);
+  const [museum, setMuseum]             = useState('');
   const [order, setOrder]               = useState('recent');
   const [loading, setLoading]           = useState(false);
   const [total, setTotal]               = useState(null);
@@ -226,35 +241,28 @@ export default function Home() {
   const [heroIdx, setHeroIdx]           = useState(0);
   const [heroFading, setHeroFading]     = useState(false);
   const [imgErrors, setImgErrors]       = useState({});
-  const [status, setStatus]             = useState(null);
 
-  const load = useCallback(async (reset, q, src, ord, currentOffset = 0) => {
+  const load = useCallback(async (reset, q, src, ord, coll, currentOffset = 0) => {
     const off = reset ? 0 : currentOffset;
     setLoading(true);
     try {
       let url = `/api/artworks?limit=24&offset=${off}`;
-      if (q)              url += `&search=${encodeURIComponent(q)}`;
-      if (src !== 'all')  url += `&source=${encodeURIComponent(src)}`;
+      if (q)           url += `&search=${encodeURIComponent(q)}`;
+      else if (coll?.search) url += `&search=${encodeURIComponent(coll.search)}`;
+      if (src)         url += `&source=${encodeURIComponent(src)}`;
       if (ord === 'random') url += `&order=random`;
       const data = await fetch(url).then(r => r.json());
       const w = data.works || [];
-      if (reset) {
-        setWorks(w);
-      } else {
-        setWorks(prev => [...prev, ...w]);
-      }
+      if (reset) setWorks(w); else setWorks(prev => [...prev, ...w]);
       setHasMore(w.length === 24);
-    } catch (e) {
-      console.error(e);
-    }
+    } catch (e) { console.error(e); }
     setLoading(false);
   }, []);
 
   useEffect(() => {
     document.title = 'Public Art Collections — Museum Prints & Art Marketplace';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotal(d.total));
-    fetch('/api/status').then(r => r.json()).then(d => setStatus(d));
-    load(true, '', 'all', 'recent', 0);
+    load(true, '', '', 'recent', COLLECTIONS[0], 0);
   }, [load]);
 
   useEffect(() => {
@@ -280,17 +288,38 @@ export default function Home() {
     return () => { document.body.style.overflow = ''; };
   }, [modal]);
 
-  const handleSearch  = () => { setAppliedSearch(searchInput); load(true, searchInput, source, order, 0); };
-  const handleClear   = () => { setSearchInput(''); setAppliedSearch(''); load(true, '', source, order, 0); };
-  const handleSource  = src  => { setSource(src);  load(true, appliedSearch, src, order, 0); };
+  const handleSearch = () => {
+    setAppliedSearch(searchInput);
+    setMuseum('');
+    setCollection(COLLECTIONS[0]);
+    load(true, searchInput, '', order, null, 0);
+  };
+  const handleClear = () => {
+    setSearchInput(''); setAppliedSearch('');
+    load(true, '', museum, order, collection, 0);
+  };
+  const handleCollection = coll => {
+    setCollection(coll); setMuseum(''); setAppliedSearch(''); setSearchInput('');
+    load(true, '', '', order, coll, 0);
+  };
+  const handleMuseum = src => {
+    const next = src === museum ? '' : src;
+    setMuseum(next); setAppliedSearch(''); setSearchInput('');
+    load(true, '', next, order, next ? null : collection, 0);
+  };
   const handleShuffle = () => {
     const next = order === 'random' ? 'recent' : 'random';
     setOrder(next);
-    load(true, appliedSearch, source, next, 0);
+    load(true, appliedSearch, museum, next, collection, 0);
   };
-  const handleLoadMore = () => load(false, appliedSearch, source, order, works.length);
+  const handleLoadMore = () => load(false, appliedSearch, museum, order, collection, works.length);
 
   const hero = works[heroIdx % Math.max(works.length, 1)];
+  const galleryLabel = appliedSearch
+    ? `"${appliedSearch}"`
+    : museum
+      ? fmt(museum)
+      : collection.label === 'All' ? 'The Collection' : collection.label;
 
   return (
     <>
@@ -312,6 +341,7 @@ export default function Home() {
           {appliedSearch && <button className="btn btn-icon" onClick={handleClear} title="Clear">×</button>}
         </div>
         {total !== null && <span className="nav-count">{Number(total).toLocaleString()} works</span>}
+        <a href="/viewer" className="nav-link">Browse by Museum →</a>
       </nav>
 
       {/* HERO */}
@@ -345,56 +375,45 @@ export default function Home() {
         </div>
       )}
 
-      {/* FILTER BAR */}
-      <div className="filter-bar" id="gallery">
-        {MUSEUMS.map(m => {
-          const cnt = status?.sources?.find(s => s.source === m.key)?.count;
-          return (
-            <button
-              key={m.key}
-              className={`filter-chip${source === m.key ? ' active' : ''}`}
-              onClick={() => handleSource(m.key)}
-            >
-              {m.label}
-              {m.key !== 'all' && cnt != null && <span className="chip-count">{abbr(cnt)}</span>}
-            </button>
-          );
-        })}
+      {/* COLLECTION FILTER BAR */}
+      <div className="coll-bar" id="gallery">
+        {COLLECTIONS.map(c => (
+          <button
+            key={c.label}
+            className={`coll-chip${collection.label === c.label && !museum && !appliedSearch ? ' active' : ''}`}
+            onClick={() => handleCollection(c)}
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
 
-      {/* SYNC STATUS BAR */}
-      {status?.sources?.length > 0 && (
-        <div className="sync-bar">
-          <span className="sync-summary">
-            {status.sources.length} sources · synced {timeAgo(status.lastSync)}
-          </span>
-          <div className="sync-sources">
-            {status.sources.map(s => {
-              const fresh = s.lastSync && (Date.now() - new Date(s.lastSync).getTime()) < 48 * 3600 * 1000;
-              return (
-                <span key={s.source} className="sync-source">
-                  <span className={`sync-dot${fresh ? ' ok' : ' stale'}`} />
-                  <span className="sync-name">{fmt(s.source)}</span>
-                  <span>{abbr(s.count)}</span>
-                </span>
-              );
-            })}
-          </div>
-        </div>
-      )}
+      {/* MUSEUM FILTER BAR */}
+      <div className="museum-bar">
+        {MUSEUMS.map(m => (
+          <button
+            key={m.key}
+            className={`museum-chip${museum === m.key ? ' active' : ''}`}
+            onClick={() => handleMuseum(m.key)}
+          >
+            {m.label}
+          </button>
+        ))}
+      </div>
 
       {/* GALLERY HEADER */}
       <div className="gallery-header">
         <h2 className="gallery-title">
-          {source === 'all' ? 'The Collection' : fmt(source)}
-          {total !== null && <span> — {Number(total).toLocaleString()}+ works</span>}
+          {galleryLabel}
+          {total !== null && !appliedSearch && !museum && collection.label === 'All' && (
+            <span> — {Number(total).toLocaleString()}+ works</span>
+          )}
         </h2>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {appliedSearch && <p className="gallery-meta">Results for "{appliedSearch}"</p>}
+          {appliedSearch && <p className="gallery-meta">Search results</p>}
           <button
             className={`btn-shuffle${order === 'random' ? ' active' : ''}`}
             onClick={handleShuffle}
-            title={order === 'random' ? 'Back to recent' : 'Shuffle'}
           >
             ↺ {order === 'random' ? 'Shuffled' : 'Shuffle'}
           </button>
@@ -467,25 +486,49 @@ export default function Home() {
 
       {/* FOOTER */}
       <footer>
-        <div className="footer-grid">
-          <div>
-            <div className="footer-logo">Public Art <span>Collections</span></div>
-            <p className="footer-desc">Museum-quality art for every home. All works public domain — ethically sourced from the world's great collections.</p>
+        <div className="footer-inner">
+          <div className="footer-grid">
+            <div>
+              <div className="footer-logo">Public Art <span>Collections</span></div>
+              <p className="footer-desc">Museum-quality art for every home. All works public domain — ethically sourced from the world's great collections.</p>
+            </div>
+            <div>
+              <div className="footer-col-title">Collections</div>
+              {['All Museums', 'Impressionism', 'Baroque', 'Renaissance', 'Modern Art', 'Photography'].map(c => (
+                <button
+                  key={c}
+                  className="footer-link"
+                  onClick={() => {
+                    const match = COLLECTIONS.find(x => x.label === c);
+                    if (match) handleCollection(match);
+                    else handleSearch();
+                    document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <div>
+              <div className="footer-col-title">Museums</div>
+              {MUSEUMS.slice(0, 8).map(m => (
+                <button key={m.key} className="footer-link" onClick={() => handleMuseum(m.key)}>{m.label}</button>
+              ))}
+              <a href="/viewer" className="footer-link">All museums →</a>
+            </div>
+            <div>
+              <div className="footer-col-title">Info</div>
+              <a href="/viewer" className="footer-link">Museum Viewer</a>
+              <a href="/api/artworks" className="footer-link">API Access</a>
+              <a className="footer-link" href="#">How Prints Work</a>
+              <a className="footer-link" href="#">Shipping &amp; Returns</a>
+              <a className="footer-link" href="#">About</a>
+            </div>
           </div>
-          <div>
-            <div className="footer-col-title">Collections</div>
-            {MUSEUMS.slice(1).map(m => (
-              <button key={m.key} className="footer-link" onClick={() => handleSource(m.key)}>{m.label}</button>
-            ))}
-          </div>
-          <div>
-            <div className="footer-col-title">Info</div>
-            <a href="/api/artworks" className="footer-link">API Access</a>
-            <a href="#" className="footer-link">How Prints Work</a>
-            <a href="#" className="footer-link">Shipping &amp; Returns</a>
+          <div className="footer-bottom">
+            © 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful · Ships worldwide
           </div>
         </div>
-        <div className="footer-bottom">© 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful</div>
       </footer>
 
       {/* MODAL */}
@@ -507,10 +550,10 @@ export default function Home() {
               </div>
               <div className="modal-detail">
                 <div className="modal-museum">{fmt(modal.source)}</div>
-                <h2 className="modal-title">{modal.title}</h2>
-                <p className="modal-artist">
+                <div className="modal-title">{modal.title}</div>
+                <div className="modal-artist">
                   {[modal.artist, modal.date_text].filter(Boolean).join(' · ') || 'Unknown artist'}
-                </p>
+                </div>
                 <div className="divider" />
                 <div className="meta-grid">
                   {modal.medium && <div className="meta-item"><label>Medium</label><span>{modal.medium}</span></div>}
@@ -520,23 +563,27 @@ export default function Home() {
                 {modal.bio && (
                   <>
                     <div className="divider" />
-                    <p className="modal-bio">{modal.bio.slice(0, 340)}</p>
+                    <p className="modal-bio">{modal.bio.slice(0, 300)}</p>
                   </>
                 )}
                 <div className="divider" />
-                <div className="products-label">Order as</div>
-                <div className="products-grid">
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em', color: '#8A8178', marginBottom: 10 }}>Order as</div>
+                <div className="prod-grid">
                   {PRODUCTS.map(p => (
-                    <button key={p.name} className="prod">
-                      <span className="prod-icon">{p.icon}</span>
-                      {p.name}<br />
-                      <span className="prod-price">{p.price}</span>
-                    </button>
+                    <div
+                      key={p.name}
+                      className="prod-item"
+                      onClick={() => window.location.href = `/shop?product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}`}
+                    >
+                      <div className="prod-emoji">{p.emoji}</div>
+                      <div className="prod-name">{p.name}</div>
+                      <div className="prod-price">{p.price}</div>
+                    </div>
                   ))}
                 </div>
+                <div className="divider" />
                 <div className="modal-cta">
-                  <button className="cta-btn cta-primary">Order a Print →</button>
-                  <a href={`/artwork/${modal.id}`} className="cta-btn cta-secondary">View full page →</a>
+                  <a href={`/artwork/${modal.id}`} className="cta-btn cta-primary">View full page →</a>
                   {modal.detail_url && (
                     <a href={modal.detail_url} target="_blank" rel="noopener noreferrer" className="cta-btn cta-secondary">
                       View on museum website ↗
