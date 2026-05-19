@@ -12,12 +12,30 @@ const COLLECTIONS = [
 ];
 
 const PRODUCTS = [
-  { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18' },
-  { emoji: '🎨', name: 'Canvas Wrap',    price: 'from $45' },
-  { emoji: '👕', name: 'T-Shirt',        price: 'from $24' },
-  { emoji: '☕', name: 'Mug',            price: 'from $14' },
-  { emoji: '📱', name: 'Phone Case',     price: 'from $19' },
-  { emoji: '🛍️', name: 'Tote Bag',       price: 'from $16' },
+  { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18',
+    sizes: ['8×10"', '11×14"', '16×20"', '24×30"'],
+    materials: ['Archival Matte', 'Photo Gloss', 'Fine Art Cotton'],
+    frames: [null, 'Black', 'White', 'Natural Wood'] },
+  { emoji: '🎨', name: 'Canvas Wrap', price: 'from $45',
+    sizes: ['12×16"', '16×20"', '20×24"', '24×30"'],
+    materials: ['Gallery Canvas', 'Premium Canvas'],
+    frames: null },
+  { emoji: '👕', name: 'T-Shirt', price: 'from $24',
+    sizes: ['S', 'M', 'L', 'XL', '2XL'],
+    materials: ['100% Cotton', 'Tri-blend'],
+    frames: null },
+  { emoji: '☕', name: 'Mug', price: 'from $14',
+    sizes: ['11oz', '15oz'],
+    materials: ['Ceramic'],
+    frames: null },
+  { emoji: '📱', name: 'Phone Case', price: 'from $19',
+    sizes: ['iPhone 15', 'iPhone 14', 'Samsung S24', 'Pixel 8'],
+    materials: ['Tough', 'Slim'],
+    frames: null },
+  { emoji: '🛍️', name: 'Tote Bag', price: 'from $16',
+    sizes: ['Standard'],
+    materials: ['Natural Canvas', 'Black Canvas'],
+    frames: null },
 ];
 
 const MUSEUMS = [
@@ -257,12 +275,13 @@ export default function Home() {
   const [heroIdx, setHeroIdx]           = useState(0);
   const [heroFading, setHeroFading]     = useState(false);
   const [imgErrors, setImgErrors]       = useState({});
-  const [activeTab, setActiveTab]       = useState(null);
+  const [activeTab, setActiveTab]             = useState(null);
+  const [selected, setSelected]               = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [selectedSize, setSelectedSize]       = useState(null);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [selectedFrame, setSelectedFrame]     = useState(null);
   const [quantity, setQuantity]               = useState(1);
-  const [orderWork, setOrderWork]             = useState('');
-  const [orderImg, setOrderImg]               = useState('');
 
   const load = useCallback(async (reset, q, src, ord, coll, currentOffset = 0) => {
     const off = reset ? 0 : currentOffset;
@@ -311,18 +330,30 @@ export default function Home() {
   }, [modal]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('order') === '1') {
-      const productName = params.get('product');
-      const work = params.get('work') || '';
-      const img  = params.get('img')  || '';
-      const found = PRODUCTS.find(p => p.name === productName) || PRODUCTS[0];
-      setSelectedProduct(found);
-      setSelectedFrame(found.frames?.[0] || null);
-      setQuantity(1);
-      setOrderWork(work);
-      setOrderImg(img);
-      setActiveTab('order');
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('order') === '1') {
+        const productName = params.get('product');
+        const work = params.get('work') || '';
+        const img  = params.get('img')  || '';
+        const found = PRODUCTS.find(p => p.name === productName) || PRODUCTS[0];
+        const fakeWork = {
+          title: work,
+          thumb_url: img,
+          full_url: img,
+          source: '',
+          artist: '',
+          rights_label: 'CC0'
+        };
+        setSelected(fakeWork);
+        setSelectedProduct(found);
+        setSelectedSize(found.sizes[1] || found.sizes[0]);
+        setSelectedMaterial(found.materials[0]);
+        setSelectedFrame(found.frames?.[0] || null);
+        setQuantity(1);
+        setActiveTab('order');
+        window.history.replaceState({}, '', '/');
+      }
     }
   }, []);
 
@@ -383,13 +414,17 @@ export default function Home() {
       </nav>
 
       {/* ORDER BANNER */}
-      {activeTab === 'order' && selectedProduct && (
+      {activeTab === 'order' && selectedProduct && selected && (
         <div className="order-banner">
-          {orderImg && <img src={orderImg} alt={orderWork} className="order-banner-img" onError={e => { e.target.style.display = 'none'; }} />}
+          {selected.thumb_url && <img src={selected.thumb_url} alt={selected.title} className="order-banner-img" onError={e => { e.target.style.display = 'none'; }} />}
           <div className="order-banner-info">
             <div className="order-banner-label">Ordering as {selectedProduct.emoji} {selectedProduct.name}</div>
-            <div className="order-banner-work">{orderWork || 'Selected artwork'}</div>
-            <div className="order-banner-prod">{selectedProduct.price} · Public domain · Ships worldwide</div>
+            <div className="order-banner-work">{selected.title || 'Selected artwork'}</div>
+            <div className="order-banner-prod">
+              {selectedSize && <span>{selectedSize} · </span>}
+              {selectedMaterial && <span>{selectedMaterial} · </span>}
+              {selectedProduct.price} · Public domain · Ships worldwide
+            </div>
           </div>
           <div className="order-banner-actions">
             <div className="order-qty">
