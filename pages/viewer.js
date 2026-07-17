@@ -4,6 +4,10 @@ const OSD_VERSION = '4.1.0';
 const OSD_SRC = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_VERSION}/openseadragon.min.js`;
 const OSD_PREFIX = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_VERSION}/images/`;
 
+// Trade-access PIN gating the order UI. NOTE: this is a client-side soft gate only —
+// the value ships in the browser bundle and is trivially bypassable. Change as needed.
+const SHOP_PIN = '2025';
+
 const REGIONS = [
   {
     region: 'United States',
@@ -299,10 +303,34 @@ export default function Viewer() {
   const [zoomOpen, setZoomOpen]     = useState(false); // OpenSeadragon IIIF viewer open
   const osdRef  = useRef(null);
   const osdInst = useRef(null);
+  const [shopUnlocked, setShopUnlocked] = useState(false);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinInput, setPinInput]         = useState('');
+  const [pinError, setPinError]         = useState('');
+
+  function checkPin() {
+    if (pinInput === SHOP_PIN) {
+      setShopUnlocked(true);
+      setShowPinModal(false);
+      setPinInput('');
+      setPinError('');
+      if (typeof window !== 'undefined') sessionStorage.setItem('shopUnlocked', 'true');
+    } else {
+      setPinError('Incorrect PIN. Please try again.');
+      setPinInput('');
+    }
+  }
 
   useEffect(() => {
     document.title = 'World Museum Viewer — Public Art Collections';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotalDb(d.total));
+  }, []);
+
+  // Restore trade-access unlock for the session.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && sessionStorage.getItem('shopUnlocked') === 'true') {
+      setShopUnlocked(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -620,20 +648,38 @@ export default function Viewer() {
                 </>
               )}
               <div className="divider" />
-              <div className="prod-label">Order as</div>
-              <div className="prod-grid">
-                {PRODUCTS.map(p => (
-                  <div
-                    key={p.name}
-                    className="prod-item"
-                    onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}&print=${encodeURIComponent(modal.print_url || modal.full_url || modal.thumb_url || '')}`}
-                  >
-                    <div className="prod-emoji">{p.emoji}</div>
-                    <div className="prod-name">{p.name}</div>
-                    <div className="prod-price">{p.price}</div>
+              {shopUnlocked ? (
+                <>
+                  <div className="prod-label">Order as</div>
+                  <div className="prod-grid">
+                    {PRODUCTS.map(p => (
+                      <div
+                        key={p.name}
+                        className="prod-item"
+                        onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}&print=${encodeURIComponent(modal.print_url || modal.full_url || modal.thumb_url || '')}`}
+                      >
+                        <div className="prod-emoji">{p.emoji}</div>
+                        <div className="prod-name">{p.name}</div>
+                        <div className="prod-price">{p.price}</div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </>
+              ) : (
+                <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'20px 12px',textAlign:'center'}}>
+                  <div style={{fontSize:40,marginBottom:12}}>🔒</div>
+                  <div style={{fontFamily:'Cormorant Garamond,Georgia,serif',fontSize:22,fontWeight:300,marginBottom:8,color:'#1A1714'}}>
+                    Trade access only
+                  </div>
+                  <p style={{fontSize:13,color:'#8A8178',marginBottom:20,lineHeight:1.6,maxWidth:280}}>
+                    Ordering is available to authorized trade members. Enter your PIN to access the print shop.
+                  </p>
+                  <button onClick={() => setShowPinModal(true)}
+                    style={{background:'#B8942A',color:'#1A1714',border:'none',padding:'12px 28px',borderRadius:4,fontSize:14,fontWeight:600,cursor:'pointer',fontFamily:'system-ui'}}>
+                    Enter PIN →
+                  </button>
+                </div>
+              )}
               <div className="divider" />
               <div className="modal-links">
                 <a href={`/artwork/${modal.id}`} className="mlink mlink-primary">View full page →</a>
@@ -644,6 +690,40 @@ export default function Viewer() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PIN MODAL — trade access */}
+      {showPinModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:500,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#FAF8F4',borderRadius:12,padding:40,maxWidth:360,width:'100%',textAlign:'center',boxShadow:'0 8px 48px rgba(0,0,0,0.3)'}}>
+            <div style={{fontSize:40,marginBottom:16}}>🔐</div>
+            <div style={{fontFamily:'Cormorant Garamond,Georgia,serif',fontSize:24,fontWeight:300,marginBottom:8,color:'#1A1714'}}>Enter your PIN</div>
+            <p style={{fontSize:13,color:'#8A8178',marginBottom:20}}>Enter your trade access PIN to unlock ordering</p>
+            <input
+              type="password"
+              value={pinInput}
+              onChange={e => setPinInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && checkPin()}
+              placeholder="Enter PIN"
+              autoFocus
+              style={{width:'100%',padding:'12px 16px',border:'0.5px solid rgba(26,23,20,0.25)',borderRadius:4,fontSize:18,textAlign:'center',letterSpacing:'0.3em',marginBottom:8,fontFamily:'system-ui',background:'#FAF8F4',color:'#1A1714'}}
+            />
+            {pinError && <p style={{color:'#dc2626',fontSize:12,marginBottom:8}}>{pinError}</p>}
+            <div style={{display:'flex',gap:8,marginTop:12}}>
+              <button onClick={() => { setShowPinModal(false); setPinInput(''); setPinError(''); }}
+                style={{flex:1,background:'transparent',color:'#8A8178',border:'0.5px solid rgba(26,23,20,0.25)',padding:'10px',borderRadius:4,fontSize:13,cursor:'pointer',fontFamily:'system-ui'}}>
+                Cancel
+              </button>
+              <button onClick={checkPin}
+                style={{flex:1,background:'#1A1714',color:'#FAF8F4',border:'none',padding:'10px',borderRadius:4,fontSize:13,fontWeight:600,cursor:'pointer',fontFamily:'system-ui'}}>
+                Unlock →
+              </button>
+            </div>
+            <p style={{fontSize:11,color:'#8A8178',marginTop:16}}>
+              Don&apos;t have a PIN? <a href="mailto:hello@publicartcollections.org" style={{color:'#B8942A'}}>Request trade access</a>
+            </p>
           </div>
         </div>
       )}
