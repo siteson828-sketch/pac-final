@@ -111,11 +111,12 @@ async function syncCleveland(sql) {
   return await upsert(sql,works);
 }
 
-async function syncRijks(sql) {
+async function syncRijks(sql, offset=0) {
   const works = [];
   const seen = new Set();
   // Rijksmuseum API requires a paid key; use Wikidata SPARQL instead (free, CC0 images via Wikimedia Commons)
-  for (let offset=0; offset<200000; offset+=1000) {
+  // Offset-chunked: one bounded window (2000 records) per call so it never times out.
+  {
     try {
       const query = `
         SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
@@ -126,13 +127,12 @@ async function syncRijks(sql) {
           OPTIONAL { ?item wdt:P571 ?date. }
           SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
         }
-        LIMIT 1000 OFFSET ${offset}
+        LIMIT 2000 OFFSET ${offset}
       `;
       const d = await fetchJson(
         `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
       );
       const bindings = d.results?.bindings||[];
-      if (!bindings.length) break;
       for (const r of bindings) {
         const qid = r.item?.value.split('/').pop();
         if (seen.has(qid)) continue;
@@ -158,18 +158,18 @@ async function syncRijks(sql) {
           bio:'Rijksmuseum, Amsterdam.'
         });
       }
-      await sleep(1000);
-    } catch(e) { break; }
+    } catch(e) {}
   }
   return upsert(sql, works);
 }
 
-async function syncSMK(sql) {
+async function syncSMK(sql, offset=0) {
+  // Offset-chunked: one bounded window (30 pages ≈ 3000 records) per call.
   const works = [];
-  for (let offset=0; offset<15000; offset+=100) {
+  for (let o=offset; o<offset+3000; o+=100) {
     try {
       const d = await fetchJson(
-        `https://api.smk.dk/api/v1/art/search?keys=*&has_image=true&offset=${offset}&rows=100&filters=public_domain:true`
+        `https://api.smk.dk/api/v1/art/search?keys=*&has_image=true&offset=${o}&rows=100&filters=public_domain:true`
       );
       const items = d.items||[];
       if (!items.length) break;
@@ -204,9 +204,11 @@ async function syncSMK(sql) {
   return upsert(sql,works);
 }
 
-async function syncVAM(sql) {
+async function syncVAM(sql, offset=0) {
+  // Offset-chunked: `offset` is a record offset; process 30 pages (≈3000 records) per call.
   const works = [];
-  for (let page=1; page<=200; page++) {
+  const startPage = Math.floor(offset/100) + 1;
+  for (let page=startPage; page<startPage+30; page++) {
     try {
       const d = await fetchJson(`https://api.vam.ac.uk/v2/objects/search?images_exist=1&page_size=100&page=${page}&q=art`);
       const items = d.records||[];
@@ -229,7 +231,8 @@ async function syncVAM(sql) {
   return await upsert(sql,works);
 }
 
-async function syncEuropeana(sql, key) {
+async function syncEuropeana(sql, key, offset=0) {
+  // Offset-chunked: `offset` is a starting index into the query list; process 5 queries per call.
   if (!key) return 0;
   const works = [];
   const queries = [
@@ -237,7 +240,8 @@ async function syncEuropeana(sql, key) {
     'watercolor','engraving','etching','miniature','fresco',
     'tapestry','mosaic','icon','altarpiece','print'
   ];
-  for (const q of queries) {
+  for (let qi = offset; qi < offset + 5 && qi < queries.length; qi++) {
+    const q = queries[qi];
     for (let start = 1; start <= 1000; start += 100) {
       try {
         const url = 'https://api.europeana.eu/record/v2/search.json' +
@@ -324,7 +328,8 @@ async function syncHarvard(sql) {
   return syncWikidataMuseum(sql, 'Q847508', 'Harvard Art Museums');
 }
 
-async function syncInternetArchive(sql) {
+async function syncInternetArchive(sql, offset=0) {
+  // Offset-chunked: `offset` is a starting index into the query list; process 2 queries per call.
   const works = [];
   const seen = new Set();
   const queries = [
@@ -337,7 +342,8 @@ async function syncInternetArchive(sql) {
     'subject:(etching) AND mediatype:image',
     'subject:(illustration) AND mediatype:image',
   ];
-  for (const q of queries) {
+  for (let qi = offset; qi < offset + 2 && qi < queries.length; qi++) {
+    const q = queries[qi];
     for (let page = 0; page < 5; page++) {
       try {
         const url = 'https://archive.org/advancedsearch.php?q=' +
@@ -426,53 +432,53 @@ async function syncWikidataGlobal(sql, offset = 0) {
   return await upsert(sql, works);
 }
 
-async function syncWikidataMuseum(sql, qid, sourceName) {
+// Single bounded window per call (LIMIT 5000 OFFSET offset). Offset-chunked like
+// syncWikidataGlobal: one call = one query, so it never approaches the 300s limit.
+// Museum P195 collections are almost always < 5000 items, so offset=0 captures all;
+// larger ones are covered by additional cron calls at offset 5000, 10000, ...
+async function syncWikidataMuseum(sql, qid, sourceName, offset=0) {
   const works = [];
   const seen = new Set();
-  for (let offset=0; offset<25000; offset+=5000) {
-    try {
-      const query = `
-        SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
-          ?item wdt:P195 wd:${qid};
-                wdt:P18 ?image.
-          OPTIONAL { ?item wdt:P217 ?inv. }
-          OPTIONAL { ?item wdt:P170 ?creator. }
-          OPTIONAL { ?item wdt:P571 ?date. }
-          SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-        }
-        LIMIT 5000 OFFSET ${offset}
-      `;
-      const d = await fetchJson(
-        `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
-      );
-      const bindings = d.results?.bindings||[];
-      if (!bindings.length) break;
-      for (const r of bindings) {
-        const qidItem = r.item?.value.split('/').pop();
-        if (seen.has(qidItem)) continue;
-        seen.add(qidItem);
-        const imgRaw = r.image?.value||'';
-        if (!imgRaw) continue;
-        const imgHttps = imgRaw.replace('http://', 'https://');
-        const thumb = `${imgHttps}?width=400`;
-        const full  = `${imgHttps}?width=1200`;
-        const inv   = r.inv?.value||qidItem;
-        const year  = r.date?.value ? r.date.value.replace(/^\+/,'').substring(0,4) : '';
-        const creator = r.creatorLabel?.value||'';
-        works.push({
-          source: sourceName, source_id: inv,
-          title: r.itemLabel?.value||'Untitled',
-          artist: creator.match(/^Q\d+$/) ? '' : creator,
-          date_text: year, medium: '', department: '',
-          thumb_url: thumb, full_url: full,
-          iiif_manifest: '',
-          detail_url: `https://www.wikidata.org/wiki/${qidItem}`,
-          bio: `${sourceName}.`
-        });
+  try {
+    const query = `
+      SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
+        ?item wdt:P195 wd:${qid};
+              wdt:P18 ?image.
+        OPTIONAL { ?item wdt:P217 ?inv. }
+        OPTIONAL { ?item wdt:P170 ?creator. }
+        OPTIONAL { ?item wdt:P571 ?date. }
+        SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
       }
-      await sleep(1000);
-    } catch(e) { break; }
-  }
+      LIMIT 5000 OFFSET ${offset}
+    `;
+    const d = await fetchJson(
+      `https://query.wikidata.org/sparql?format=json&query=${encodeURIComponent(query)}`
+    );
+    const bindings = d.results?.bindings||[];
+    for (const r of bindings) {
+      const qidItem = r.item?.value.split('/').pop();
+      if (seen.has(qidItem)) continue;
+      seen.add(qidItem);
+      const imgRaw = r.image?.value||'';
+      if (!imgRaw) continue;
+      const imgHttps = imgRaw.replace('http://', 'https://');
+      const thumb = `${imgHttps}?width=400`;
+      const full  = `${imgHttps}?width=1200`;
+      const inv   = r.inv?.value||qidItem;
+      const year  = r.date?.value ? r.date.value.replace(/^\+/,'').substring(0,4) : '';
+      const creator = r.creatorLabel?.value||'';
+      works.push({
+        source: sourceName, source_id: inv,
+        title: r.itemLabel?.value||'Untitled',
+        artist: creator.match(/^Q\d+$/) ? '' : creator,
+        date_text: year, medium: '', department: '',
+        thumb_url: thumb, full_url: full,
+        iiif_manifest: '',
+        detail_url: `https://www.wikidata.org/wiki/${qidItem}`,
+        bio: `${sourceName}.`
+      });
+    }
+  } catch(e) {}
   return upsert(sql, works);
 }
 
@@ -517,11 +523,13 @@ async function syncMia(sql) {
   return upsert(sql, works);
 }
 
-async function syncLOC(sql) {
+async function syncLOC(sql, offset=0) {
+  // Offset-chunked: `offset` is a starting index into the term list; process 2 terms per call.
   const works = [];
   const seen = new Set();
   const terms = ['painting','portrait','landscape','drawing','print'];
-  for (const q of terms) {
+  for (let ti=offset; ti<offset+2 && ti<terms.length; ti++) {
+    const q = terms[ti];
     for (let page=1; page<=20; page++) {
       try {
         const d = await fetchJson(
@@ -559,10 +567,12 @@ async function syncLOC(sql) {
   return upsert(sql, works);
 }
 
-async function syncBnF(sql) {
+async function syncBnF(sql, offset=0) {
+  // Offset-chunked: `offset` is a startRecord value (1-based); process 20 pages (≈1000 records) per call.
   const works = [];
   const seen = new Set();
-  for (let start=1; start<=5000; start+=50) {
+  const start0 = offset || 1;
+  for (let start=start0; start<start0+1000; start+=50) {
     try {
       const res = await fetch(
         `https://gallica.bnf.fr/SRU?operation=searchRetrieve&version=1.2&query=dc.type+all+%22image%22+and+dc.rights+all+%22domaine+public%22&maximumRecords=50&startRecord=${start}&collapsing=disabled`,
@@ -756,12 +766,14 @@ async function syncTePapa(sql) {
   return upsert(sql, works);
 }
 
-async function syncDPLA(sql, key) {
+async function syncDPLA(sql, key, offset=0) {
+  // Offset-chunked: `offset` is a starting index into the term list; process 2 terms per call.
   if (!key) return 0;
   const works = [];
   const seen = new Set();
   const terms = ['painting','drawing','sculpture','photograph','print','textile','watercolor','portrait','landscape','still life'];
-  for (const q of terms) {
+  for (let ti=offset; ti<offset+2 && ti<terms.length; ti++) {
+    const q = terms[ti];
     for (let page=1; page<=10; page++) {
       try {
         const d = await fetchJson(
@@ -819,21 +831,21 @@ export default async function handler(req, res) {
   if (src==='met'        ||src==='all') await run('Met Museum',         () => syncMet(sql));
   if (src==='artic'      ||src==='all') await run('Art Inst. Chicago',  () => syncArtic(sql));
   if (src==='cleveland'  ||src==='all') await run('Cleveland',          () => syncCleveland(sql));
-  if (src==='rijks'      ||src==='all') await run('Rijksmuseum',        () => syncRijks(sql));
-  if (src==='smk'        ||src==='all') await run('SMK Denmark',        () => syncSMK(sql));
-  if (src==='vam'        ||src==='all') await run('V&A Museum',         () => syncVAM(sql));
-  if (src==='europeana'  ||src==='all') await run('Europeana',          () => syncEuropeana(sql, process.env.EUROPEANA_KEY));
+  if (src==='rijks'      ||src==='all') await run('Rijksmuseum',        () => syncRijks(sql, offset));
+  if (src==='smk'        ||src==='all') await run('SMK Denmark',        () => syncSMK(sql, offset));
+  if (src==='vam'        ||src==='all') await run('V&A Museum',         () => syncVAM(sql, offset));
+  if (src==='europeana'  ||src==='all') await run('Europeana',          () => syncEuropeana(sql, process.env.EUROPEANA_KEY, offset));
   if (src==='smithsonian'||src==='all') await run('Smithsonian',        () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
   if (src==='harvard'    ||src==='all') await run('Harvard',            () => syncHarvard(sql));
   if (src==='getty'      ||src==='all') await run('Getty Museum',       () => syncWikidataMuseum(sql, 'Q1700481', 'Getty Museum'));
   if (src==='walters'    ||src==='all') await run('Walters Art Museum', () => syncWikidataMuseum(sql, 'Q210081',  'Walters Art Museum'));
   if (src==='mia'        ||src==='all') await run('Minneapolis Inst. of Art', () => syncMia(sql));
-  if (src==='yale'       ||src==='all') await run('Yale Art Gallery',   () => syncWikidataMuseum(sql, 'Q1568434', 'Yale University Art Gallery'));
-  if (src==='loc'        ||src==='all') await run('Library of Congress',() => syncLOC(sql));
-  if (src==='bnf'        ||src==='all') await run('BnF Gallica',        () => syncBnF(sql));
+  if (src==='yale'       ||src==='all') await run('Yale Art Gallery',   () => syncWikidataMuseum(sql, 'Q1568434', 'Yale University Art Gallery', offset));
+  if (src==='loc'        ||src==='all') await run('Library of Congress',() => syncLOC(sql, offset));
+  if (src==='bnf'        ||src==='all') await run('BnF Gallica',        () => syncBnF(sql, offset));
   if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql));
   if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));
-  if (src==='dpla'       ||src==='all') await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY));
+  if (src==='dpla'       ||src==='all') await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY, offset));
   if (src==='tepapa'     ||src==='all') await run('Te Papa',            () => syncTePapa(sql));
   if (src==='louvre'     ||src==='all') await run('Louvre',             () => syncWikidataMuseum(sql, 'Q19675',   'Louvre'));
   if (src==='british'    ||src==='all') await run('British Museum',     () => syncWikidataMuseum(sql, 'Q6373',    'British Museum'));
@@ -844,7 +856,7 @@ export default async function handler(req, res) {
   if (src==='uffizi'     ||src==='all') await run('Uffizi',             () => syncWikidataMuseum(sql, 'Q51252',   'Uffizi'));
   if (src==='hermitage'  ||src==='all') await run('Hermitage',          () => syncWikidataMuseum(sql, 'Q132783',  'Hermitage'));
   if (src==='moma'       ||src==='all') await run('MoMA',               () => syncWikidataMuseum(sql, 'Q188740',  'MoMA'));
-  if (src==='rijkswiki'  ||src==='all') await run('Rijksmuseum (Wiki)', () => syncWikidataMuseum(sql, 'Q190804',  'Rijksmuseum Amsterdam'));
+  if (src==='rijkswiki'  ||src==='all') await run('Rijksmuseum (Wiki)', () => syncWikidataMuseum(sql, 'Q190804',  'Rijksmuseum Amsterdam', offset));
   if (src==='khm'        ||src==='all') await run('KHM Vienna',         () => syncWikidataMuseum(sql, 'Q95569',   'Kunsthistorisches Museum'));
   if (src==='cluny'      ||src==='all') await run('Musée de Cluny',     () => syncWikidataMuseum(sql, 'Q1536',    'Musée de Cluny'));
   if (src==='vawiki'     ||src==='all') await run('V&A (Wiki)',          () => syncWikidataMuseum(sql, 'Q213322',  'Victoria and Albert Museum'));
@@ -962,8 +974,10 @@ export default async function handler(req, res) {
   if (src==='agnsw'      ||src==='all') await run('AGNSW',                () => syncWikidataMuseum(sql, 'Q705551',  'Art Gallery of New South Wales'));
   if (src==='safrica'    ||src==='all') await run('South African Nat.Gal',() => syncWikidataMuseum(sql, 'Q1419469', 'South African National Gallery'));
   // NOTE: 'india' (National Museum, New Delhi) and 'nigeria' (National Museum, Lagos) intentionally
-  // NOT added — QIDs could not be reliably verified against Wikidata. Add once confirmed.
-  if (src==='internetarchive'||src==='all') await run('Internet Archive', () => syncInternetArchive(sql));
+  // NOT added. Candidate QIDs failed label verification against Wikidata:
+  //   india Q1341873 -> "Semion Braude" (astronomer, 0 artworks); nigeria Q1068388 -> "Zeta Ophiuchi" (star, 0 artworks).
+  // Add real museum QIDs (verified P195 collections with P18 images) once confirmed.
+  if (src==='internetarchive'||src==='all') await run('Internet Archive', () => syncInternetArchive(sql, offset));
   if (src==='wikidataglobal') await run(`Wikidata Global (offset ${offset})`, () => syncWikidataGlobal(sql, offset));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });

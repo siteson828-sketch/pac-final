@@ -35,6 +35,11 @@
     { "path": "/api/sync?source=wikidataglobal&offset=10000", "schedule": "10 * * * *" },
     { "path": "/api/sync?source=wikidataglobal&offset=20000", "schedule": "20 * * * *" },
     { "path": "/api/sync?source=wikidataglobal&offset=30000", "schedule": "30 * * * *" },
-    { "path": "/api/sync?source=internetarchive",             "schedule": "0 4 * * *"  }
+    { "path": "/api/sync?source=internetarchive",             "schedule": "0 4 * * *"  },
+    { "path": "/api/sync-museums?group=1",                     "schedule": "15 1 * * *" },
+    { "path": "/api/sync-museums?group=2",                     "schedule": "45 1 * * *" },
+    { "path": "/api/sync-museums?group=3",                     "schedule": "15 2 * * *" },
+    { "path": "/api/sync-heavy?group=1",                       "schedule": "30 5 * * *" },
+    { "path": "/api/sync-heavy?group=2",                       "schedule": "30 6 * * *" }
   ]
 }
