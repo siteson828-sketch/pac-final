@@ -40,6 +40,9 @@
     { "path": "/api/sync-museums?group=2",                     "schedule": "45 1 * * *" },
     { "path": "/api/sync-museums?group=3",                     "schedule": "15 2 * * *" },
     { "path": "/api/sync-heavy?group=1",                       "schedule": "30 5 * * *" },
-    { "path": "/api/sync-heavy?group=2",                       "schedule": "30 6 * * *" }
+    { "path": "/api/sync-heavy?group=2",                       "schedule": "30 6 * * *" },
+    { "path": "/api/sync-heavy?group=3",                       "schedule": "30 7 * * *" },
+    { "path": "/api/sync-heavy?group=4",                       "schedule": "30 8 * * *" },
+    { "path": "/api/sync-heavy?group=5",                       "schedule": "30 9 * * *" }
   ]
 }

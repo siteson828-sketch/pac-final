@@ -18,7 +18,7 @@ const CHUNKS = [
   ['dpla', 0], ['dpla', 2], ['dpla', 4], ['dpla', 6], ['dpla', 8],
   ['internetarchive', 0], ['internetarchive', 2], ['internetarchive', 4], ['internetarchive', 6],
 ];
-const GROUPS = 2;
+const GROUPS = 5;
 
 export default async function handler(req, res) {
   const cronAuth = req.headers['authorization'];
