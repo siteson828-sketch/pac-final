@@ -34,7 +34,12 @@ export default async function handler(req, res) {
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' ORDER BY RANDOM() LIMIT ${lim}`
         : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     }
-    return res.status(200).json({ works, count: works.length });
+    // Return each record as a lightweight pointer (URLs point at the museum's own servers).
+    const FIELDS = ['id','source','source_id','title','artist','date_text','medium',
+      'thumb_url','full_url','iiif_info','iiif_manifest','print_url',
+      'detail_url','rights','rights_label','commercial_ok','bio','synced_at'];
+    const shaped = (works || []).map(w => Object.fromEntries(FIELDS.map(f => [f, w[f] ?? null])));
+    return res.status(200).json({ works: shaped, count: shaped.length });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
