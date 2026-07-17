@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Head from 'next/head';
 import { neon } from '@neondatabase/serverless';
+import { useShopGate, PinModal, TradeAccessPanel } from '../../lib/useShopGate';
 
 const PRODUCTS = [
   { icon: '🖼️', name: 'Fine Art Print', price: 'from $18' },
@@ -152,6 +153,7 @@ footer{background:#2C2318;color:#B0A898;padding:48px 32px 28px}
 
 export default function ArtworkPage({ work, related }) {
   const [imgErr, setImgErr] = useState(false);
+  const gate = useShopGate();
 
   const metaTitle = `${work.title}${work.artist ? ` by ${work.artist}` : ''} — Public Art Collections`;
   const metaDesc = [work.title, work.artist, work.medium, work.date_text].filter(Boolean).join(' · ')
@@ -254,30 +256,50 @@ export default function ArtworkPage({ work, related }) {
 
           <div className="divider" />
 
-          <div className="products-label">Order as</div>
-          <div className="products-grid">
-            {PRODUCTS.map(p => (
-              <button key={p.name} className="prod">
-                <span className="prod-icon">{p.icon}</span>
-                {p.name}<br />
-                <span className="prod-price">{p.price}</span>
-              </button>
-            ))}
-          </div>
+          {gate.shopUnlocked ? (
+            <>
+              <div className="products-label">Order as</div>
+              <div className="products-grid">
+                {PRODUCTS.map(p => (
+                  <button key={p.name} className="prod">
+                    <span className="prod-icon">{p.icon}</span>
+                    {p.name}<br />
+                    <span className="prod-price">{p.price}</span>
+                  </button>
+                ))}
+              </div>
 
-          <div className="detail-cta">
-            <button className="cta-btn cta-primary">Order a Print →</button>
-            {work.detail_url && (
-              <a
-                href={work.detail_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="cta-btn cta-secondary"
-              >
-                View on museum website ↗
-              </a>
-            )}
-          </div>
+              <div className="detail-cta">
+                <button className="cta-btn cta-primary">Order a Print →</button>
+                {work.detail_url && (
+                  <a
+                    href={work.detail_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cta-btn cta-secondary"
+                  >
+                    View on museum website ↗
+                  </a>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <TradeAccessPanel gate={gate} />
+              {work.detail_url && (
+                <div className="detail-cta" style={{ marginTop: 16 }}>
+                  <a
+                    href={work.detail_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="cta-btn cta-secondary"
+                  >
+                    View on museum website ↗
+                  </a>
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
 
@@ -327,6 +349,9 @@ export default function ArtworkPage({ work, related }) {
           © 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful
         </div>
       </footer>
+
+      {/* PIN MODAL — trade access */}
+      <PinModal gate={gate} />
     </>
   );
 }
