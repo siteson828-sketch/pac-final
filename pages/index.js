@@ -284,6 +284,37 @@ export default function Home() {
   const [selectedFrame, setSelectedFrame]     = useState(null);
   const [quantity, setQuantity]               = useState(1);
   const gate = useShopGate();
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [placing, setPlacing]           = useState(false);
+  const [orderResult, setOrderResult]   = useState(null);
+  const [ship, setShip] = useState({ name: '', email: '', address1: '', city: '', state_code: '', zip: '', country_code: 'US' });
+
+  async function placeOrder() {
+    setPlacing(true);
+    setOrderResult(null);
+    try {
+      const resp = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: selectedProduct?.name,
+          size: selectedSize,
+          material: selectedMaterial,
+          frame: selectedFrame,
+          quantity,
+          print_url: selected?.print_url || selected?.full_url || selected?.thumb_url,
+          work: selected?.title,
+          recipient: ship,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) setOrderResult({ ok: false, msg: data.error || 'Order failed' });
+      else setOrderResult({ ok: true, msg: data.message || 'Order placed', data });
+    } catch (e) {
+      setOrderResult({ ok: false, msg: e.message });
+    }
+    setPlacing(false);
+  }
 
   const load = useCallback(async (reset, q, src, ord, coll, currentOffset = 0) => {
     const off = reset ? 0 : currentOffset;
@@ -438,7 +469,7 @@ export default function Home() {
               <button onClick={() => setQuantity(q => q + 1)}>+</button>
             </div>
             {gate.shopUnlocked ? (
-              <button className="order-confirm">Confirm Order →</button>
+              <button className="order-confirm" onClick={() => { setOrderResult(null); setCheckoutOpen(true); }}>Confirm Order →</button>
             ) : (
               <button className="order-confirm" onClick={gate.openPin}>🔒 Enter PIN to order</button>
             )}
@@ -701,6 +732,47 @@ export default function Home() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHECKOUT — shipping details → draft Printful order */}
+      {checkoutOpen && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#FAF8F4', borderRadius: 12, padding: 32, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 48px rgba(0,0,0,0.3)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+              <div style={{ fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 300, color: '#1A1714' }}>Shipping details</div>
+              <button onClick={() => setCheckoutOpen(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#8A8178', lineHeight: 1 }}>×</button>
+            </div>
+            <p style={{ fontSize: 12, color: '#8A8178', marginBottom: 16 }}>
+              {selectedProduct?.name}{selectedSize ? ` · ${selectedSize}` : ''} · Qty {quantity} · Draft order (no charge)
+            </p>
+            {orderResult ? (
+              <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>{orderResult.ok ? '✅' : '⚠️'}</div>
+                <p style={{ fontSize: 14, color: orderResult.ok ? '#166534' : '#dc2626', marginBottom: 8, lineHeight: 1.5 }}>{orderResult.msg}</p>
+                {orderResult.ok && orderResult.data?.orderId && (
+                  <p style={{ fontSize: 12, color: '#8A8178' }}>
+                    Order #{orderResult.data.orderId}{orderResult.data.printful_order_id ? ` · Printful ${orderResult.data.printful_order_id}` : ''}
+                  </p>
+                )}
+                <button onClick={() => { setCheckoutOpen(false); setOrderResult(null); }}
+                  style={{ marginTop: 16, background: '#1A1714', color: '#FAF8F4', border: 'none', padding: '10px 24px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontFamily: 'system-ui' }}>Close</button>
+              </div>
+            ) : (
+              <>
+                {[['name', 'Full name'], ['email', 'Email'], ['address1', 'Address'], ['city', 'City'], ['state_code', 'State/Province code'], ['zip', 'ZIP / Postal code'], ['country_code', 'Country code (e.g. US)']].map(([k, label]) => (
+                  <input key={k} value={ship[k]} placeholder={label}
+                    onChange={e => setShip(s => ({ ...s, [k]: e.target.value }))}
+                    style={{ width: '100%', padding: '10px 12px', border: '0.5px solid rgba(26,23,20,0.25)', borderRadius: 4, fontSize: 14, marginBottom: 8, fontFamily: 'system-ui', background: '#fff', color: '#1A1714' }} />
+                ))}
+                <button disabled={placing} onClick={placeOrder}
+                  style={{ width: '100%', marginTop: 8, background: placing ? '#8A8178' : '#B8942A', color: '#1A1714', border: 'none', padding: '12px', borderRadius: 4, fontSize: 14, fontWeight: 600, cursor: placing ? 'default' : 'pointer', fontFamily: 'system-ui' }}>
+                  {placing ? 'Placing…' : 'Place draft order →'}
+                </button>
+                <p style={{ fontSize: 11, color: '#8A8178', marginTop: 12, textAlign: 'center' }}>Creates an unconfirmed Printful order. No payment is taken.</p>
+              </>
+            )}
           </div>
         </div>
       )}
