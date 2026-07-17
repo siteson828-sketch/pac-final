@@ -1,4 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+
+const OSD_VERSION = '4.1.0';
+const OSD_SRC = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_VERSION}/openseadragon.min.js`;
+const OSD_PREFIX = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_VERSION}/images/`;
 
 const REGIONS = [
   {
@@ -264,6 +268,11 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#FAF
 .mlink-primary:hover{background:#2C2318}
 .mlink-sec{background:transparent;color:#1A1714;border:0.5px solid rgba(26,23,20,0.2)}
 .mlink-sec:hover{background:rgba(26,23,20,0.05)}
+.zoom-btn{position:absolute;bottom:10px;right:10px;background:rgba(26,23,20,0.72);color:#FAF8F4;border:none;border-radius:4px;padding:6px 11px;font-size:11px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;z-index:6;display:flex;align-items:center;gap:5px;transition:background .15s}
+.zoom-btn:hover{background:#B8942A;color:#1A1714}
+.osd-container{width:100%;height:100%;min-height:340px;background:#111}
+.modal-img{position:relative}
+.modal-img img{transition:opacity .25s}
 
 @media(max-width:768px){
   .sidebar{display:none}
@@ -286,6 +295,10 @@ export default function Viewer() {
   const [searchInput, setSearch]    = useState('');
   const [totalDb, setTotalDb]       = useState(null);
   const [collCount, setCollCount]   = useState(null);
+  const [fullReady, setFullReady]   = useState(false); // museum full image finished loading
+  const [zoomOpen, setZoomOpen]     = useState(false); // OpenSeadragon IIIF viewer open
+  const osdRef  = useRef(null);
+  const osdInst = useRef(null);
 
   useEffect(() => {
     document.title = 'World Museum Viewer — Public Art Collections';
@@ -302,6 +315,48 @@ export default function Viewer() {
     document.body.style.overflow = modal ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [modal]);
+
+  // On open: show thumbnail immediately, preload the museum's full image, swap when ready.
+  useEffect(() => {
+    setFullReady(false);
+    setZoomOpen(false);
+    if (!modal?.full_url) return;
+    let cancelled = false;
+    const img = new Image();
+    img.onload = () => { if (!cancelled) setFullReady(true); };
+    img.src = modal.full_url;
+    return () => { cancelled = true; };
+  }, [modal]);
+
+  // Gigapixel zoom: stream the museum's IIIF info.json through OpenSeadragon (nothing stored by us).
+  useEffect(() => {
+    if (!zoomOpen || !modal?.iiif_info) return;
+    let cancelled = false;
+    const destroy = () => { if (osdInst.current) { try { osdInst.current.destroy(); } catch (e) {} osdInst.current = null; } };
+    const init = () => {
+      if (cancelled || !osdRef.current || !window.OpenSeadragon) return;
+      destroy();
+      osdInst.current = window.OpenSeadragon({
+        element: osdRef.current,
+        prefixUrl: OSD_PREFIX,
+        tileSources: modal.iiif_info, // IIIF info.json served directly from the museum
+        showNavigator: true,
+        gestureSettingsMouse: { clickToZoom: false },
+      });
+    };
+    if (window.OpenSeadragon) { init(); }
+    else {
+      let s = document.getElementById('osd-script');
+      if (!s) {
+        s = document.createElement('script');
+        s.id = 'osd-script';
+        s.src = OSD_SRC;
+        document.head.appendChild(s);
+      }
+      s.addEventListener('load', init);
+    }
+    return () => { cancelled = true; destroy(); };
+  }, [zoomOpen, modal]);
 
   const loadWorks = useCallback(async (museum, genreFilter, ord, offset = 0, append = false) => {
     if (!museum) return;
@@ -531,14 +586,19 @@ export default function Viewer() {
           <div className="modal">
             <button className="modal-close" onClick={() => setModal(null)}>×</button>
             <div className="modal-img">
-              {(modal.full_url || modal.thumb_url) ? (
+              {zoomOpen && modal.iiif_info ? (
+                <div ref={osdRef} className="osd-container" />
+              ) : (modal.thumb_url || modal.full_url) ? (
                 <img
-                  src={modal.full_url || modal.thumb_url}
+                  src={(fullReady && modal.full_url) ? modal.full_url : (modal.thumb_url || modal.full_url)}
                   alt={modal.title}
                   onError={e => { if (modal.thumb_url && e.target.src !== modal.thumb_url) e.target.src = modal.thumb_url; }}
                 />
               ) : (
                 <div className="modal-img-ph">🖼️</div>
+              )}
+              {modal.iiif_info && !zoomOpen && (
+                <button className="zoom-btn" onClick={() => setZoomOpen(true)}>🔍 Gigapixel zoom</button>
               )}
             </div>
             <div className="modal-detail">
@@ -566,7 +626,7 @@ export default function Viewer() {
                   <div
                     key={p.name}
                     className="prod-item"
-                    onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}`}
+                    onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}&print=${encodeURIComponent(modal.print_url || modal.full_url || modal.thumb_url || '')}`}
                   >
                     <div className="prod-emoji">{p.emoji}</div>
                     <div className="prod-name">{p.name}</div>

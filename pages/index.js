@@ -336,11 +336,14 @@ export default function Home() {
         const productName = params.get('product');
         const work = params.get('work') || '';
         const img  = params.get('img')  || '';
+        // Museum's highest-res URL — handed to Printful for fulfillment; we never store the image.
+        const print = params.get('print') || img;
         const found = PRODUCTS.find(p => p.name === productName) || PRODUCTS[0];
         const fakeWork = {
           title: work,
           thumb_url: img,
           full_url: img,
+          print_url: print,
           source: '',
           artist: '',
           rights_label: 'CC0'

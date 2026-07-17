@@ -24,14 +24,18 @@ async function upsert(sql, works) {
   let saved = 0;
   for (const w of works) {
     try {
+      // print_url = the museum's own highest-resolution URL (we never store the image itself).
+      const printUrl = w.print_url || w.full_url || w.thumb_url || '';
       await sql`
         INSERT INTO artworks (source,source_id,title,artist,date_text,medium,department,
-          thumb_url,full_url,iiif_info,iiif_manifest,detail_url,rights,rights_label,commercial_ok,bio,synced_at)
+          thumb_url,full_url,iiif_info,iiif_manifest,detail_url,print_url,rights,rights_label,commercial_ok,bio,synced_at)
         VALUES (${w.source},${w.source_id},${w.title},${w.artist||''},${w.date_text||''},
           ${w.medium||''},${w.department||''},${w.thumb_url||''},${w.full_url||''},
-          ${w.iiif_info||''},${w.iiif_manifest||''},${w.detail_url||''},
+          ${w.iiif_info||''},${w.iiif_manifest||''},${w.detail_url||''},${printUrl},
           ${'CC0'},${'CC0 — Public Domain'},${true},${w.bio||''},NOW())
-        ON CONFLICT (source,source_id) DO UPDATE SET thumb_url=EXCLUDED.thumb_url,synced_at=NOW()
+        ON CONFLICT (source,source_id) DO UPDATE SET
+          thumb_url=EXCLUDED.thumb_url, full_url=EXCLUDED.full_url, print_url=EXCLUDED.print_url,
+          iiif_info=EXCLUDED.iiif_info, iiif_manifest=EXCLUDED.iiif_manifest, synced_at=NOW()
       `;
       saved++;
     } catch(e) {}
@@ -816,10 +820,20 @@ export default async function handler(req, res) {
       id SERIAL PRIMARY KEY, source TEXT NOT NULL, source_id TEXT NOT NULL,
       title TEXT NOT NULL, artist TEXT, date_text TEXT, medium TEXT, department TEXT,
       thumb_url TEXT, full_url TEXT, iiif_info TEXT, iiif_manifest TEXT, detail_url TEXT,
+      print_url TEXT,
       rights TEXT, rights_label TEXT, commercial_ok BOOLEAN DEFAULT true, bio TEXT,
       synced_at TIMESTAMP DEFAULT NOW(), UNIQUE(source, source_id)
     )
   `;
+  // Idempotent migrations — ensure pointer columns exist on pre-existing tables.
+  await sql`ALTER TABLE artworks ADD COLUMN IF NOT EXISTS iiif_manifest TEXT`;
+  await sql`ALTER TABLE artworks ADD COLUMN IF NOT EXISTS iiif_info TEXT`;
+  await sql`ALTER TABLE artworks ADD COLUMN IF NOT EXISTS print_url TEXT`;
+  // One-time backfill (call with ?migrate=1): set print_url to the museum's full-res URL.
+  if (req.query.migrate === '1') {
+    await sql`UPDATE artworks SET print_url = COALESCE(NULLIF(full_url,''), thumb_url)
+              WHERE (print_url IS NULL OR print_url = '') AND (full_url IS NOT NULL AND full_url != '' OR thumb_url IS NOT NULL AND thumb_url != '')`;
+  }
   const log = [];
   let total = 0;
   const run = async (name, fn) => {
