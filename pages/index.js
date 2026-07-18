@@ -259,6 +259,10 @@ footer{background:#2C2318;color:#B0A898;padding:52px 32px 28px}
 @media(max-width:500px){
   .nav-count,.nav-link{display:none}
   .gallery-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:16px 12px 40px}
+  .order-banner{padding:12px 14px;gap:10px}
+  .order-banner-actions{flex-wrap:wrap}
+  .hero-content{padding:24px 16px 32px}
+  .hero-caption{display:none}
 }
 `;
 

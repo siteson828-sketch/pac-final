@@ -164,7 +164,6 @@ export default function ArtworkPage({ work, related }) {
       <Head>
         <title>{metaTitle}</title>
         <meta name="description" content={metaDesc} />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
         {work.thumb_url && <meta property="og:image" content={work.thumb_url} />}
         <meta property="og:title" content={metaTitle} />
         <meta property="og:description" content={metaDesc} />
