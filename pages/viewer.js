@@ -274,13 +274,30 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#FAF
 .osd-container{width:100%;height:100%;min-height:340px;background:#111}
 .modal-img{position:relative}
 .modal-img img{transition:opacity .25s}
+.topbar-menu{display:none;flex-shrink:0;background:none;border:0.5px solid rgba(26,23,20,0.18);border-radius:4px;padding:8px 11px;font-size:16px;line-height:1;cursor:pointer;color:#1A1714}
+.sidebar-backdrop{display:none}
 
 @media(max-width:768px){
-  .sidebar{display:none}
-  .modal{flex-direction:column}
-  .modal-img{flex:0 0 220px;min-height:220px}
-  .art-grid{grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
-  .topbar-search{width:130px}
+  .topbar-menu{display:inline-flex;align-items:center;min-height:44px}
+  /* museum list becomes a slide-in drawer instead of vanishing */
+  .sidebar{position:fixed;top:0;left:0;bottom:0;z-index:210;width:82%;max-width:300px;transform:translateX(-100%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.35)}
+  .sidebar.open{transform:translateX(0)}
+  .sidebar-backdrop{display:block;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:205}
+  .modal{flex-direction:column;max-height:92vh;overflow-y:auto}
+  .modal-img{flex:0 0 auto;max-height:50vh;min-height:200px}
+  .modal-detail{max-height:none}
+  .modal-title{font-size:clamp(18px,5vw,26px)}
+  .art-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .grid-area{padding:12px}
+  .topbar{flex-wrap:wrap;height:auto;padding:10px 12px;gap:8px}
+  .topbar-title{font-size:13px;flex:1;min-width:0}
+  .topbar-search{width:100%;order:5;min-height:44px}
+  .topbar-home{min-height:44px;display:inline-flex;align-items:center}
+  .genre-chip,.order-chip,.museum-btn{min-height:44px}
+}
+@media(max-width:360px){
+  .grid-area{padding:8px}
+  .art-grid{gap:8px}
 }
 `;
 
@@ -296,6 +313,7 @@ export default function Viewer() {
   const [searchInput, setSearch]    = useState('');
   const [totalDb, setTotalDb]       = useState(null);
   const [collCount, setCollCount]   = useState(null);
+  const [navOpen, setNavOpen]       = useState(false); // mobile museum drawer
   const [fullReady, setFullReady]   = useState(false); // museum full image finished loading
   const [zoomOpen, setZoomOpen]     = useState(false); // OpenSeadragon IIIF viewer open
   const osdRef  = useRef(null);
@@ -387,6 +405,7 @@ export default function Viewer() {
     setSelected(museum);
     setGenre(GENRES[0]);
     setSearch('');
+    setNavOpen(false); // close the mobile drawer after picking a museum
     loadWorks(museum, GENRES[0], sortOrder, 0, false);
   };
 
@@ -421,7 +440,7 @@ export default function Viewer() {
       <div className="layout">
 
         {/* SIDEBAR */}
-        <aside className="sidebar">
+        <aside className={`sidebar${navOpen ? ' open' : ''}`}>
           <div className="sidebar-head">
             <a href="/" className="sidebar-logo">Public Art <span>Collections</span></a>
             <div className="sidebar-sub">
@@ -446,12 +465,14 @@ export default function Viewer() {
             ))}
           </div>
         </aside>
+        {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} />}
 
         {/* MAIN */}
         <div className="main">
 
           {/* TOPBAR */}
           <div className="topbar">
+            <button className="topbar-menu" onClick={() => setNavOpen(true)} aria-label="Open museum list">☰</button>
             <div className="topbar-title">
               {selected
                 ? <>{selected.label}{genre.label !== 'All' && <span> · {genre.label}</span>}</>
