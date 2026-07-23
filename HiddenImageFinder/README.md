@@ -29,15 +29,33 @@ just the MediaStore, so the app requests **All files access**
 "Grant All Files Access", enable it for this app in the system settings
 screen that opens, then come back and tap "Scan for Hidden Images".
 
-## Building
+## Getting the APK — no Android Studio required
+
+Every push to `main` that touches `HiddenImageFinder/` runs
+[`.github/workflows/build-hidden-image-finder.yml`](../.github/workflows/build-hidden-image-finder.yml),
+which builds a debug APK on GitHub's servers:
+
+1. On GitHub, go to the repo's **Actions** tab → **Build Hidden Image
+   Finder APK** → pick the latest successful run (or use "Run workflow" to
+   trigger one manually).
+2. Download the `hidden-image-finder-debug-apk` artifact — it's a zip
+   containing `app-debug.apk`.
+3. Transfer the APK to your phone (e.g. email it to yourself, or download
+   it directly in your phone's browser from the Actions run page).
+4. On your phone, open the APK to install it. Android will prompt you to
+   allow installs from that source ("Install unknown apps") the first
+   time — allow it just for that app/browser.
+5. Launch the app, tap "Grant All Files Access", then "Scan for Hidden
+   Images".
+
+## Building locally instead
 
 This project was scaffolded without an Android SDK / network access to
 Google's Maven repo available in the sandbox that generated it, so:
 
 - `gradle/wrapper/gradle-wrapper.jar` is **not** included.
-- It hasn't been compiled or run yet.
 
-To build it:
+To build it yourself:
 
 1. Open the `HiddenImageFinder/` folder in Android Studio (Giraffe or newer).
    Android Studio will generate the Gradle wrapper and sync dependencies
