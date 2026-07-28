@@ -164,8 +164,10 @@ const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#FAF8F4;color:#1A1714;-webkit-text-size-adjust:100%}
-/* 100dvh keeps the layout correct under iOS Safari's dynamic toolbar */
-.layout{display:flex;min-height:100vh;min-height:100dvh;overflow:hidden;position:relative}
+/* Fixed-height app shell so only the grid scrolls and the top/filter bars stay
+   pinned. 100dvh keeps it correct under iOS Safari's dynamic toolbar; the 100vh
+   line above it is a fallback for older Android browsers without dvh support. */
+.layout{display:flex;height:100vh;height:100dvh;overflow:hidden;position:relative}
 
 /* SIDEBAR — a slide-in drawer on mobile, static rail on desktop */
 .sidebar{position:fixed;top:0;left:0;bottom:0;z-index:210;width:82%;max-width:300px;flex-shrink:0;background:#F2EDE6;border-right:0.5px solid rgba(26,23,20,0.12);display:flex;flex-direction:column;overflow:hidden;transform:translateX(-100%);transition:transform .22s ease;box-shadow:0 0 40px rgba(0,0,0,.35)}
@@ -286,7 +288,7 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#FAF
 .mlink-sec:hover{background:rgba(26,23,20,0.05)}
 .zoom-btn{position:absolute;bottom:10px;right:10px;min-height:44px;background:rgba(26,23,20,0.72);color:#FAF8F4;border:none;border-radius:6px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;z-index:6;display:flex;align-items:center;gap:5px;transition:background .15s}
 .zoom-btn:hover{background:#B8942A;color:#1A1714}
-.osd-container{width:100%;height:100%;min-height:340px;background:#111}
+.osd-container{width:100%;height:100%;min-height:260px;background:#111}
 
 /* ---------- TABLET / DESKTOP (min-width:769px) ---------- */
 @media(min-width:769px){
