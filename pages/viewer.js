@@ -150,6 +150,12 @@ const PRODUCTS = [
 const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
 const STRIPE_JS = 'https://js.stripe.com/v3';
 
+// AudienceLab tracking pixel — injected only when a pixel id is configured.
+// The script src is overridable so the exact CDN endpoint can be set without a
+// code change (defaults to AudienceLab's pixel host).
+const AUDIENCELAB_PIXEL_ID = process.env.NEXT_PUBLIC_AUDIENCELAB_PIXEL_ID || '';
+const AUDIENCELAB_SRC = process.env.NEXT_PUBLIC_AUDIENCELAB_SRC || 'https://cdn.audiencelab.io/pixel.js';
+
 // Load Stripe.js once (same dynamic-script pattern as OpenSeadragon below).
 function loadStripeJs() {
   return new Promise((resolve, reject) => {
@@ -527,6 +533,18 @@ export default function Viewer() {
   useEffect(() => {
     document.title = 'World Museum Viewer — Public Art Collections';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotalDb(d.total));
+  }, []);
+
+  // AudienceLab pixel — load once, only when a pixel id is configured.
+  useEffect(() => {
+    if (!AUDIENCELAB_PIXEL_ID || typeof window === 'undefined') return;
+    if (document.getElementById('audiencelab-pixel')) return;
+    window.AudienceLabPixelId = AUDIENCELAB_PIXEL_ID;
+    const s = document.createElement('script');
+    s.id = 'audiencelab-pixel';
+    s.async = true;
+    s.src = `${AUDIENCELAB_SRC}?id=${encodeURIComponent(AUDIENCELAB_PIXEL_ID)}`;
+    document.head.appendChild(s);
   }, []);
 
   useEffect(() => {
