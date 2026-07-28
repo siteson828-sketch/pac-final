@@ -137,13 +137,35 @@ const ORDERS = [
 ];
 
 const PRODUCTS = [
-  { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18' },
-  { emoji: '🎨', name: 'Canvas Wrap',    price: 'from $45' },
-  { emoji: '👕', name: 'T-Shirt',        price: 'from $24' },
-  { emoji: '☕', name: 'Mug',            price: 'from $14' },
-  { emoji: '📱', name: 'Phone Case',     price: 'from $19' },
-  { emoji: '🛍️', name: 'Tote Bag',       price: 'from $16' },
+  { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18', sizes: ['8×10"', '11×14"', '16×20"', '24×30"'] },
+  { emoji: '🎨', name: 'Canvas Wrap',    price: 'from $45', sizes: ['12×16"', '16×20"', '20×24"', '24×30"'] },
+  { emoji: '👕', name: 'T-Shirt',        price: 'from $24', sizes: ['S', 'M', 'L', 'XL', '2XL'] },
+  { emoji: '☕', name: 'Mug',            price: 'from $14', sizes: ['11oz', '15oz'] },
+  { emoji: '📱', name: 'Phone Case',     price: 'from $19', sizes: ['iPhone 15', 'iPhone 14', 'Samsung S24', 'Pixel 8'] },
+  { emoji: '🛍️', name: 'Tote Bag',       price: 'from $16', sizes: ['Standard'] },
 ];
+
+// Client-side Stripe publishable key (inlined at build). Empty when unset →
+// checkout falls back to the legacy no-charge draft-order flow.
+const STRIPE_PK = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || '';
+const STRIPE_JS = 'https://js.stripe.com/v3';
+
+// Load Stripe.js once (same dynamic-script pattern as OpenSeadragon below).
+function loadStripeJs() {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') return reject(new Error('no window'));
+    if (window.Stripe) return resolve(window.Stripe);
+    let s = document.getElementById('stripe-js');
+    if (!s) {
+      s = document.createElement('script');
+      s.id = 'stripe-js';
+      s.src = STRIPE_JS;
+      document.head.appendChild(s);
+    }
+    s.addEventListener('load', () => resolve(window.Stripe));
+    s.addEventListener('error', () => reject(new Error('Failed to load Stripe.js')));
+  });
+}
 
 const ALL_MUSEUMS = REGIONS.flatMap(r => r.museums);
 
@@ -290,6 +312,35 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#FAF
 .zoom-btn:hover{background:#B8942A;color:#1A1714}
 .osd-container{width:100%;height:100%;min-height:260px;background:#111}
 
+/* CHECKOUT — mobile-first bottom sheet, same as the artwork modal */
+.co-bg{position:fixed;inset:0;background:rgba(26,23,20,0.72);z-index:400;display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px)}
+.co-sheet{background:#FAF8F4;border-radius:16px 16px 0 0;width:100%;max-width:100%;max-height:92vh;max-height:92dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;position:relative;box-shadow:0 -8px 40px rgba(26,23,20,0.3);display:flex;flex-direction:column;animation:slideUp .28s ease;padding:22px 18px 26px;gap:12px}
+.co-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.co-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(20px,5.5vw,24px);font-weight:300;line-height:1.12}
+.co-sub{font-size:12px;color:#8A8178;margin-top:2px}
+.co-close{width:40px;height:40px;flex-shrink:0;border-radius:50%;background:rgba(26,23,20,0.08);border:none;color:#1A1714;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+.co-close:hover{background:rgba(26,23,20,0.16)}
+.co-field{display:flex;flex-direction:column;gap:4px}
+.co-label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#8A8178;font-weight:500}
+.co-input,.co-select{width:100%;min-height:44px;padding:0 12px;border:0.5px solid rgba(26,23,20,0.25);border-radius:6px;font-size:16px;background:#fff;font-family:'DM Sans',sans-serif;color:#1A1714;outline:none}
+.co-input:focus,.co-select:focus{border-color:#B8942A;box-shadow:0 0 0 2px rgba(184,148,42,0.12)}
+.co-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.co-qty{display:flex;align-items:center;gap:12px}
+.co-qty button{width:38px;height:38px;border-radius:50%;border:0.5px solid rgba(26,23,20,0.22);background:transparent;color:#1A1714;font-size:18px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.co-pay-element{min-height:44px;padding:4px 0}
+.co-btn{width:100%;min-height:48px;background:#1A1714;color:#FAF8F4;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s}
+.co-btn:hover{background:#2C2318}
+.co-btn:disabled{background:#8A8178;cursor:default}
+.co-btn-gold{background:#B8942A;color:#1A1714}
+.co-btn-gold:hover{background:#C9A84C}
+.co-note{font-size:11px;color:#8A8178;text-align:center;line-height:1.5}
+.co-error{font-size:13px;color:#dc2626;line-height:1.5;background:rgba(220,38,38,0.06);border-radius:6px;padding:10px 12px}
+.co-result{text-align:center;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 0}
+.co-result-icon{font-size:44px}
+.co-result-msg{font-size:14px;line-height:1.5}
+.co-total{display:flex;align-items:baseline;justify-content:space-between;font-size:14px;padding-top:4px}
+.co-total strong{font-size:20px;font-family:'Cormorant Garamond',Georgia,serif;font-weight:400}
+
 /* ---------- TABLET / DESKTOP (min-width:769px) ---------- */
 @media(min-width:769px){
   .layout{height:100vh}
@@ -310,6 +361,9 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#FAF
   .modal-img img{max-height:560px}
   .modal-detail{padding:26px 22px;overflow-y:auto;max-height:90vh}
   .modal-close{width:30px;height:30px;font-size:18px}
+  .co-bg{align-items:center;padding:20px}
+  .co-sheet{border-radius:12px;max-width:460px;max-height:90vh;animation:none}
+  .co-input,.co-select{font-size:14px;min-height:42px}
 }
 `;
 
@@ -332,6 +386,143 @@ export default function Viewer() {
   const osdRef  = useRef(null);
   const osdInst = useRef(null);
   const gate = useShopGate();
+
+  // --- checkout (Stripe Elements) ---
+  const [checkout, setCheckout] = useState(null);      // { product, art } when open
+  const [coStep, setCoStep]     = useState('details');  // details | payment | result
+  const [coSize, setCoSize]     = useState(null);
+  const [coQty, setCoQty]       = useState(1);
+  const [ship, setShip]         = useState({ name: '', email: '', address1: '', city: '', state_code: '', zip: '', country_code: 'US' });
+  const [coBusy, setCoBusy]     = useState(false);
+  const [coError, setCoError]   = useState(null);
+  const [coResult, setCoResult] = useState(null);
+  const [clientSecret, setClientSecret] = useState(null);
+  const [amountCents, setAmountCents]   = useState(null);
+  const stripeRef   = useRef(null);
+  const elementsRef = useRef(null);
+  const payElRef    = useRef(null);
+
+  const openCheckout = (product, art) => {
+    setCheckout({ product, art });
+    setCoStep('details');
+    setCoSize(product.sizes?.[0] || null);
+    setCoQty(1);
+    setCoError(null);
+    setCoResult(null);
+    setClientSecret(null);
+    setAmountCents(null);
+    stripeRef.current = null;
+    elementsRef.current = null;
+  };
+
+  const closeCheckout = () => { setCheckout(null); setCoBusy(false); };
+
+  // Redirect fallback to the legacy no-charge draft-order flow on the home page.
+  const draftRedirect = (product, art) => {
+    const img = art?.full_url || art?.thumb_url || '';
+    const print = art?.print_url || img;
+    window.location.href =
+      `/?order=1&product=${encodeURIComponent(product.name)}&work=${encodeURIComponent(art?.title || '')}` +
+      `&img=${encodeURIComponent(img)}&print=${encodeURIComponent(print)}`;
+  };
+
+  // Step 1 → 2: validate shipping, create a PaymentIntent, advance to card entry.
+  const goToPayment = async () => {
+    setCoError(null);
+    const missing = ['name', 'email', 'address1', 'city', 'country_code', 'zip']
+      .filter(f => !String(ship[f] || '').trim());
+    if (missing.length) { setCoError(`Please fill in: ${missing.join(', ')}`); return; }
+    if (!STRIPE_PK) { draftRedirect(checkout.product, checkout.art); return; }
+
+    setCoBusy(true);
+    try {
+      const resp = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: checkout.product.name,
+          size: coSize,
+          quantity: coQty,
+          work: checkout.art?.title || '',
+        }),
+      });
+      if (resp.status === 501) { draftRedirect(checkout.product, checkout.art); return; }
+      const data = await resp.json();
+      if (!resp.ok) { setCoError(data.error || 'Could not start checkout'); return; }
+      setClientSecret(data.client_secret);
+      setAmountCents(data.amount);
+      setCoStep('payment');
+    } catch (e) {
+      setCoError(e.message);
+    } finally {
+      setCoBusy(false);
+    }
+  };
+
+  // Step 2 → 3: confirm the card payment, then create the (paid) Printful order.
+  const payAndOrder = async () => {
+    if (!stripeRef.current || !elementsRef.current) return;
+    setCoBusy(true);
+    setCoError(null);
+    try {
+      const { error, paymentIntent } = await stripeRef.current.confirmPayment({
+        elements: elementsRef.current,
+        redirect: 'if_required',
+      });
+      if (error) { setCoError(error.message); return; }
+      if (paymentIntent?.status !== 'succeeded') {
+        setCoError(`Payment ${paymentIntent?.status || 'not completed'}`);
+        return;
+      }
+      const art = checkout.art;
+      const resp = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: checkout.product.name,
+          size: coSize,
+          quantity: coQty,
+          print_url: art?.print_url || art?.full_url || art?.thumb_url,
+          work: art?.title,
+          recipient: ship,
+          payment_intent_id: paymentIntent.id,
+        }),
+      });
+      const data = await resp.json();
+      setCoResult(resp.ok
+        ? { ok: true, msg: data.message || 'Order placed', data }
+        : { ok: false, msg: data.error || 'Payment succeeded but the order could not be created — contact support.' });
+      setCoStep('result');
+    } catch (e) {
+      setCoError(e.message);
+    } finally {
+      setCoBusy(false);
+    }
+  };
+
+  // Mount the Stripe Payment Element once we have a client secret.
+  useEffect(() => {
+    if (coStep !== 'payment' || !clientSecret || !STRIPE_PK) return;
+    let cancelled = false;
+    loadStripeJs()
+      .then(Stripe => {
+        if (cancelled || !payElRef.current) return;
+        stripeRef.current = Stripe(STRIPE_PK);
+        elementsRef.current = stripeRef.current.elements({ clientSecret });
+        const el = elementsRef.current.create('payment');
+        el.mount(payElRef.current);
+      })
+      .catch(e => { if (!cancelled) setCoError(e.message); });
+    return () => { cancelled = true; };
+  }, [coStep, clientSecret]);
+
+  // Lock body scroll while the checkout sheet is open.
+  useEffect(() => {
+    if (!checkout) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [checkout]);
 
   useEffect(() => {
     document.title = 'World Museum Viewer — Public Art Collections';
@@ -674,7 +865,7 @@ export default function Viewer() {
                       <div
                         key={p.name}
                         className="prod-item"
-                        onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}&print=${encodeURIComponent(modal.print_url || modal.full_url || modal.thumb_url || '')}`}
+                        onClick={() => openCheckout(p, modal)}
                       >
                         <div className="prod-emoji">{p.emoji}</div>
                         <div className="prod-name">{p.name}</div>
@@ -696,6 +887,104 @@ export default function Viewer() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CHECKOUT — Stripe Elements (charge, then create the Printful order) */}
+      {checkout && (
+        <div className="co-bg" onClick={e => e.target === e.currentTarget && closeCheckout()}>
+          <div className="co-sheet">
+            <div className="co-head">
+              <div>
+                <div className="co-title">
+                  {checkout.product.emoji} {checkout.product.name}
+                </div>
+                <div className="co-sub">{checkout.art?.title || 'Selected artwork'}</div>
+              </div>
+              <button className="co-close" onClick={closeCheckout} aria-label="Close checkout">×</button>
+            </div>
+
+            {coStep === 'details' && (
+              <>
+                {checkout.product.sizes?.length > 1 && (
+                  <div className="co-field">
+                    <label className="co-label">Size / Option</label>
+                    <select className="co-select" value={coSize || ''} onChange={e => setCoSize(e.target.value)}>
+                      {checkout.product.sizes.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div className="co-field">
+                  <label className="co-label">Quantity</label>
+                  <div className="co-qty">
+                    <button onClick={() => setCoQty(q => Math.max(1, q - 1))} aria-label="Decrease">−</button>
+                    <span>{coQty}</span>
+                    <button onClick={() => setCoQty(q => Math.min(25, q + 1))} aria-label="Increase">+</button>
+                  </div>
+                </div>
+                <div className="divider" />
+                {[['name', 'Full name'], ['email', 'Email'], ['address1', 'Address'], ['city', 'City'],
+                  ['state_code', 'State / Province'], ['zip', 'ZIP / Postal'], ['country_code', 'Country code (e.g. US)']].map(([k, label]) => (
+                  <div className="co-field" key={k}>
+                    <label className="co-label">{label}</label>
+                    <input
+                      className="co-input"
+                      value={ship[k]}
+                      inputMode={k === 'email' ? 'email' : 'text'}
+                      onChange={e => setShip(s => ({ ...s, [k]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+                {coError && <div className="co-error">{coError}</div>}
+                <button className="co-btn" disabled={coBusy} onClick={goToPayment}>
+                  {coBusy ? 'Starting…' : (STRIPE_PK ? 'Continue to payment →' : 'Continue →')}
+                </button>
+                <div className="co-note">
+                  {STRIPE_PK
+                    ? 'Secure payment by Stripe. Prints fulfilled by Printful, shipped worldwide.'
+                    : 'Checkout is not fully configured yet — continues to a no-charge draft order.'}
+                </div>
+              </>
+            )}
+
+            {coStep === 'payment' && (
+              <>
+                {amountCents != null && (
+                  <div className="co-total">
+                    <span>{checkout.product.name}{coSize ? ` · ${coSize}` : ''} × {coQty}</span>
+                    <strong>${(amountCents / 100).toFixed(2)}</strong>
+                  </div>
+                )}
+                <div className="divider" />
+                <div className="co-field">
+                  <label className="co-label">Card details</label>
+                  <div className="co-pay-element" ref={payElRef} />
+                </div>
+                {coError && <div className="co-error">{coError}</div>}
+                <button className="co-btn co-btn-gold" disabled={coBusy} onClick={payAndOrder}>
+                  {coBusy ? 'Processing…' : `Pay${amountCents != null ? ` $${(amountCents / 100).toFixed(2)}` : ''} & place order`}
+                </button>
+                <button className="co-btn" style={{ background: 'transparent', color: '#1A1714', border: '0.5px solid rgba(26,23,20,0.2)' }}
+                  disabled={coBusy} onClick={() => { setCoStep('details'); setCoError(null); }}>
+                  ← Back
+                </button>
+              </>
+            )}
+
+            {coStep === 'result' && coResult && (
+              <div className="co-result">
+                <div className="co-result-icon">{coResult.ok ? '✅' : '⚠️'}</div>
+                <p className="co-result-msg" style={{ color: coResult.ok ? '#166534' : '#dc2626' }}>{coResult.msg}</p>
+                {coResult.ok && coResult.data?.orderId && (
+                  <p className="co-note">
+                    Order #{coResult.data.orderId}
+                    {coResult.data.printful_order_id ? ` · Printful ${coResult.data.printful_order_id}` : ''}
+                  </p>
+                )}
+                <button className="co-btn" onClick={closeCheckout}>Done</button>
+              </div>
+            )}
           </div>
         </div>
       )}
