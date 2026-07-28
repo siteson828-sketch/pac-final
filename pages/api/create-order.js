@@ -1,6 +1,9 @@
 import { neon } from '@neondatabase/serverless';
 import { printfulFetch, resolveCatalogVariant, hasPrintfulKey } from '../../lib/printful';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
+import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
+import { hasTwilio, sendSms } from '../../lib/twilio';
+import { hasGhl, upsertContact } from '../../lib/ghl';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,6 +19,37 @@ async function ensureTable(sql) {
     printful_order_id TEXT, printful_status TEXT,
     status TEXT, error TEXT
   )`;
+  // Payment columns (added idempotently for tables created before Stripe wiring).
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_intent_id TEXT`;
+  await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT`;
+}
+
+// Owner SMS + CRM push after an order is recorded. Fire-and-forget: all no-op
+// without keys, and failures here must never fail the order response.
+async function notifyOrder({ orderId, productName, size, qty, price, recipient, paid }) {
+  try {
+    if (hasTwilio()) {
+      await sendSms({
+        body: `New order #${orderId} on Public Art Collections\n` +
+              `${productName}${size ? ` · ${size}` : ''} × ${qty}` +
+              (price ? ` · ${price}` : '') +
+              `\nPayment: ${paid ? 'PAID' : 'draft/unpaid'}` +
+              `\nShip to: ${recipient?.name || ''} (${recipient?.city || ''}, ${recipient?.country_code || ''})`,
+      });
+    }
+  } catch (e) {}
+  try {
+    if (hasGhl() && (recipient?.email || recipient?.phone)) {
+      await upsertContact({
+        email: recipient.email,
+        phone: recipient.phone,
+        name: recipient.name,
+        source: 'Public Art Collections — order',
+        tags: ['customer', paid ? 'paid-order' : 'draft-order'],
+        customFields: [{ key: 'last_order_id', field_value: String(orderId) }],
+      });
+    }
+  } catch (e) {}
 }
 
 export default async function handler(req, res) {
@@ -24,7 +58,7 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
-  const { productName, size, material, frame, quantity, print_url, recipient, work } = body;
+  const { productName, size, material, frame, quantity, print_url, recipient, work, payment_intent_id } = body;
 
   // --- validation ---
   if (!productName || !CATALOG[productName]) return bad(res, 400, 'Unknown or missing product');
@@ -40,15 +74,32 @@ export default async function handler(req, res) {
   const sql = neon(process.env.DATABASE_URL);
   await ensureTable(sql);
 
+  // --- payment gate (Stripe "charge then create order") ---
+  // If a payment_intent_id is supplied and Stripe is configured, the payment
+  // must have succeeded before we create a fulfillment order. Orders placed
+  // without a PaymentIntent stay on the legacy no-charge draft path.
+  let paid = false;
+  let paymentStatus = null;
+  if (payment_intent_id) {
+    if (!hasStripe()) return bad(res, 400, 'payment_intent_id supplied but Stripe is not configured');
+    let pi;
+    try { pi = await retrievePaymentIntent(payment_intent_id); }
+    catch (e) { return bad(res, 502, `Could not verify payment: ${e.message}`); }
+    paymentStatus = pi?.status || 'unknown';
+    if (pi?.status !== 'succeeded') return bad(res, 402, `Payment not completed (status: ${paymentStatus})`);
+    paid = true;
+  }
+
   // If Printful isn't configured yet, still persist the request so nothing is lost.
   if (!hasPrintfulKey()) {
     const rows = await sql`INSERT INTO orders
-      (product,size,material,frame,quantity,print_url,work_title,retail_price,recipient,status)
+      (product,size,material,frame,quantity,print_url,work_title,retail_price,recipient,status,payment_intent_id,payment_status)
       VALUES (${productName},${size || ''},${material || ''},${frame || ''},${qty},${print_url},
-              ${work || ''},${price},${JSON.stringify(r)},'pending_no_printful_key')
+              ${work || ''},${price},${JSON.stringify(r)},'pending_no_printful_key',${payment_intent_id || null},${paymentStatus})
       RETURNING id`;
+    await notifyOrder({ orderId: rows[0].id, productName, size, qty, price, recipient: r, paid });
     return res.status(202).json({
-      ok: true, saved: true, orderId: rows[0].id, printful: false,
+      ok: true, saved: true, orderId: rows[0].id, printful: false, paid,
       message: 'Order saved. PRINTFUL_API_KEY is not set, so no fulfillment order was created yet.',
     });
   }
@@ -85,7 +136,9 @@ export default async function handler(req, res) {
       retail_price: price || undefined,
       name: `${work || productName}${size ? ` — ${size}` : ''} (${productName})`,
     }],
-    confirmed: false,
+    // Auto-confirm the Printful order only when payment already succeeded;
+    // otherwise leave it as an unconfirmed draft for manual review.
+    confirmed: paid,
   };
 
   let pfOrder = null, errMsg = null;
@@ -94,13 +147,14 @@ export default async function handler(req, res) {
   } catch (e) { errMsg = e.message; }
 
   const rows = await sql`INSERT INTO orders
-    (product,size,material,frame,quantity,print_url,work_title,retail_price,recipient,printful_order_id,printful_status,status,error)
+    (product,size,material,frame,quantity,print_url,work_title,retail_price,recipient,printful_order_id,printful_status,status,error,payment_intent_id,payment_status)
     VALUES (${productName},${size || ''},${material || ''},${frame || ''},${qty},${print_url},${work || ''},${price},
             ${JSON.stringify(r)},${pfOrder?.id ? String(pfOrder.id) : null},${pfOrder?.status || null},
-            ${errMsg ? 'printful_error' : 'draft_created'},${errMsg})
+            ${errMsg ? 'printful_error' : (paid ? 'order_confirmed' : 'draft_created')},${errMsg},${payment_intent_id || null},${paymentStatus})
     RETURNING id`;
 
   if (errMsg) return bad(res, 502, `Order saved but Printful rejected it: ${errMsg}`);
+  await notifyOrder({ orderId: rows[0].id, productName, size, qty, price, recipient: r, paid });
   return res.status(201).json({
     ok: true,
     orderId: rows[0].id,
@@ -108,7 +162,10 @@ export default async function handler(req, res) {
     printful_status: pfOrder.status,
     variant,
     retail_price: price,
-    message: 'Draft order created in Printful (unconfirmed). Review, pay & confirm in your Printful dashboard.',
+    paid,
+    message: paid
+      ? 'Payment received and order submitted to Printful (confirmed).'
+      : 'Draft order created in Printful (unconfirmed). Review, pay & confirm in your Printful dashboard.',
   });
 }
 
