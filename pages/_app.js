@@ -1,7 +1,35 @@
 import Head from 'next/head';
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import '../styles/globals.css';
 
+// Fire a fire-and-forget tracking beacon on every page view (initial load and
+// every client-side route change). The /api/track endpoint handles first-visit
+// SMS alerts and CRM sync; failures here are swallowed so they never affect UX.
+function track(path) {
+  try {
+    fetch('/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        path,
+        referrer: typeof document !== 'undefined' ? document.referrer : '',
+      }),
+      keepalive: true,
+    }).catch(() => {});
+  } catch (e) {}
+}
+
 export default function App({ Component, pageProps }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    track(window.location.pathname + window.location.search);
+    const onChange = url => track(url);
+    router.events.on('routeChangeComplete', onChange);
+    return () => router.events.off('routeChangeComplete', onChange);
+  }, [router.events]);
+
   return (
     <>
       <Head>
