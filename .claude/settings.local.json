@@ -37,7 +37,11 @@
       "Bash(git check-ignore *)",
       "Bash(echo \"exit=$?\")",
       "Bash(vercel --prod --yes)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git ls-remote *)",
+      "Bash(git fetch *)",
+      "Bash(rm -f \"C:/Users/Charles/Desktop/pac-final-prepurge-7868511.bundle\")",
+      "Read(//c/Users/Charles/Desktop/**)"
     ]
   }
 }
