@@ -8,7 +8,7 @@ const fs = require('fs');
 
 const BASE = process.env.SYNC_BASE || 'https://pac-final.vercel.app';
 // Sent as an Authorization: Bearer header (never in the URL). Override via env.
-const SECRET = process.env.SYNC_SECRET || process.env.CRON_SECRET || 'REDACTED-SECRET';
+const SECRET = process.env.SYNC_SECRET || process.env.CRON_SECRET || '';
 const PROGRESS_FILE = 'sync-progress.json';
 
 const SOURCES = [

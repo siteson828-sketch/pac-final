@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 export async function getServerSideProps({ query }) {
-  if (query.secret !== 'REDACTED-SECRET') return { notFound: true };
+  if (!process.env.SYNC_SECRET || query.secret !== process.env.SYNC_SECRET) return { notFound: true };
   return { props: {} };
 }
 
