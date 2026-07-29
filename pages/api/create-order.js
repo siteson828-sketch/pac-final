@@ -2,8 +2,7 @@ import { neon } from '@neondatabase/serverless';
 import { printfulFetch, resolveCatalogVariant, hasPrintfulKey } from '../../lib/printful';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
-import { hasTwilio, sendSms } from '../../lib/twilio';
-import { hasBloo, upsertContact } from '../../lib/bloo';
+import { hasBloo, hasBlooSms, upsertContact, sendSms, ownerNumber } from '../../lib/bloo';
 import { verifyToken } from '../../lib/order-token';
 import { checkRateLimit } from '../../lib/rate-limit';
 
@@ -36,9 +35,10 @@ async function ensureTable(sql) {
 // without keys, and failures here must never fail the order response.
 async function notifyOrder({ orderId, productName, size, qty, price, recipient, paid }) {
   try {
-    if (hasTwilio()) {
+    if (hasBlooSms() && ownerNumber()) {
       await sendSms({
-        body: `New order #${orderId} on Public Art Collections\n` +
+        to: ownerNumber(),
+        message: `New order #${orderId} on Public Art Collections\n` +
               `${productName}${size ? ` · ${size}` : ''} × ${qty}` +
               (price ? ` · ${price}` : '') +
               `\nPayment: ${paid ? 'PAID' : 'draft/unpaid'}` +
