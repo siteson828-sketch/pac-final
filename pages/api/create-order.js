@@ -123,6 +123,7 @@ export default async function handler(req, res) {
     recipient: {
       name: r.name,
       email: r.email || undefined,
+      phone: r.phone || undefined,
       address1: r.address1,
       city: r.city,
       state_code: r.state_code || undefined,

@@ -399,7 +399,7 @@ export default function Viewer() {
   const [coStep, setCoStep]     = useState('details');  // details | payment | result
   const [coSize, setCoSize]     = useState(null);
   const [coQty, setCoQty]       = useState(1);
-  const [ship, setShip]         = useState({ name: '', email: '', address1: '', city: '', state_code: '', zip: '', country_code: 'US' });
+  const [ship, setShip]         = useState({ name: '', email: '', phone: '', address1: '', city: '', state_code: '', zip: '', country_code: 'US' });
   const [coBusy, setCoBusy]     = useState(false);
   const [coError, setCoError]   = useState(null);
   const [coResult, setCoResult] = useState(null);
@@ -442,7 +442,7 @@ export default function Viewer() {
 
     // Stash the validated identity so the tracking beacon can attach it to
     // later page views and the CRM push has an email to match on.
-    saveIdentity({ email: ship.email, name: ship.name });
+    saveIdentity({ email: ship.email, phone: ship.phone, name: ship.name });
 
     if (!STRIPE_PK) { draftRedirect(checkout.product, checkout.art); return; }
 
@@ -948,14 +948,14 @@ export default function Viewer() {
                   </div>
                 </div>
                 <div className="divider" />
-                {[['name', 'Full name'], ['email', 'Email'], ['address1', 'Address'], ['city', 'City'],
+                {[['name', 'Full name'], ['email', 'Email'], ['phone', 'Phone (optional)'], ['address1', 'Address'], ['city', 'City'],
                   ['state_code', 'State / Province'], ['zip', 'ZIP / Postal'], ['country_code', 'Country code (e.g. US)']].map(([k, label]) => (
                   <div className="co-field" key={k}>
                     <label className="co-label">{label}</label>
                     <input
                       className="co-input"
                       value={ship[k]}
-                      inputMode={k === 'email' ? 'email' : 'text'}
+                      inputMode={k === 'email' ? 'email' : k === 'phone' ? 'tel' : 'text'}
                       onChange={e => setShip(s => ({ ...s, [k]: e.target.value }))}
                     />
                   </div>
