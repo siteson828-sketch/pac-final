@@ -297,6 +297,8 @@ export default function Home() {
     setPlacing(true);
     setOrderResult(null);
     try {
+      let sessionToken = null;
+      try { sessionToken = (await fetch('/api/order-token').then(r => r.json())).token; } catch (e) {}
       const resp = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -309,6 +311,7 @@ export default function Home() {
           print_url: selected?.print_url || selected?.full_url || selected?.thumb_url,
           work: selected?.title,
           recipient: ship,
+          session_token: sessionToken,
         }),
       });
       const data = await resp.json();

@@ -1,8 +1,9 @@
 // one-pass-sync.js — single full pass over all handled sources (no infinite loop)
 const https = require('https');
 
-const BASE = 'https://pac-final.vercel.app';
-const SECRET = 'REDACTED-SECRET';
+const BASE = process.env.SYNC_BASE || 'https://pac-final.vercel.app';
+// Sent as an Authorization: Bearer header (never in the URL). Override via env.
+const SECRET = process.env.SYNC_SECRET || process.env.CRON_SECRET || 'REDACTED-SECRET';
 
 // Only sources actually handled by pages/api/sync.js
 const SOURCES = [
@@ -16,7 +17,7 @@ const SOURCES = [
 
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { timeout: 320000 }, res => {
+    const req = https.get(url, { timeout: 320000, headers: { Authorization: `Bearer ${SECRET}` } }, res => {
       let data = '';
       res.on('data', c => data += c);
       res.on('end', () => { try { resolve(JSON.parse(data)); } catch(e) { reject(new Error('bad JSON: ' + data.slice(0,80))); } });
@@ -27,7 +28,7 @@ function fetchUrl(url) {
 }
 
 async function syncOne(source) {
-  const url = `${BASE}/api/sync?secret=${SECRET}&source=${source}`;
+  const url = `${BASE}/api/sync?source=${source}`;
   try {
     const r = await fetchUrl(url);
     return { source, saved: r.newWorks || 0, total: r.totalInDb || 0, error: null };

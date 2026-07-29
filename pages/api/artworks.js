@@ -6,9 +6,9 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
   try {
     const sql = neon(process.env.DATABASE_URL);
-    const { search, source, order, limit = '24', offset = '0', count } = req.query;
-    const lim = parseInt(limit);
-    const off = parseInt(offset);
+    const { search, source, order, count } = req.query;
+    const lim = Math.min(Math.abs(parseInt(req.query.limit) || 24), 100);
+    const off = Math.abs(parseInt(req.query.offset) || 0);
     const rand = order === 'random';
 
     if (count === 'true') {
@@ -41,6 +41,7 @@ export default async function handler(req, res) {
     const shaped = (works || []).map(w => Object.fromEntries(FIELDS.map(f => [f, w[f] ?? null])));
     return res.status(200).json({ works: shaped, count: shaped.length });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error('artworks error:', e);
+    return res.status(500).json({ error: 'An error occurred' });
   }
 }

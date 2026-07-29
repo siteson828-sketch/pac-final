@@ -487,6 +487,8 @@ export default function Viewer() {
         return;
       }
       const art = checkout.art;
+      let sessionToken = null;
+      try { sessionToken = (await fetch('/api/order-token').then(r => r.json())).token; } catch (e) {}
       const resp = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -498,6 +500,7 @@ export default function Viewer() {
           work: art?.title,
           recipient: ship,
           payment_intent_id: paymentIntent.id,
+          session_token: sessionToken,
         }),
       });
       const data = await resp.json();

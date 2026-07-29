@@ -120,7 +120,7 @@ async function syncSrc(k){
   dot(k,'s');stat(k,'syncing…','a');
   log('Starting '+label+'…','i');
   try{
-    var r=await fetch('/api/sync?secret='+encodeURIComponent(SECRET)+'&source='+encodeURIComponent(k));
+    var r=await fetch('/api/sync?source='+encodeURIComponent(k),{headers:{Authorization:'Bearer '+SECRET}});
     var d=await r.json();
     if(!r.ok)throw new Error(d.error||'HTTP '+r.status);
     var n=d.newWorks!=null?d.newWorks:0;
@@ -137,7 +137,7 @@ async function syncAll(){
   SRCS.forEach(function(s){dot(s.k,'s');stat(s.k,'syncing…','a');});
   log('Parallel sync started — all '+SRCS.length+' sources firing simultaneously','w');
   var promises=SRCS.map(function(s){
-    return fetch('/api/sync?secret='+encodeURIComponent(SECRET)+'&source='+encodeURIComponent(s.k))
+    return fetch('/api/sync?source='+encodeURIComponent(s.k),{headers:{Authorization:'Bearer '+SECRET}})
       .then(function(r){return r.json().then(function(d){return{src:s,d:d,ok:r.ok};});})
       .then(function(res){
         if(!res.ok){dot(res.src.k,'er');stat(res.src.k,'error','r');log(res.src.l+' error: '+(res.d.error||'HTTP error'),'e');}

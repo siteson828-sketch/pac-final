@@ -20,10 +20,13 @@ const ALL = [
 const GROUPS = 3;
 
 export default async function handler(req, res) {
-  const cronAuth = req.headers['authorization'];
-  const validCron   = process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`;
-  const validSecret = req?.query?.secret && req.query.secret === process.env.SYNC_SECRET;
-  if (!validCron && !validSecret) return res.status(401).json({ error: 'Unauthorized' });
+  // Auth via Authorization: Bearer header only (see /api/sync). ?secret= removed.
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  const authorized =
+    (process.env.CRON_SECRET && token === process.env.CRON_SECRET) ||
+    (process.env.SYNC_SECRET && token === process.env.SYNC_SECRET);
+  if (!authorized) return res.status(401).json({ error: 'Unauthorized' });
 
   const group = parseInt(req.query.group || '0', 10) || 0; // 0 = all groups
   const sources = group
@@ -32,18 +35,17 @@ export default async function handler(req, res) {
 
   const proto   = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
   const baseUrl = `${proto}://${req.headers['host']}`;
+  const bearer = process.env.CRON_SECRET || process.env.SYNC_SECRET || '';
   const subHeaders = {
     'Accept': 'application/json',
     'User-Agent': 'sync-museums/1.0',
-    ...(process.env.CRON_SECRET ? { 'Authorization': `Bearer ${process.env.CRON_SECRET}` } : {}),
+    ...(bearer ? { 'Authorization': `Bearer ${bearer}` } : {}),
   };
-  const secretParam = !process.env.CRON_SECRET && process.env.SYNC_SECRET
-    ? `&secret=${encodeURIComponent(process.env.SYNC_SECRET)}` : '';
 
   const results = await Promise.allSettled(
     sources.map(async (key) => {
       const signal = AbortSignal.timeout(270_000);
-      const r = await fetch(`${baseUrl}/api/sync?source=${key}${secretParam}`, { headers: subHeaders, signal });
+      const r = await fetch(`${baseUrl}/api/sync?source=${key}`, { headers: subHeaders, signal });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
       return { key, newWorks: d.newWorks || 0 };

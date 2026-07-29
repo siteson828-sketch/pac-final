@@ -38,7 +38,8 @@ export default async function handler(req, res) {
       currency: 'usd',
     });
   } catch (e) {
-    return res.status(502).json({ error: e.message });
+    console.error('create-payment-intent error:', e);
+    return res.status(502).json({ error: 'Could not start checkout' });
   }
 }
 

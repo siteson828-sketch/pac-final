@@ -808,12 +808,15 @@ async function syncDPLA(sql, key, offset=0) {
 }
 
 export default async function handler(req, res) {
-  const cronAuth = req.headers['authorization'];
-  const validCron   = process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`;
-  const validSecret = req?.query?.secret && req.query.secret === process.env.SYNC_SECRET;
-  if (!validCron && !validSecret) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
+  // Auth via Authorization: Bearer header only. Vercel Cron injects this using
+  // CRON_SECRET; SYNC_SECRET is also accepted as a bearer for manual runs. The
+  // legacy ?secret= query-string path was removed (secrets in URLs leak to logs).
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  const authorized =
+    (process.env.CRON_SECRET && token === process.env.CRON_SECRET) ||
+    (process.env.SYNC_SECRET && token === process.env.SYNC_SECRET);
+  if (!authorized) return res.status(401).json({ error: 'Unauthorized' });
   const sql = neon(process.env.DATABASE_URL);
   await sql`
     CREATE TABLE IF NOT EXISTS artworks (

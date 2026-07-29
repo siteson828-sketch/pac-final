@@ -1,5 +1,6 @@
 import { hasTwilio, sendSms, ownerNumber } from '../../lib/twilio';
 import { hasBloo, upsertContact } from '../../lib/bloo';
+import { checkRateLimit } from '../../lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,17 @@ export default async function handler(req, res) {
   const referrer = body.referrer || '';
   const ua = req.headers['user-agent'] || '';
   const ip = clientIp(req);
+
+  // Honeypot: the real beacon (pages/_app.js) never sends this field. A filled
+  // value means a bot replaying a form-like payload — acknowledge and do nothing
+  // (don't tip it off, don't run any SMS/CRM side effects).
+  if (body.website) return res.status(200).json({ ok: true });
+
+  // Rate limit tracking events per IP so this public endpoint can't be scripted
+  // to spam owner SMS alerts or inject CRM contacts. Stored in Neon (shared
+  // across serverless instances). Fails open if the store is unavailable.
+  const rl = await checkRateLimit({ scope: 'track', ip, limit: 5, windowSeconds: 600 });
+  if (!rl.allowed) return res.status(429).json({ ok: false, error: 'rate_limited' });
 
   const firstVisit = !readCookie(req, SEEN_COOKIE);
   if (firstVisit) {

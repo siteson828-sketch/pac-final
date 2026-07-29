@@ -6,8 +6,9 @@ const https = require('https');
 const http = require('http');
 const fs = require('fs');
 
-const BASE = 'https://pac-final.vercel.app';
-const SECRET = 'REDACTED-SECRET';
+const BASE = process.env.SYNC_BASE || 'https://pac-final.vercel.app';
+// Sent as an Authorization: Bearer header (never in the URL). Override via env.
+const SECRET = process.env.SYNC_SECRET || process.env.CRON_SECRET || 'REDACTED-SECRET';
 const PROGRESS_FILE = 'sync-progress.json';
 
 const SOURCES = [
@@ -47,7 +48,7 @@ function saveProgress() {
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
     const lib = url.startsWith('https') ? https : http;
-    const req = lib.get(url, { timeout: 320000 }, res => {
+    const req = lib.get(url, { timeout: 320000, headers: { Authorization: `Bearer ${SECRET}` } }, res => {
       let data = '';
       res.on('data', chunk => data += chunk);
       res.on('end', () => {
@@ -61,7 +62,7 @@ function fetchUrl(url) {
 }
 
 async function syncSource(source) {
-  let url = `${BASE}/api/sync?secret=${SECRET}&source=${source}`;
+  let url = `${BASE}/api/sync?source=${source}`;
   if (source === 'wikidataglobal') {
     url += `&offset=${progress.wikidataOffset}`;
   }

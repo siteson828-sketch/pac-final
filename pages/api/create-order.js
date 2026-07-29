@@ -4,10 +4,18 @@ import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
 import { hasTwilio, sendSms } from '../../lib/twilio';
 import { hasBloo, upsertContact } from '../../lib/bloo';
+import { verifyToken } from '../../lib/order-token';
+import { checkRateLimit } from '../../lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
 const bad = (res, code, error) => res.status(code).json({ error });
+
+function clientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) return String(fwd).split(',')[0].trim();
+  return req.socket?.remoteAddress || '';
+}
 
 async function ensureTable(sql) {
   await sql`CREATE TABLE IF NOT EXISTS orders (
@@ -60,6 +68,18 @@ export default async function handler(req, res) {
   body = body || {};
   const { productName, size, material, frame, quantity, print_url, recipient, work, payment_intent_id } = body;
 
+  // --- anti-abuse gate ---
+  // Require a valid short-lived session token (proves a real browser session ran
+  // our checkout, not a blind script). Enforcement is skipped only when
+  // ORDER_TOKEN_SECRET is unset (unconfigured => fail open). Then rate-limit
+  // orders per IP so the endpoint can't be scripted to spam SMS/CRM/orders.
+  const tokenCheck = verifyToken(body.session_token);
+  if (!tokenCheck.valid && tokenCheck.reason !== 'not_configured') {
+    return bad(res, 403, 'Invalid or expired session. Please reload the page and try again.');
+  }
+  const rl = await checkRateLimit({ scope: 'order', ip: clientIp(req), limit: 10, windowSeconds: 3600 });
+  if (!rl.allowed) return bad(res, 429, 'Too many orders from this address. Please try again later.');
+
   // --- validation ---
   if (!productName || !CATALOG[productName]) return bad(res, 400, 'Unknown or missing product');
   if (!print_url) return bad(res, 400, 'Missing print_url (museum image URL)');
@@ -84,7 +104,7 @@ export default async function handler(req, res) {
     if (!hasStripe()) return bad(res, 400, 'payment_intent_id supplied but Stripe is not configured');
     let pi;
     try { pi = await retrievePaymentIntent(payment_intent_id); }
-    catch (e) { return bad(res, 502, `Could not verify payment: ${e.message}`); }
+    catch (e) { console.error('create-order: payment verify failed:', e); return bad(res, 502, 'Could not verify payment'); }
     paymentStatus = pi?.status || 'unknown';
     if (pi?.status !== 'succeeded') return bad(res, 402, `Payment not completed (status: ${paymentStatus})`);
     paid = true;
@@ -109,7 +129,8 @@ export default async function handler(req, res) {
   try {
     variant = await resolveCatalogVariant(cfg.printfulProductId, size);
   } catch (e) {
-    return bad(res, 502, `Printful catalog lookup failed: ${e.message}`);
+    console.error('create-order: printful catalog lookup failed:', e);
+    return bad(res, 502, 'Printful catalog lookup failed');
   }
   if (!variant || variant.error) {
     return bad(res, 422,
@@ -154,7 +175,7 @@ export default async function handler(req, res) {
             ${errMsg ? 'printful_error' : (paid ? 'order_confirmed' : 'draft_created')},${errMsg},${payment_intent_id || null},${paymentStatus})
     RETURNING id`;
 
-  if (errMsg) return bad(res, 502, `Order saved but Printful rejected it: ${errMsg}`);
+  if (errMsg) { console.error('create-order: printful rejected order:', errMsg); return bad(res, 502, 'Order saved but could not be submitted for fulfillment'); }
   await notifyOrder({ orderId: rows[0].id, productName, size, qty, price, recipient: r, paid });
   return res.status(201).json({
     ok: true,

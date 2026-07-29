@@ -1,7 +1,8 @@
 // sync-new-95.js — sync the 95 newly-added museum sources, small batches, report sorted by saved
 const https = require('https');
-const BASE = 'https://pac-final.vercel.app';
-const SECRET = 'REDACTED-SECRET';
+const BASE = process.env.SYNC_BASE || 'https://pac-final.vercel.app';
+// Sent as an Authorization: Bearer header (never in the URL). Override via env.
+const SECRET = process.env.SYNC_SECRET || process.env.CRON_SECRET || 'REDACTED-SECRET';
 
 const SOURCES = [
   'lacma','sfmoma','guggenheim','whitney','walker','carnegie','cincinnati','noma','denver','seattle',
@@ -18,7 +19,7 @@ const SOURCES = [
 
 function fetchUrl(url) {
   return new Promise((resolve, reject) => {
-    const req = https.get(url, { timeout: 300000 }, res => {
+    const req = https.get(url, { timeout: 300000, headers: { Authorization: `Bearer ${SECRET}` } }, res => {
       let d = ''; res.on('data', c => d += c);
       res.on('end', () => { try { resolve(JSON.parse(d)); } catch(e) { reject(new Error('bad JSON: ' + d.slice(0,60))); } });
     });
@@ -28,7 +29,7 @@ function fetchUrl(url) {
 }
 async function syncOne(source) {
   try {
-    const r = await fetchUrl(`${BASE}/api/sync?secret=${SECRET}&source=${source}`);
+    const r = await fetchUrl(`${BASE}/api/sync?source=${source}`);
     return { source, saved: r.newWorks || 0, total: r.totalInDb || 0, error: null };
   } catch(e) { return { source, saved: 0, total: 0, error: e.message }; }
 }

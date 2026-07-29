@@ -55,31 +55,30 @@ const SOURCES = [
 ];
 
 export default async function handler(req, res) {
-  const cronAuth = req.headers['authorization'];
-  const validCron   = process.env.CRON_SECRET && cronAuth === `Bearer ${process.env.CRON_SECRET}`;
-  const validSecret = req?.query?.secret && req.query.secret === process.env.SYNC_SECRET;
-  if (!validCron && !validSecret) return res.status(401).json({ error: 'Unauthorized' });
+  // Auth via Authorization: Bearer header only (see /api/sync). ?secret= removed.
+  const auth = req.headers['authorization'] || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  const authorized =
+    (process.env.CRON_SECRET && token === process.env.CRON_SECRET) ||
+    (process.env.SYNC_SECRET && token === process.env.SYNC_SECRET);
+  if (!authorized) return res.status(401).json({ error: 'Unauthorized' });
 
   const proto   = (req.headers['x-forwarded-proto'] || 'https').split(',')[0].trim();
   const host    = req.headers['host'];
   const baseUrl = `${proto}://${host}`;
 
-  // Prefer CRON_SECRET (Authorization header) so sub-calls never expose SYNC_SECRET in URLs
+  // Sub-calls authenticate with the Authorization header only (never ?secret= in a URL).
+  const bearer = process.env.CRON_SECRET || process.env.SYNC_SECRET || '';
   const subHeaders = {
     'Accept': 'application/json',
     'User-Agent': 'sync-parallel/1.0',
-    ...(process.env.CRON_SECRET
-      ? { 'Authorization': `Bearer ${process.env.CRON_SECRET}` }
-      : {}),
+    ...(bearer ? { 'Authorization': `Bearer ${bearer}` } : {}),
   };
-  const secretParam = !process.env.CRON_SECRET && process.env.SYNC_SECRET
-    ? `&secret=${encodeURIComponent(process.env.SYNC_SECRET)}`
-    : '';
 
   const results = await Promise.allSettled(
     SOURCES.map(async ({ key }) => {
       const signal = AbortSignal.timeout(270_000);
-      const r = await fetch(`${baseUrl}/api/sync?source=${key}${secretParam}`, { headers: subHeaders, signal });
+      const r = await fetch(`${baseUrl}/api/sync?source=${key}`, { headers: subHeaders, signal });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
       return { key, newWorks: d.newWorks || 0, log: d.log || [] };

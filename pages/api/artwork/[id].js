@@ -11,6 +11,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
     return res.status(200).json({ work: rows[0] });
   } catch (e) {
-    return res.status(500).json({ error: e.message });
+    console.error('artwork/[id] error:', e);
+    return res.status(500).json({ error: 'An error occurred' });
   }
 }
