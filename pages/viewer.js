@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
+import { saveIdentity } from '../lib/identity';
 
 const OSD_VERSION = '4.1.0';
 const OSD_SRC = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_VERSION}/openseadragon.min.js`;
@@ -438,6 +439,11 @@ export default function Viewer() {
     const missing = ['name', 'email', 'address1', 'city', 'country_code', 'zip']
       .filter(f => !String(ship[f] || '').trim());
     if (missing.length) { setCoError(`Please fill in: ${missing.join(', ')}`); return; }
+
+    // Stash the validated identity so the tracking beacon can attach it to
+    // later page views and the CRM push has an email to match on.
+    saveIdentity({ email: ship.email, name: ship.name });
+
     if (!STRIPE_PK) { draftRedirect(checkout.product, checkout.art); return; }
 
     setCoBusy(true);
