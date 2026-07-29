@@ -22,7 +22,20 @@
       "Bash(Start-Sleep -Seconds 30)",
       "WebFetch(domain:data.getty.edu)",
       "WebFetch(domain:artgallery.yale.edu)",
-      "WebFetch(domain:www.brooklynmuseum.org)"
+      "WebFetch(domain:www.brooklynmuseum.org)",
+      "Bash(node --check pages/viewer.js)",
+      "Bash(npx next *)",
+      "Bash(npm install *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "Bash(vercel whoami *)",
+      "Bash(vercel link *)",
+      "Bash(vercel ls *)",
+      "Bash(vercel alias *)",
+      "Bash(vercel inspect *)",
+      "Bash(vercel promote *)",
+      "Bash(git check-ignore *)",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }

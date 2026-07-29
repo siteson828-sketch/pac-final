@@ -3,7 +3,7 @@ import { printfulFetch, resolveCatalogVariant, hasPrintfulKey } from '../../lib/
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
 import { hasTwilio, sendSms } from '../../lib/twilio';
-import { hasGhl, upsertContact } from '../../lib/ghl';
+import { hasBloo, upsertContact } from '../../lib/bloo';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,14 +39,14 @@ async function notifyOrder({ orderId, productName, size, qty, price, recipient, 
     }
   } catch (e) {}
   try {
-    if (hasGhl() && (recipient?.email || recipient?.phone)) {
+    if (hasBloo() && (recipient?.email || recipient?.phone)) {
       await upsertContact({
         email: recipient.email,
         phone: recipient.phone,
         name: recipient.name,
         source: 'Public Art Collections — order',
         tags: ['customer', paid ? 'paid-order' : 'draft-order'],
-        customFields: [{ key: 'last_order_id', field_value: String(orderId) }],
+        custom: { last_order_id: String(orderId) },
       });
     }
   } catch (e) {}
