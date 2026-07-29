@@ -88,8 +88,11 @@ export default async function handler(req, res) {
 
   // First-visit marketing SMS to the visitor (Bloo.io) — only when the beacon
   // carries a phone, and only once per visitor (first-visit cookie) so we never
-  // re-text on later page views. Requires lawful marketing consent + STOP handling.
-  if (firstVisit && body.phone) {
+  // re-text on later page views. Gated behind ENABLE_VISITOR_SMS so that simply
+  // configuring BLOO_API_KEY (which enables owner order alerts) does NOT start
+  // texting visitors — that requires the explicit opt-in flag. Requires lawful
+  // marketing consent + STOP handling before enabling.
+  if (firstVisit && body.phone && process.env.ENABLE_VISITOR_SMS === 'true') {
     await sendSMS(body.phone, body.name, body.artwork_title, body.museum);
     notified.sms = 'attempted';
   }
