@@ -4,14 +4,14 @@ export const dynamic = 'force-dynamic';
 // the first 30 global catalog products so you can confirm real product IDs for
 // lib/printful-catalog.js. Gated by SYNC_SECRET.
 //
-// Uses PRINTFUL_API_KEY (the env var the rest of the app uses), falling back to
-// PRINTFUL_KEY. If neither is set, key_configured is false and calls fail.
+// Uses PRINTFUL_API_KEY (the env var the rest of the app uses). If it is not
+// set, key_configured is false and calls fail.
 export default async function handler(req, res) {
   if (req.query.secret !== process.env.SYNC_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const key = process.env.PRINTFUL_API_KEY || process.env.PRINTFUL_KEY;
+  const key = process.env.PRINTFUL_API_KEY;
   if (!key) {
     return res.status(400).json({ error: 'PRINTFUL_API_KEY not configured', key_configured: false });
   }
