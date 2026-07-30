@@ -396,8 +396,20 @@ async function syncWikidataGlobal(sql, offset = 0) {
   const works = [];
   const sparql = `
     SELECT ?item ?itemLabel ?image ?creatorLabel ?inception WHERE {
+      VALUES ?type {
+        wd:Q3305213    # painting
+        wd:Q93184      # drawing
+        wd:Q125191     # photograph
+        wd:Q860861     # sculpture
+        wd:Q11060274   # print
+        wd:Q18761202   # watercolor painting
+        wd:Q87167      # manuscript
+        wd:Q4006       # map
+        wd:Q11642      # ceramic
+        wd:Q28823      # textile
+      }
+      ?item wdt:P31 ?type .
       ?item wdt:P18 ?image .
-      ?item wdt:P31 wd:Q3305213 .
       OPTIONAL { ?item wdt:P170 ?creator }
       OPTIONAL { ?item wdt:P571 ?inception }
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
