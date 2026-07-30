@@ -1,6 +1,12 @@
 {
   "crons": [
     { "path": "/api/sync-fast",                       "schedule": "*/15 * * * *" },
+    { "path": "/api/sync?source=tepapa",              "schedule": "0,30 * * * *"  },
+    { "path": "/api/sync?source=trove",               "schedule": "5,35 * * * *"  },
+    { "path": "/api/sync?source=digitalnz",           "schedule": "10,40 * * * *" },
+    { "path": "/api/sync?source=smithsonianall",      "schedule": "15,45 * * * *" },
+    { "path": "/api/sync?source=digitalcommonwealth", "schedule": "20,50 * * * *" },
+    { "path": "/api/sync?source=bhl",                 "schedule": "25,55 * * * *" },
     { "path": "/api/sync-parallel",                  "schedule": "0 0 * * *"  },
     { "path": "/api/sync?source=louvre",             "schedule": "0 2 * * *"  },
     { "path": "/api/sync?source=british",            "schedule": "0 3 * * *"  },

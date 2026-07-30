@@ -394,24 +394,24 @@ async function syncInternetArchive(sql, offset=0) {
 
 async function syncWikidataGlobal(sql, offset = 0) {
   const works = [];
+  // 20 artwork types. Uses VALUES (not a 20-way UNION) so WDQS doesn't 60s-time
+  // out at depth. Captures the holding institution (P195/P276) for source
+  // granularity and excludes items explicitly marked copyrighted (P6216).
   const sparql = `
-    SELECT ?item ?itemLabel ?image ?creatorLabel ?inception WHERE {
+    SELECT ?item ?itemLabel ?image ?creatorLabel ?inception ?institutionLabel WHERE {
       VALUES ?type {
-        wd:Q3305213    # painting
-        wd:Q93184      # drawing
-        wd:Q125191     # photograph
-        wd:Q860861     # sculpture
-        wd:Q11060274   # print
-        wd:Q18761202   # watercolor painting
-        wd:Q87167      # manuscript
-        wd:Q4006       # map
-        wd:Q11642      # ceramic
-        wd:Q28823      # textile
+        wd:Q3305213 wd:Q93184 wd:Q125191 wd:Q860861 wd:Q11060274
+        wd:Q18761202 wd:Q87167 wd:Q4006 wd:Q11642 wd:Q28823
+        wd:Q79218 wd:Q283 wd:Q179635 wd:Q2743 wd:Q18003
+        wd:Q11835431 wd:Q18575174 wd:Q22669857 wd:Q193977 wd:Q15138389
       }
       ?item wdt:P31 ?type .
       ?item wdt:P18 ?image .
       OPTIONAL { ?item wdt:P170 ?creator }
       OPTIONAL { ?item wdt:P571 ?inception }
+      OPTIONAL { ?item wdt:P195 ?institution }
+      OPTIONAL { ?item wdt:P276 ?institution }
+      FILTER NOT EXISTS { ?item wdt:P6216 wd:Q50423863 }
       SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
     }
     LIMIT 3000
@@ -430,7 +430,7 @@ async function syncWikidataGlobal(sql, offset = 0) {
       const img = b.image?.value;
       if (!img) continue;
       works.push({
-        source: 'Wikidata Global',
+        source: 'Wikidata — ' + (b.institutionLabel?.value || 'Museum Collection'),
         source_id: b.item?.value?.split('/').pop(),
         title: b.itemLabel?.value || 'Untitled',
         artist: b.creatorLabel?.value || '',
@@ -819,6 +819,162 @@ async function syncDPLA(sql, key, offset=0) {
   return upsert(sql, works);
 }
 
+// --- Added aggregators ---------------------------------------------------
+// Key-gated sources no-op until their key is set in Vercel. RIGHTS CAVEAT:
+// upsert() stores every work as CC0/Public-Domain regardless of the `rights`
+// field below, so the CC-BY sources (Trove, DigitalNZ, BHL) are NOT accurately
+// labeled — resolve before selling those commercially as public domain.
+
+// Trove (National Library of Australia) — 1000+ AU institutions. Needs TROVE_KEY.
+async function syncTrove(sql) {
+  if (!process.env.TROVE_KEY) return 0;
+  const works = [];
+  const queries = ['painting','drawing','photograph','print','watercolor','sculpture'];
+  for (const q of queries) {
+    for (let page = 1; page <= 20; page++) {
+      try {
+        const d = await fetchJson(`https://api.trove.nla.gov.au/v3/result?q=${encodeURIComponent(q)}&category=picture&l-availability=y&l-copyright=CC+BY&n=100&s=${(page-1)*100}&key=${process.env.TROVE_KEY}&encoding=json`);
+        const items = d.category?.[0]?.records?.work || [];
+        if (!items.length) break;
+        for (const o of items) {
+          const thumb = o.identifier?.find(i => i.type === 'thumbnail')?.value;
+          if (!thumb || !o.id) continue;   // skip id-less items (avoid dup storms)
+          works.push({
+            source: 'Trove Australia — ' + (o.contributor?.[0] || 'National Library of Australia'),
+            source_id: String(o.id),
+            title: Array.isArray(o.title) ? o.title[0] : (o.title || 'Untitled'),
+            artist: o.contributor?.[1] || '', date_text: o.issued || '',
+            thumb_url: thumb, full_url: thumb, detail_url: o.troveUrl || '',
+            rights: 'CC BY', rights_label: 'CC BY', commercial_ok: true, bio: '',
+          });
+        }
+        await sleep(300);
+      } catch (e) { break; }
+    }
+  }
+  return await upsert(sql, works);
+}
+
+// DigitalNZ — New Zealand aggregator. Needs DIGITALNZ_KEY.
+async function syncDigitalNZ(sql) {
+  if (!process.env.DIGITALNZ_KEY) return 0;
+  const works = [];
+  const queries = ['painting','photograph','drawing','print','watercolor'];
+  for (const q of queries) {
+    for (let page = 1; page <= 20; page++) {
+      try {
+        const d = await fetchJson(`https://api.digitalnz.org/v3/records.json?api_key=${process.env.DIGITALNZ_KEY}&text=${encodeURIComponent(q)}&and[usage]=Share&and[category]=Images&per_page=100&page=${page}`);
+        const items = d.search?.results || [];
+        if (!items.length) break;
+        for (const o of items) {
+          if (!o.thumbnail_url || o.id == null) continue;
+          works.push({
+            source: 'Digital NZ — ' + (o.collection?.[0] || 'New Zealand Collections'),
+            source_id: String(o.id),
+            title: o.title || 'Untitled', artist: o.creator?.[0] || '', date_text: o.date?.[0] || '',
+            thumb_url: o.thumbnail_url, full_url: o.object_url || o.thumbnail_url, detail_url: o.landing_url || '',
+            rights: 'CC BY', rights_label: 'CC BY', commercial_ok: true, bio: o.description?.[0] || '',
+          });
+        }
+        await sleep(300);
+      } catch (e) { break; }
+    }
+  }
+  return await upsert(sql, works);
+}
+
+// Smithsonian Open Access (multiple units). Uses existing SMITHSONIAN_KEY.
+// Upserts per unit so a 300s timeout still persists completed units.
+async function syncSmithsonianAll(sql) {
+  if (!process.env.SMITHSONIAN_KEY) return 0;
+  let saved = 0;
+  const units = ['NMAH','NMAAHC','NASM','NMNHANTHRO','NPG','HMSG','SAAM','CHNDM','FSG','NMAfA','NMAI','NPM'];
+  for (const unit of units) {
+    const works = [];
+    for (let start = 0; start < 2000; start += 100) {
+      try {
+        const d = await fetchJson(`https://api.si.edu/openaccess/api/v1.0/search?q=art&unit_code=${unit}&rows=100&start=${start}&api_key=${process.env.SMITHSONIAN_KEY}`);
+        const rows = d.response?.rows || [];
+        if (!rows.length) break;
+        for (const o of rows) {
+          const media = o.content?.descriptiveNonRepeating?.online_media?.media?.[0];
+          if (!media?.thumbnail) continue;
+          works.push({
+            source: 'Smithsonian — ' + (o.unitCode || unit),
+            source_id: o.id, title: o.title || 'Untitled',
+            artist: o.content?.freetext?.name?.[0]?.content || '',
+            date_text: o.content?.freetext?.date?.[0]?.content || '',
+            medium: o.content?.freetext?.physicalDescription?.[0]?.content || '',
+            thumb_url: media.thumbnail, full_url: media.content || media.thumbnail,
+            detail_url: o.content?.descriptiveNonRepeating?.record_link || '',
+            rights: 'CC0', rights_label: 'CC0 — Public Domain', commercial_ok: true,
+            bio: o.content?.freetext?.notes?.[0]?.content || '',
+          });
+        }
+        await sleep(200);
+      } catch (e) { break; }
+    }
+    saved += await upsert(sql, works);
+  }
+  return saved;
+}
+
+// Biodiversity Heritage Library — natural-history illustrations. Needs BHL_KEY.
+async function syncBHL(sql) {
+  if (!process.env.BHL_KEY) return 0;
+  const works = [];
+  const queries = ['illustration','botanical','natural history','zoological','botanical illustration'];
+  for (const q of queries) {
+    try {
+      const d = await fetchJson(`https://www.biodiversitylibrary.org/api3?op=PublicationSearchAdvanced&searchterm=${encodeURIComponent(q)}&searchtype=F&page=1&pagesize=200&apikey=${process.env.BHL_KEY}&format=json`);
+      const items = d.Result || [];
+      for (const o of items) {
+        if (!o.Thumbnail || (!o.TitleID && !o.ItemID)) continue;
+        works.push({
+          source: 'Biodiversity Heritage Library', source_id: String(o.TitleID || o.ItemID),
+          title: o.FullTitle || o.ShortTitle || 'Untitled', artist: o.Authors?.[0]?.Name || '',
+          date_text: o.PublicationDate || '', thumb_url: o.Thumbnail, full_url: o.Thumbnail,
+          detail_url: `https://www.biodiversitylibrary.org/item/${o.ItemID}`,
+          rights: 'CC BY', rights_label: 'CC BY', commercial_ok: true, bio: o.Note || '',
+        });
+      }
+      await sleep(500);
+    } catch (e) {}
+  }
+  return await upsert(sql, works);
+}
+
+// Digital Commonwealth — 170+ Massachusetts institutions. No key. JSON:API shape
+// (data[].attributes), not the Solr response.docs the original snippet assumed.
+async function syncDigitalCommonwealth(sql) {
+  const works = [];
+  for (let page = 1; page <= 50; page++) {
+    try {
+      const d = await fetchJson(`https://www.digitalcommonwealth.org/search.json?q=art&f[rights_ss][]=No+known+copyright+restrictions&f[type_of_resource_ssim][]=still+image&per_page=100&page=${page}`);
+      const items = d.data || [];
+      if (!items.length) break;
+      for (const rec of items) {
+        const o = rec.attributes || {};
+        const ark = o.exemplary_image_ssi;
+        if (!ark) continue;
+        works.push({
+          source: 'Digital Commonwealth — ' + (o.physical_location_ssim?.[0] || 'Massachusetts Collections'),
+          source_id: String(rec.id),
+          title: o.title_info_primary_tsi || 'Untitled',
+          artist: o.name_tsim?.[0] || '', date_text: o.date_tsim?.[0] || o.note_date_tsim?.[0] || '',
+          thumb_url: `https://ark.digitalcommonwealth.org/ark:/${ark}/thumbnail`,
+          full_url: `https://ark.digitalcommonwealth.org/ark:/${ark}/large_image`,
+          detail_url: `https://www.digitalcommonwealth.org/search/${rec.id}`,
+          rights: 'CC0', rights_label: 'CC0 — Public Domain', commercial_ok: true,
+          bio: o.abstract_tsi || '',
+        });
+      }
+      await sleep(200);
+    } catch (e) { break; }
+  }
+  return await upsert(sql, works);
+}
+
 export default async function handler(req, res) {
   // Auth via Authorization: Bearer header only. Vercel Cron injects this using
   // CRON_SECRET; SYNC_SECRET is also accepted as a bearer for manual runs. The
@@ -1008,6 +1164,11 @@ export default async function handler(req, res) {
   // Add real museum QIDs (verified P195 collections with P18 images) once confirmed.
   if (src==='internetarchive'||src==='all') await run('Internet Archive', () => syncInternetArchive(sql, offset));
   if (src==='wikidataglobal') await run(`Wikidata Global (offset ${offset})`, () => syncWikidataGlobal(sql, offset));
+  if (src==='trove'              || src==='all') await run('Trove Australia',              () => syncTrove(sql));
+  if (src==='digitalnz'          || src==='all') await run('Digital NZ',                   () => syncDigitalNZ(sql));
+  if (src==='smithsonianall'     || src==='all') await run('Smithsonian All',              () => syncSmithsonianAll(sql));
+  if (src==='digitalcommonwealth'|| src==='all') await run('Digital Commonwealth',         () => syncDigitalCommonwealth(sql));
+  if (src==='bhl'                || src==='all') await run('Biodiversity Heritage Library', () => syncBHL(sql));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
 }
