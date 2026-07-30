@@ -14,7 +14,7 @@ const COLLECTIONS = [
 
 const PRODUCTS = [
   { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18',
-    sizes: ['8×10"', '11×14"', '16×20"', '24×30"'],
+    sizes: ['8×10"', '11×14"', '16×20"', '24×36"'],
     materials: ['Archival Matte', 'Photo Gloss', 'Fine Art Cotton'],
     frames: [null, 'Black', 'White', 'Natural Wood'] },
   { emoji: '🎨', name: 'Canvas Wrap', price: 'from $45',
@@ -30,7 +30,7 @@ const PRODUCTS = [
     materials: ['Ceramic'],
     frames: null },
   { emoji: '📱', name: 'Phone Case', price: 'from $19',
-    sizes: ['iPhone 15', 'iPhone 14', 'Samsung S24', 'Pixel 8'],
+    sizes: ['iPhone 15', 'iPhone 14'],
     materials: ['Tough', 'Slim'],
     frames: null },
   { emoji: '🛍️', name: 'Tote Bag', price: 'from $16',
