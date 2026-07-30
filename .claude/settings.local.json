@@ -42,7 +42,8 @@
       "Bash(git fetch *)",
       "Bash(rm -f \"C:/Users/Charles/Desktop/pac-final-prepurge-7868511.bundle\")",
       "Read(//c/Users/Charles/Desktop/**)",
-      "Bash(grep -vE '^\\\\s*$')"
+      "Bash(grep -vE '^\\\\s*$')",
+      "Bash(python -c \"import json;json.load\\(open\\('vercel.json'\\)\\);print\\('vercel.json valid'\\)\")"
     ]
   }
 }

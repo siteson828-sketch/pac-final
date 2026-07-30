@@ -1,5 +1,6 @@
 {
   "crons": [
+    { "path": "/api/sync-fast",                       "schedule": "*/15 * * * *" },
     { "path": "/api/sync-parallel",                  "schedule": "0 0 * * *"  },
     { "path": "/api/sync?source=louvre",             "schedule": "0 2 * * *"  },
     { "path": "/api/sync?source=british",            "schedule": "0 3 * * *"  },
