@@ -51,6 +51,34 @@ Return ONLY valid JSON, no other text.`;
   } catch (e) { return { data: null, error: 'fetch_fail: ' + e.message }; }
 }
 
+// --- term-expansion cache (Neon-backed, shared across serverless instances,
+// unlike an in-memory Map that each cold start would lose). Expansions are
+// stable per query, so entries don't expire. All ops fail-open. ---
+let cacheEnsured = false;
+async function ensureCacheTable(sql) {
+  if (cacheEnsured) return;
+  await sql`CREATE TABLE IF NOT EXISTS ai_search_cache (
+    query TEXT PRIMARY KEY,
+    data JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  )`;
+  cacheEnsured = true;
+}
+async function getCachedExpansion(sql, key) {
+  try {
+    await ensureCacheTable(sql);
+    const rows = await sql`SELECT data FROM ai_search_cache WHERE query = ${key}`;
+    return rows[0]?.data || null;
+  } catch (e) { return null; } // treat any error as a cache miss
+}
+async function putCachedExpansion(sql, key, data) {
+  try {
+    await ensureCacheTable(sql);
+    await sql`INSERT INTO ai_search_cache (query, data) VALUES (${key}, ${JSON.stringify(data)}::jsonb)
+              ON CONFLICT (query) DO UPDATE SET data = EXCLUDED.data, created_at = NOW()`;
+  } catch (e) { /* best-effort */ }
+}
+
 export default async function handler(req, res) {
   const query = cleanStr(req.query.query, 200);
   if (!query) return res.status(400).json({ error: 'No query' });
@@ -65,7 +93,18 @@ export default async function handler(req, res) {
   const DEAD = '%ark.digitalcommonwealth.org%';
 
   try {
-    const { data: ai, error: aiError } = await expandQuery(query);
+    // Cache Claude's term expansion by normalized query so repeat searches skip
+    // the ~2-3s paid Claude call.
+    const cacheKey = query.toLowerCase();
+    let ai = await getCachedExpansion(sql, cacheKey);
+    let aiError = null;
+    const cached = !!ai;
+    if (!ai) {
+      const r = await expandQuery(query);
+      ai = r.data;
+      aiError = r.error;
+      if (ai) await putCachedExpansion(sql, cacheKey, ai);
+    }
     const terms = (ai?.search_terms && ai.search_terms.length ? ai.search_terms : [query])
       .map(t => cleanStr(t, 60)).filter(Boolean).slice(0, 5);
 
@@ -116,6 +155,7 @@ export default async function handler(req, res) {
       search_terms: terms,
       original_query: query,
       ai: !!ai,
+      cached,
       ai_error: aiError || undefined,
     });
   } catch (e) {
