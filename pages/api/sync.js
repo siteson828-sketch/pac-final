@@ -303,40 +303,42 @@ async function syncSmithsonian(sql, key) {
   if (!key) return 0;
   const works = [];
   const seen = new Set();
-  // The old query used unit_code with no search term and no paging, so it pulled
-  // mostly media-less records (only a handful had thumbnails). Now: search real
-  // art terms across many units and page, keeping any record that has a thumbnail
-  // (ids.si.edu images render in real browsers — the WAF only blocks bots).
-  const units = ['nmah','nmaahc','nasm','nmnh','npg','hmsg','saam','chndm','fsg','nzp','americanart','africanart','nmai'];
-  const terms = ['art','painting','photograph','sculpture','drawing','portrait'];
-  const TOTAL_CAP = 4000; // per-invocation insert budget (Neon upsert is one row at a time)
+  // KEY FINDING (tested against the live API): SI records only include
+  // online_media when the query is scoped to a unit_code, and unit_code is
+  // CASE-SENSITIVE (uppercase). So `unit_code:SAAM AND online_media_type:"Images"`
+  // returns image-bearing records (with media[].thumbnail), while a bare term
+  // search or lowercase unit returns records with no media. No free-text term is
+  // needed — unit+images already selects every image record for the unit.
+  // Bounded to ~4000 rows/run (Neon upsert is one row at a time); iterate units
+  // so all contribute. thumb_url/full_url are ids.si.edu (render in real browsers).
+  const units = ['NMAH','NMAAHC','NASM','NMNH','NPG','HMSG','SAAM','CHNDM','FSG','NMAI'];
+  const TOTAL_CAP = 4000;
+  const PER_UNIT = 500; // 5 pages/unit so the budget spreads across units
   outer:
   for (const unit of units) {
-    let perUnit = 0;
-    for (const term of terms) {
-      for (let start = 0; start < 500 && perUnit < 2000; start += 100) {
-        try {
-          const d = await fetchJson(
-            `https://api.si.edu/openaccess/api/v1.0/search?q=${encodeURIComponent(term)}&unit_code=${unit}&start=${start}&rows=100&api_key=${key}`
-          );
-          const rows = d.response?.rows || [];
-          if (!rows.length) break;
-          for (const o of rows) {
-            if (seen.has(o.id)) continue;
-            const media = (o.content?.descriptiveNonRepeating?.online_media?.media || []).find(m => m?.thumbnail);
-            if (!media) continue;
-            seen.add(o.id); perUnit++;
-            works.push({ source:'Smithsonian Institution', source_id:o.id,
-              title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
-              date_text:o.content?.freetext?.date?.[0]?.content||'',
-              medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
-              thumb_url:media.thumbnail, full_url:media.content||media.thumbnail,
-              detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
-          }
-          if (works.length >= TOTAL_CAP) break outer;
-          await sleep(150);
-        } catch(e) { break; }
-      }
+    for (let start = 0; start < PER_UNIT; start += 100) {
+      try {
+        const q = encodeURIComponent(`unit_code:${unit} AND online_media_type:"Images"`);
+        const d = await fetchJson(
+          `https://api.si.edu/openaccess/api/v1.0/search?q=${q}&start=${start}&rows=100&api_key=${key}`
+        );
+        const rows = d.response?.rows || [];
+        if (!rows.length) break;
+        for (const o of rows) {
+          if (seen.has(o.id)) continue;
+          const media = (o.content?.descriptiveNonRepeating?.online_media?.media || []).find(m => m?.thumbnail);
+          if (!media) continue;
+          seen.add(o.id);
+          works.push({ source:'Smithsonian Institution', source_id:o.id,
+            title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
+            date_text:o.content?.freetext?.date?.[0]?.content||'',
+            medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
+            thumb_url:media.thumbnail, full_url:media.content||media.thumbnail,
+            detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
+        }
+        if (works.length >= TOTAL_CAP) break outer;
+        await sleep(200);
+      } catch(e) { break; }
     }
   }
   return upsert(sql, works);
