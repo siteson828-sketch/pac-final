@@ -957,15 +957,20 @@ async function syncDigitalCommonwealth(sql) {
       if (!items.length) break;
       for (const rec of items) {
         const o = rec.attributes || {};
-        const ark = o.exemplary_image_ssi;
-        if (!ark) continue;
+        // Digital Commonwealth serves derivatives from Azure Blob storage; the
+        // old ark.digitalcommonwealth.org/.../thumbnail endpoint is dead (404).
+        // exemplary_image_key_base_ss already includes the correct path prefix
+        // (e.g. "metadata/commonwealth-oai:xxx" or "images/commonwealth:xxx").
+        const keyBase = o.exemplary_image_key_base_ss;
+        if (!keyBase) continue;
+        const blob = `https://bpldcassets.blob.core.windows.net/derivatives/${keyBase}`;
         works.push({
           source: 'Digital Commonwealth — ' + (o.physical_location_ssim?.[0] || 'Massachusetts Collections'),
           source_id: String(rec.id),
           title: o.title_info_primary_tsi || 'Untitled',
           artist: o.name_tsim?.[0] || '', date_text: o.date_tsim?.[0] || o.note_date_tsim?.[0] || '',
-          thumb_url: `https://ark.digitalcommonwealth.org/ark:/${ark}/thumbnail`,
-          full_url: `https://ark.digitalcommonwealth.org/ark:/${ark}/large_image`,
+          thumb_url: `${blob}/image_thumbnail_300.jpg`,
+          full_url: `${blob}/image_access_800.jpg`,
           detail_url: `https://www.digitalcommonwealth.org/search/${rec.id}`,
           rights: 'CC0', rights_label: 'CC0 — Public Domain', commercial_ok: true,
           bio: o.abstract_tsi || '',
