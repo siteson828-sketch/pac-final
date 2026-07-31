@@ -404,6 +404,10 @@ export default function Viewer() {
   const [searchOpen, setSearchOpen] = useState(false); // mobile search field toggle
   const [fullReady, setFullReady]   = useState(false); // museum full image finished loading
   const [zoomOpen, setZoomOpen]     = useState(false); // OpenSeadragon IIIF viewer open
+  const [aiActive, setAiActive]     = useState(false); // showing AI-search results (no museum selected)
+  const [aiQuery, setAiQuery]       = useState('');
+  const [aiSearching, setAiSearching] = useState(false);
+  const [aiInfo, setAiInfo]         = useState(null);  // { description, mood } from the AI
   const osdRef  = useRef(null);
   const osdInst = useRef(null);
   const gate = useShopGate();
@@ -649,10 +653,34 @@ export default function Viewer() {
 
   const handleSelect = museum => {
     setSelected(museum);
+    setAiActive(false);
     setGenre(GENRES[0]);
     setSearch('');
     setNavOpen(false); // close the mobile drawer after picking a museum
     loadWorks(museum, GENRES[0], sortOrder, 0, false);
+  };
+
+  // AI natural-language search: /api/ai-search expands the query via Claude
+  // (server-side) and returns matching works. Results render without a museum
+  // selection (aiActive), so we clear the museum/genre and drive the grid directly.
+  const doAISearch = async (q) => {
+    const query = ((q ?? aiQuery) || '').trim();
+    if (!query) return;
+    setAiSearching(true);
+    setAiInfo(null);
+    setSelected(null);
+    setModal(null);
+    setGenre(GENRES[0]);
+    setAiActive(true);
+    setWorks([]);
+    setHasMore(false);
+    setNavOpen(false);
+    try {
+      const d = await fetch('/api/ai-search?query=' + encodeURIComponent(query)).then(r => r.json());
+      setWorks(d.works || []);
+      setAiInfo({ description: d.ai_description || '', mood: d.ai_mood || '' });
+    } catch (e) { console.error('AI search error:', e); }
+    setAiSearching(false);
   };
 
   const handleGenre = g => {
@@ -778,16 +806,49 @@ export default function Viewer() {
 
           {/* GRID AREA */}
           <div className="grid-area">
-            {!selected ? (
+            {/* AI natural-language search — always available */}
+            <div style={{ paddingBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  value={aiQuery}
+                  onChange={e => setAiQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doAISearch()}
+                  placeholder="✨ AI search — mood, color, era, style… e.g. “blue melancholy landscapes”"
+                  style={{ flex: 1, padding: '10px 14px', border: '0.5px solid rgba(26,23,20,0.2)', borderRadius: 6, fontSize: 14, background: '#FAF8F4', color: '#1A1714', outline: 'none', minHeight: 44 }}
+                />
+                <button onClick={() => doAISearch()} disabled={aiSearching}
+                  style={{ background: '#B8942A', color: '#1A1714', border: 'none', padding: '0 18px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', minHeight: 44 }}>
+                  {aiSearching ? '🤔 Thinking…' : '✨ AI Search'}
+                </button>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                {['blue and melancholy', 'powerful women', 'Japanese nature', 'Dutch golden age', 'war and suffering', 'impressionist light'].map(s => (
+                  <button key={s} onClick={() => { setAiQuery(s); doAISearch(s); }}
+                    style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: '0.5px solid rgba(26,23,20,0.2)', background: 'transparent', color: '#8A8178' }}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {aiActive && aiInfo?.description && (
+              <div style={{ marginBottom: 12, padding: '12px 14px', background: '#F5F0E8', borderRadius: 6, border: '0.5px solid rgba(26,23,20,0.12)' }}>
+                <div style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '.1em', color: '#B8942A', marginBottom: 4 }}>✨ AI interpretation</div>
+                <div style={{ fontSize: 13, color: '#1A1714', lineHeight: 1.5 }}>{aiInfo.description}</div>
+                {aiInfo.mood && <div style={{ fontSize: 11, color: '#8A8178', marginTop: 4 }}>Mood: {aiInfo.mood}</div>}
+              </div>
+            )}
+
+            {(!selected && !aiActive) ? (
               <div className="empty">
                 <div className="empty-icon">🏛️</div>
                 <div className="empty-title">World Museums</div>
                 <div className="empty-sub">
-                  Select a museum from the sidebar to browse its public-domain collection.
+                  Select a museum from the sidebar, or use ✨ AI search above.
                   {totalDb && ` ${Number(totalDb).toLocaleString()} works across ${ALL_MUSEUMS.length} institutions.`}
                 </div>
               </div>
-            ) : loading && works.length === 0 ? (
+            ) : (loading || aiSearching) && works.length === 0 ? (
               <div className="art-grid">
                 {Array.from({ length: 24 }).map((_, i) => (
                   <div key={i} className="skeleton">
@@ -805,11 +866,13 @@ export default function Viewer() {
                 <div className="empty-icon">🔍</div>
                 <div className="empty-title">No works found</div>
                 <div className="empty-sub">
-                  {genre.label !== 'All'
-                    ? `No "${genre.label}" works found in ${selected.label}. Try a different genre or clear the filter.`
-                    : `${selected.label} may not have synced yet.`}
+                  {aiActive
+                    ? 'No works matched that search. Try different words.'
+                    : genre.label !== 'All'
+                      ? `No "${genre.label}" works found in ${selected.label}. Try a different genre or clear the filter.`
+                      : `${selected.label} may not have synced yet.`}
                 </div>
-                {genre.label !== 'All' && (
+                {!aiActive && genre.label !== 'All' && (
                   <button className="load-btn" onClick={() => handleGenre(GENRES[0])}>Clear genre filter</button>
                 )}
               </div>
