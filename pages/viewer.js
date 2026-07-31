@@ -137,13 +137,27 @@ const ORDERS = [
   { label: 'Shuffle', value: 'random' },
 ];
 
+// Product selector. `name` MUST match a key in lib/printful-catalog.js CATALOG;
+// the server resolves the Printful product + per-size variant id at runtime
+// (resolveCatalogVariant), so no ids live here. Kept in sync with the same list
+// in pages/index.js. All sizes below verified to resolve against the live catalog.
 const PRODUCTS = [
-  { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18', sizes: ['8×10"', '11×14"', '16×20"', '24×30"'] },
+  { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18', sizes: ['8×10"', '11×14"', '16×20"', '24×36"'] },
   { emoji: '🎨', name: 'Canvas Wrap',    price: 'from $45', sizes: ['12×16"', '16×20"', '20×24"', '24×30"'] },
   { emoji: '👕', name: 'T-Shirt',        price: 'from $24', sizes: ['S', 'M', 'L', 'XL', '2XL'] },
   { emoji: '☕', name: 'Mug',            price: 'from $14', sizes: ['11oz', '15oz'] },
-  { emoji: '📱', name: 'Phone Case',     price: 'from $19', sizes: ['iPhone 15', 'iPhone 14', 'Samsung S24', 'Pixel 8'] },
-  { emoji: '🛍️', name: 'Tote Bag',       price: 'from $16', sizes: ['Standard'] },
+  { emoji: '📱', name: 'Phone Case',     price: 'from $22', sizes: ['iPhone 15', 'iPhone 14'] },
+  { emoji: '🛍️', name: 'Tote Bag',       price: 'from $29', sizes: ['Standard'] },
+  { emoji: '🏛️', name: 'Framed Poster',  price: 'from $45', sizes: ['8×10"', '11×14"', '16×20"', '24×36"'] },
+  { emoji: '🪞', name: 'Metal Print',    price: 'from $79', sizes: ['8×10"', '11×14"', '16×20"'] },
+  { emoji: '🏷️', name: 'Sticker',        price: 'from $8',  sizes: ['3×3"', '4×4"', '5×5"'] },
+  { emoji: '🛋️', name: 'Throw Pillow',   price: 'from $29', sizes: ['14×14"', '16×16"', '18×18"', '22×22"'] },
+  { emoji: '🛌', name: 'Throw Blanket',  price: 'from $49', sizes: ['30×40"', '50×60"', '60×80"'] },
+  { emoji: '🧥', name: 'Hoodie',         price: 'from $44', sizes: ['S', 'M', 'L', 'XL', '2XL'] },
+  { emoji: '🥤', name: 'Tumbler',        price: 'from $24', sizes: ['16oz'] },
+  { emoji: '📓', name: 'Notebook',       price: 'from $18', sizes: ['One Size'] },
+  { emoji: '💌', name: 'Greeting Card',  price: 'from $5',  sizes: ['4×6"', '5×7"'] },
+  { emoji: '🧩', name: 'Jigsaw Puzzle',  price: 'from $29', sizes: ['252 pieces', '520 pieces'] },
 ];
 
 // Client-side Stripe publishable key (inlined at build). Empty when unset →
