@@ -345,7 +345,7 @@ export default function ArtworkPage({ work, related }) {
           </div>
         </div>
         <div className="footer-bottom">
-          © 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful
+          © 2025 publicartcollections.net · All artwork public domain · Prints fulfilled by Printful
         </div>
       </footer>
 

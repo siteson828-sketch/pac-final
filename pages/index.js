@@ -763,7 +763,7 @@ export default function Home() {
             </div>
           </div>
           <div className="footer-bottom">
-            © 2025 publicartcollections.org · All artwork public domain · Prints fulfilled by Printful · Ships worldwide
+            © 2025 publicartcollections.net · All artwork public domain · Prints fulfilled by Printful · Ships worldwide
           </div>
         </div>
       </footer>

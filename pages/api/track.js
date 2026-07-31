@@ -38,8 +38,8 @@ async function sendSMS(phone, name, artworkTitle, museum) {
   if (!process.env.BLOO_API_KEY) return;
 
   const message = artworkTitle
-    ? `Hi ${name||'there'}! Thanks for visiting Public Art Collections. We noticed you're interested in "${artworkTitle}" from ${museum}. Browse and order museum-quality prints at publicartcollections.org`
-    : `Hi ${name||'there'}! Thanks for visiting Public Art Collections — your gateway to every museum in the world. Browse and order prints at publicartcollections.org`;
+    ? `Hi ${name||'there'}! Thanks for visiting Public Art Collections. We noticed you're interested in "${artworkTitle}" from ${museum}. Browse and order museum-quality prints at publicartcollections.net`
+    : `Hi ${name||'there'}! Thanks for visiting Public Art Collections — your gateway to every museum in the world. Browse and order prints at publicartcollections.net`;
 
   try {
     await fetch('https://api.bloo.io/v1/sms/send', {
