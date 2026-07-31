@@ -19,6 +19,9 @@ export const dynamic = 'force-dynamic';
 // resolveCatalogVariant in lib/printful.js). This endpoint is a build/setup aid
 // for choosing product ids, sizes and prices — it does not itself add products.
 
+import { clientIp } from '../../lib/sanitize';
+import { isIpBlocked, recordAuthFailure, logSecurityEvent } from '../../lib/security';
+
 const PRINTFUL_BASE = 'https://api.printful.com';
 
 // Map a Printful category title into one of the store's 4 buckets by keyword.
@@ -52,7 +55,11 @@ async function pf(path, key) {
 }
 
 export default async function handler(req, res) {
+  const ip = clientIp(req);
+  if (await isIpBlocked(ip)) return res.status(403).json({ error: 'Temporarily blocked' });
   if (req.query.secret !== process.env.SYNC_SECRET) {
+    await recordAuthFailure(ip);
+    await logSecurityEvent({ ip, ua: req.headers['user-agent'], endpoint: 'setup-products', result: 'unauthorized' });
     return res.status(401).json({ error: 'Unauthorized' });
   }
   const key = process.env.PRINTFUL_API_KEY;

@@ -1,3 +1,6 @@
+import { clientIp } from '../../lib/sanitize';
+import { isIpBlocked, recordAuthFailure, logSecurityEvent } from '../../lib/security';
+
 export const dynamic = 'force-dynamic';
 
 // Printful setup/verification helper (read-only). Returns your store info plus
@@ -7,7 +10,11 @@ export const dynamic = 'force-dynamic';
 // Uses PRINTFUL_API_KEY (the env var the rest of the app uses). If it is not
 // set, key_configured is false and calls fail.
 export default async function handler(req, res) {
+  const ip = clientIp(req);
+  if (await isIpBlocked(ip)) return res.status(403).json({ error: 'Temporarily blocked' });
   if (req.query.secret !== process.env.SYNC_SECRET) {
+    await recordAuthFailure(ip);
+    await logSecurityEvent({ ip, ua: req.headers['user-agent'], endpoint: 'printful-catalog', result: 'unauthorized' });
     return res.status(401).json({ error: 'Unauthorized' });
   }
 

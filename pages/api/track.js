@@ -1,5 +1,6 @@
 import { hasBloo, upsertContact } from '../../lib/bloo';
 import { checkRateLimit } from '../../lib/rate-limit';
+import { cleanStr, isEmail, isPhone, sameOrigin } from '../../lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,10 +68,22 @@ export default async function handler(req, res) {
 
   const ip = clientIp(req);
 
+  // Reject cross-site browser-forged beacons (Origin/Referer must match when present).
+  if (!sameOrigin(req)) return res.status(403).json({ ok: false });
+
   // Honeypot: the real beacon (pages/_app.js) never sends this field. A filled
   // value means a bot replaying a form-like payload — acknowledge and do nothing
   // (don't tip it off, don't run any SMS/CRM side effects).
   if (body.website) return res.status(200).json({ ok: true });
+
+  // Sanitize the free-text fields before they reach the CRM/SMS side effects.
+  // Invalid email/phone are dropped (best-effort — a beacon must never 400).
+  const cleanEmail = isEmail(cleanStr(body.email, 254)) ? cleanStr(body.email, 254) : '';
+  const cleanPhone = isPhone(cleanStr(body.phone, 20)) ? cleanStr(body.phone, 20) : '';
+  const cleanName = cleanStr(body.name, 120);
+  const cleanArtwork = cleanStr(body.artwork_title, 200);
+  const cleanMuseum = cleanStr(body.museum, 120);
+  body = { ...body, email: cleanEmail, phone: cleanPhone, name: cleanName, artwork_title: cleanArtwork, museum: cleanMuseum };
 
   // Rate limit tracking events per IP so this public endpoint can't be scripted
   // to trigger marketing SMS or inject CRM contacts. Stored in Neon (shared

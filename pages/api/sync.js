@@ -1,4 +1,6 @@
 import { neon } from '@neondatabase/serverless';
+import { clientIp } from '../../lib/sanitize';
+import { isIpBlocked, recordAuthFailure, logSecurityEvent } from '../../lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -979,12 +981,18 @@ export default async function handler(req, res) {
   // Auth via Authorization: Bearer header only. Vercel Cron injects this using
   // CRON_SECRET; SYNC_SECRET is also accepted as a bearer for manual runs. The
   // legacy ?secret= query-string path was removed (secrets in URLs leak to logs).
+  const ip = clientIp(req);
+  if (await isIpBlocked(ip)) return res.status(403).json({ error: 'Temporarily blocked' });
   const auth = req.headers['authorization'] || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
   const authorized =
     (process.env.CRON_SECRET && token === process.env.CRON_SECRET) ||
     (process.env.SYNC_SECRET && token === process.env.SYNC_SECRET);
-  if (!authorized) return res.status(401).json({ error: 'Unauthorized' });
+  if (!authorized) {
+    await recordAuthFailure(ip);
+    await logSecurityEvent({ ip, ua: req.headers['user-agent'], endpoint: 'sync', result: 'unauthorized' });
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const sql = neon(process.env.DATABASE_URL);
   await sql`
     CREATE TABLE IF NOT EXISTS artworks (

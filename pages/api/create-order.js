@@ -5,6 +5,8 @@ import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
 import { hasBloo, hasBlooSms, upsertContact, sendSms, ownerNumber } from '../../lib/bloo';
 import { verifyToken } from '../../lib/order-token';
 import { checkRateLimit } from '../../lib/rate-limit';
+import { sanitizeRecipient, sameOrigin } from '../../lib/sanitize';
+import { isIpBlocked, recordAuthFailure, logSecurityEvent } from '../../lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,27 +69,39 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
   const { productName, size, material, frame, quantity, print_url, recipient, work, payment_intent_id } = body;
+  const ip = clientIp(req);
 
   // --- anti-abuse gate ---
+  // Reject cross-site browser-forged POSTs (Origin/Referer must match host when
+  // present), and IPs auto-blocked after repeated auth failures.
+  if (!sameOrigin(req)) return bad(res, 403, 'Cross-origin request rejected.');
+  if (await isIpBlocked(ip)) {
+    await logSecurityEvent({ ip, ua: req.headers['user-agent'], endpoint: 'create-order', result: 'ip_blocked' });
+    return bad(res, 403, 'Temporarily blocked. Try again later.');
+  }
   // Require a valid short-lived session token (proves a real browser session ran
   // our checkout, not a blind script). Enforcement is skipped only when
   // ORDER_TOKEN_SECRET is unset (unconfigured => fail open). Then rate-limit
   // orders per IP so the endpoint can't be scripted to spam SMS/CRM/orders.
   const tokenCheck = verifyToken(body.session_token);
   if (!tokenCheck.valid && tokenCheck.reason !== 'not_configured') {
+    await recordAuthFailure(ip);
+    await logSecurityEvent({ ip, ua: req.headers['user-agent'], endpoint: 'create-order', result: 'bad_token', meta: { reason: tokenCheck.reason } });
     return bad(res, 403, 'Invalid or expired session. Please reload the page and try again.');
   }
-  const rl = await checkRateLimit({ scope: 'order', ip: clientIp(req), limit: 10, windowSeconds: 3600 });
+  const rl = await checkRateLimit({ scope: 'order', ip, limit: 10, windowSeconds: 3600 });
   if (!rl.allowed) return bad(res, 429, 'Too many orders from this address. Please try again later.');
 
   // --- validation ---
   if (!productName || !CATALOG[productName]) return bad(res, 400, 'Unknown or missing product');
   if (!print_url) return bad(res, 400, 'Missing print_url (museum image URL)');
   const qty = Math.max(1, Math.min(parseInt(quantity) || 1, 25));
-  const r = recipient || {};
+  // Sanitize recipient (length caps, HTML/control-char stripping, format checks).
+  const { recipient: r, errors: recipientErrors } = sanitizeRecipient(recipient);
   for (const f of ['name', 'address1', 'city', 'country_code', 'zip']) {
-    if (!r[f] || !String(r[f]).trim()) return bad(res, 400, `Missing recipient.${f}`);
+    if (!r[f]) return bad(res, 400, `Missing recipient.${f}`);
   }
+  if (recipientErrors.length) return bad(res, 400, `Invalid recipient field(s): ${recipientErrors.join(', ')}`);
 
   const cfg = CATALOG[productName];
   const price = getPrice(productName, size);
@@ -177,6 +191,7 @@ export default async function handler(req, res) {
 
   if (errMsg) { console.error('create-order: printful rejected order:', errMsg); return bad(res, 502, 'Order saved but could not be submitted for fulfillment'); }
   await notifyOrder({ orderId: rows[0].id, productName, size, qty, price, recipient: r, paid });
+  await logSecurityEvent({ ip, ua: req.headers['user-agent'], endpoint: 'create-order', result: 'ok', meta: { orderId: rows[0].id, paid } });
   return res.status(201).json({
     ok: true,
     orderId: rows[0].id,

@@ -1,5 +1,7 @@
 import { hasStripe, createPaymentIntent } from '../../lib/stripe';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
+import { checkRateLimit } from '../../lib/rate-limit';
+import { cleanStr, sameOrigin, clientIp } from '../../lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,16 +11,23 @@ export const dynamic = 'force-dynamic';
 // when Stripe isn't configured so the client can fall back gracefully.
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+  if (!sameOrigin(req)) return res.status(403).json({ error: 'Cross-origin request rejected' });
   if (!hasStripe()) return res.status(501).json({ error: 'Stripe not configured', configured: false });
+
+  // Rate limit so the endpoint can't be scripted to create endless PaymentIntents.
+  const rl = await checkRateLimit({ scope: 'payment-intent', ip: clientIp(req), limit: 20, windowSeconds: 600 });
+  if (!rl.allowed) return res.status(429).json({ error: 'Too many requests. Please try again shortly.' });
 
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
 
-  const { productName, size, quantity, work } = body;
+  const productName = cleanStr(body.productName, 60);
+  const size = cleanStr(body.size, 40);
+  const work = cleanStr(body.work, 200);
   if (!productName || !CATALOG[productName]) return res.status(400).json({ error: 'Unknown or missing product' });
 
-  const qty = Math.max(1, Math.min(parseInt(quantity) || 1, 25));
+  const qty = Math.max(1, Math.min(parseInt(body.quantity) || 1, 25));
   const unit = getPrice(productName, size);
   const unitCents = Math.round(parseFloat(unit || '0') * 100);
   if (!unitCents) return res.status(400).json({ error: 'Could not price this product' });
