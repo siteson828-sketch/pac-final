@@ -1,7 +1,7 @@
 import { hasStripe, createPaymentIntent } from '../../lib/stripe';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { checkRateLimit } from '../../lib/rate-limit';
-import { cleanStr, sameOrigin, clientIp } from '../../lib/sanitize';
+import { cleanStr, isEmail, sameOrigin, clientIp } from '../../lib/sanitize';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,6 +25,8 @@ export default async function handler(req, res) {
   const productName = cleanStr(body.productName, 60);
   const size = cleanStr(body.size, 40);
   const work = cleanStr(body.work, 200);
+  const emailRaw = cleanStr(body.email, 254);
+  const receiptEmail = isEmail(emailRaw) ? emailRaw : undefined; // for the Stripe receipt
   if (!productName || !CATALOG[productName]) return res.status(400).json({ error: 'Unknown or missing product' });
 
   const qty = Math.max(1, Math.min(parseInt(body.quantity) || 1, 25));
@@ -37,6 +39,7 @@ export default async function handler(req, res) {
     const pi = await createPaymentIntent({
       amountCents,
       currency: 'usd',
+      receiptEmail,
       metadata: { product: productName, size: size || '', quantity: String(qty), work: work || '' },
     });
     return res.status(200).json({

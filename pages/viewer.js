@@ -470,6 +470,7 @@ export default function Viewer() {
           size: coSize,
           quantity: coQty,
           work: checkout.art?.title || '',
+          email: ship.email, // -> Stripe receipt_email for the confirmation receipt
         }),
       });
       if (resp.status === 501) { draftRedirect(checkout.product, checkout.art); return; }
