@@ -320,6 +320,9 @@ export default function Home() {
   const [heroIdx, setHeroIdx]           = useState(0);
   const [heroFading, setHeroFading]     = useState(false);
   const [imgErrors, setImgErrors]       = useState({});
+  const [aiQuery, setAiQuery]           = useState('');
+  const [aiSearching, setAiSearching]   = useState(false);
+  const [aiInfo, setAiInfo]             = useState(null); // { description, mood } from AI search
   const [activeTab, setActiveTab]             = useState(null);
   const [selected, setSelected]               = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -379,6 +382,25 @@ export default function Home() {
     } catch (e) { console.error(e); }
     setLoading(false);
   }, []);
+
+  // AI search: /api/ai-search (Claude term expansion + relevance ranking) →
+  // populate the gallery with the results and show what the AI understood.
+  const doAISearch = async (q) => {
+    const query = ((q ?? aiQuery) || '').trim();
+    if (!query) return;
+    setAiSearching(true);
+    setAiInfo(null);
+    setLoading(true);
+    try {
+      const d = await fetch('/api/ai-search?query=' + encodeURIComponent(query)).then(r => r.json());
+      setWorks(d.works || []);
+      setHasMore(false);
+      setAiInfo({ description: d.ai_description || '', mood: d.ai_mood || '' });
+    } catch (e) { console.error('AI search error:', e); }
+    setLoading(false);
+    setAiSearching(false);
+    if (typeof document !== 'undefined') document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
     document.title = 'Public Art Collections — Museum Prints & Art Marketplace';
@@ -555,6 +577,40 @@ export default function Home() {
           )}
         </div>
       )}
+
+      {/* AI SEARCH — between the hero and the genre grid */}
+      <div style={{ padding: '24px 16px 0', maxWidth: 700, margin: '0 auto' }}>
+        <div style={{ textAlign: 'center', marginBottom: 12 }}>
+          <div style={{ fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 6 }}>✨ AI-powered search</div>
+          <p style={{ fontSize: 13, color: '#8A8178' }}>Search by mood, color, emotion, era, style or any description</p>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <input
+            value={aiQuery}
+            onChange={e => setAiQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && doAISearch(aiQuery)}
+            placeholder="Try: blue melancholy · powerful women · Dutch golden age · war and suffering..."
+            style={{ flex: 1, background: '#2C2318', border: '0.5px solid #3A3028', borderRadius: 4, padding: '12px 16px', color: '#F0EAD8', fontSize: 13, fontFamily: 'system-ui' }}
+          />
+          <button onClick={() => doAISearch(aiQuery)} disabled={aiSearching}
+            style={{ background: '#B8942A', color: '#1A1714', border: 'none', padding: '12px 20px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            {aiSearching ? '🤔...' : '✨ Search'}
+          </button>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {['blue melancholy', 'powerful women', 'Dutch golden age', 'war and suffering', 'Japanese nature', 'impressionist light', 'ancient mythology', 'romantic landscapes'].map(s => (
+            <button key={s} onClick={() => { setAiQuery(s); doAISearch(s); }}
+              style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: '0.5px solid #3A3028', background: 'transparent', color: '#8A8178', fontFamily: 'system-ui' }}>
+              {s}
+            </button>
+          ))}
+        </div>
+        {aiInfo?.description && (
+          <div style={{ marginTop: 12, padding: '10px 14px', background: '#F5F0E8', borderRadius: 6, border: '0.5px solid rgba(26,23,20,0.12)', fontSize: 12, color: '#4A4540', lineHeight: 1.5 }}>
+            <span style={{ color: '#B8942A', fontWeight: 600 }}>✨ AI:</span> {aiInfo.description}{aiInfo.mood ? ` · Mood: ${aiInfo.mood}` : ''}
+          </div>
+        )}
+      </div>
 
       {/* COLLECTION FILTER BAR */}
       <div className="coll-bar" id="gallery">
