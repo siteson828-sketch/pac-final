@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
 
 async function expandQuery(query) {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
+  if (!process.env.ANTHROPIC_API_KEY) return { data: null, error: 'ANTHROPIC_API_KEY unset' };
   const prompt = `You are an art expert helping search a database of 350,000+ museum artworks.
 
 The user searched for: "${query}"
@@ -26,21 +26,29 @@ Generate a JSON response with:
 3. mood: the emotional quality of this search (e.g. "peaceful", "dramatic", "joyful")
 
 Return ONLY valid JSON, no other text.`;
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: 500,
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  }).then(x => x.json());
-  const text = r?.content?.[0]?.text || '';
-  try { return JSON.parse(text); } catch (e) { return null; }
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: ANTHROPIC_MODEL,
+        max_tokens: 500,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    });
+    const j = await resp.json();
+    if (!resp.ok) return { data: null, error: `anthropic ${resp.status}: ${JSON.stringify(j?.error || j).slice(0, 160)}` };
+    let text = j?.content?.[0]?.text || '';
+    // Claude sometimes wraps JSON in ```json fences — extract the object.
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) text = m[0];
+    try { return { data: JSON.parse(text), error: null }; }
+    catch (e) { return { data: null, error: 'parse_fail: ' + String(text).slice(0, 120) }; }
+  } catch (e) { return { data: null, error: 'fetch_fail: ' + e.message }; }
 }
 
 export default async function handler(req, res) {
@@ -57,7 +65,7 @@ export default async function handler(req, res) {
   const DEAD = '%ark.digitalcommonwealth.org%';
 
   try {
-    const ai = await expandQuery(query);
+    const { data: ai, error: aiError } = await expandQuery(query);
     const terms = (ai?.search_terms && ai.search_terms.length ? ai.search_terms : [query])
       .map(t => cleanStr(t, 60)).filter(Boolean).slice(0, 5);
 
@@ -89,6 +97,7 @@ export default async function handler(req, res) {
       search_terms: terms,
       original_query: query,
       ai: !!ai,
+      ai_error: aiError || undefined,
     });
   } catch (e) {
     console.error('ai-search error:', e);
