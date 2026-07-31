@@ -1,10 +1,11 @@
 /** @type {import('next').NextConfig} */
 
-// Content-Security-Policy is shipped in Report-Only mode first: the app's
-// gigapixel zoom (OpenSeadragon) fetches IIIF info.json from many museum domains
-// and the AudienceLab pixel loads cross-origin, so an enforced CSP risks breaking
-// them. Report-Only lets the policy ride along without blocking anything; flip
-// the header key to 'Content-Security-Policy' to enforce once validated.
+// Content-Security-Policy — ENFORCED. Tuned to be enforce-safe: 'connect-src'
+// and 'img-src' allow any https origin so OpenSeadragon can fetch IIIF
+// info.json/tiles from arbitrary museum domains; 'script-src' allowlists Stripe,
+// cdnjs (OpenSeadragon) and the AudienceLab pixel, plus 'unsafe-inline'/'unsafe-eval'
+// for Next's inline bootstrap. To roll back quickly, rename the header key below
+// to 'Content-Security-Policy-Report-Only'.
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -28,7 +29,7 @@ const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'Referrer-Policy', value: 'origin-when-cross-origin' },
   { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-  { key: 'Content-Security-Policy-Report-Only', value: csp },
+  { key: 'Content-Security-Policy', value: csp },
 ];
 
 const nextConfig = {
