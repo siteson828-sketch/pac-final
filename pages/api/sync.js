@@ -299,46 +299,45 @@ async function syncEuropeana(sql, key, offset=0) {
   return await upsert(sql, works);
 }
 
-async function syncSmithsonian(sql, key) {
+async function syncSmithsonian(sql, key, offset = 0) {
   if (!key) return 0;
   const works = [];
   const seen = new Set();
-  // KEY FINDING (tested against the live API): SI records only include
-  // online_media when the query is scoped to a unit_code, and unit_code is
-  // CASE-SENSITIVE (uppercase). So `unit_code:SAAM AND online_media_type:"Images"`
-  // returns image-bearing records (with media[].thumbnail), while a bare term
-  // search or lowercase unit returns records with no media. No free-text term is
-  // needed — unit+images already selects every image record for the unit.
-  // Bounded to ~4000 rows/run (Neon upsert is one row at a time); iterate units
-  // so all contribute. thumb_url/full_url are ids.si.edu (render in real browsers).
-  const units = ['NMAH','NMAAHC','NASM','NMNH','NPG','HMSG','SAAM','CHNDM','FSG','NMAI'];
-  const TOTAL_CAP = 4000;
-  const PER_UNIT = 500; // 5 pages/unit so the budget spreads across units
+  // Query the MEDIA-RICH units only (uppercase unit_code + online_media_type:"Images").
+  // The other units (NMAH/NMAI/NMNH/FSG) return records with no online_media in the
+  // search response, so they'd waste calls. Offset-chunked: each run pages a WINDOW
+  // of records per unit starting at `offset`, so successive runs (0, 600, 1200, …)
+  // page deeper and grow the collection. Deep `start` paging is verified to return
+  // distinct thumbnailed records. A transient page error is skipped (not fatal).
+  const units = ['SAAM', 'CHNDM', 'NMAAHC', 'NPG', 'NASM', 'HMSG'];
+  const WINDOW = 600;      // records/unit per run
+  const SAFETY_CAP = 5000; // hard per-run insert ceiling
   outer:
   for (const unit of units) {
-    for (let start = 0; start < PER_UNIT; start += 100) {
+    const q = encodeURIComponent(`unit_code:${unit} AND online_media_type:"Images"`);
+    for (let start = offset; start < offset + WINDOW; start += 100) {
+      let rows;
       try {
-        const q = encodeURIComponent(`unit_code:${unit} AND online_media_type:"Images"`);
         const d = await fetchJson(
           `https://api.si.edu/openaccess/api/v1.0/search?q=${q}&start=${start}&rows=100&api_key=${key}`
         );
-        const rows = d.response?.rows || [];
-        if (!rows.length) break;
-        for (const o of rows) {
-          if (seen.has(o.id)) continue;
-          const media = (o.content?.descriptiveNonRepeating?.online_media?.media || []).find(m => m?.thumbnail);
-          if (!media) continue;
-          seen.add(o.id);
-          works.push({ source:'Smithsonian Institution', source_id:o.id,
-            title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
-            date_text:o.content?.freetext?.date?.[0]?.content||'',
-            medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
-            thumb_url:media.thumbnail, full_url:media.content||media.thumbnail,
-            detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
-        }
-        if (works.length >= TOTAL_CAP) break outer;
-        await sleep(200);
-      } catch(e) { break; }
+        rows = d.response?.rows || [];
+      } catch (e) { await sleep(400); continue; } // skip a transient page error, keep going
+      if (!rows.length) break; // this unit is exhausted at this depth
+      for (const o of rows) {
+        if (seen.has(o.id)) continue;
+        const media = (o.content?.descriptiveNonRepeating?.online_media?.media || []).find(m => m?.thumbnail);
+        if (!media) continue;
+        seen.add(o.id);
+        works.push({ source:'Smithsonian Institution', source_id:o.id,
+          title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
+          date_text:o.content?.freetext?.date?.[0]?.content||'',
+          medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
+          thumb_url:media.thumbnail, full_url:media.content||media.thumbnail,
+          detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
+      }
+      if (works.length >= SAFETY_CAP) break outer;
+      await sleep(250);
     }
   }
   return upsert(sql, works);
@@ -1054,7 +1053,7 @@ export default async function handler(req, res) {
   if (src==='smk'        ||src==='all') await run('SMK Denmark',        () => syncSMK(sql, offset));
   if (src==='vam'        ||src==='all') await run('V&A Museum',         () => syncVAM(sql, offset));
   if (src==='europeana'  ||src==='all') await run('Europeana',          () => syncEuropeana(sql, process.env.EUROPEANA_KEY, offset));
-  if (src==='smithsonian'||src==='all') await run('Smithsonian',        () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
+  if (src==='smithsonian'||src==='all') await run(`Smithsonian (offset ${offset})`, () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY, offset));
   if (src==='harvard'    ||src==='all') await run('Harvard',            () => syncHarvard(sql));
   if (src==='getty'      ||src==='all') await run('Getty Museum',       () => syncWikidataMuseum(sql, 'Q1700481', 'Getty Museum'));
   if (src==='walters'    ||src==='all') await run('Walters Art Museum', () => syncWikidataMuseum(sql, 'Q210081',  'Walters Art Museum'));
