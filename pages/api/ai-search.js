@@ -69,29 +69,46 @@ export default async function handler(req, res) {
     const terms = (ai?.search_terms && ai.search_terms.length ? ai.search_terms : [query])
       .map(t => cleanStr(t, 60)).filter(Boolean).slice(0, 5);
 
-    const results = [];
-    for (const term of terms) {
-      const like = '%' + term + '%';
-      const rows = await sql`
-        SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
-               iiif_info, iiif_manifest, detail_url, rights_label, bio
-        FROM artworks
-        WHERE commercial_ok = true
-          AND thumb_url IS NOT NULL AND thumb_url != ''
-          AND thumb_url NOT LIKE ${DEAD}
-          AND (title ILIKE ${like} OR artist ILIKE ${like} OR medium ILIKE ${like}
-               OR source ILIKE ${like} OR bio ILIKE ${like})
-        ORDER BY synced_at DESC
-        LIMIT 20`;
-      results.push(...rows);
-    }
+    // Pad to a fixed 5 terms with a non-matching sentinel so the scored query is
+    // fixed-shape (no dynamic SQL). The sentinel can't appear in real metadata.
+    const SENT = '~~no~match~sentinel~~';
+    const padded = [...terms];
+    while (padded.length < 5) padded.push(SENT);
+    const [l0, l1, l2, l3, l4] = padded.map(t => '%' + t + '%');
 
-    const seen = new Set();
-    const unique = results.filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)));
+    // Relevance ranking (replaces ORDER BY synced_at DESC, which flooded results
+    // with freshly bulk-synced Digital Commonwealth archival docs). Score each
+    // row by where terms match — title/artist weighted far above medium/bio —
+    // plus a source bonus that lifts fine-art museums and penalizes Digital
+    // Commonwealth documents. `source` is used ONLY for the bonus, never for
+    // matching (matching on source caused incidental "art"-in-a-name hits).
+    const works = await sql`
+      SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
+             iiif_info, iiif_manifest, detail_url, rights_label, bio,
+             ( (CASE WHEN title ILIKE ${l0} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l0} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l0} THEN 3 ELSE 0 END + CASE WHEN bio ILIKE ${l0} THEN 1 ELSE 0 END)
+             + (CASE WHEN title ILIKE ${l1} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l1} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l1} THEN 3 ELSE 0 END + CASE WHEN bio ILIKE ${l1} THEN 1 ELSE 0 END)
+             + (CASE WHEN title ILIKE ${l2} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l2} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l2} THEN 3 ELSE 0 END + CASE WHEN bio ILIKE ${l2} THEN 1 ELSE 0 END)
+             + (CASE WHEN title ILIKE ${l3} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l3} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l3} THEN 3 ELSE 0 END + CASE WHEN bio ILIKE ${l3} THEN 1 ELSE 0 END)
+             + (CASE WHEN title ILIKE ${l4} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l4} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l4} THEN 3 ELSE 0 END + CASE WHEN bio ILIKE ${l4} THEN 1 ELSE 0 END)
+             + (CASE WHEN source ILIKE '%Digital Commonwealth%' THEN -6
+                     WHEN source ~* 'Metropolitan|Art Institute|Cleveland|Rijksmuseum|Wikidata|Wikimedia|Louvre|Getty|National Gallery|Smithsonian|Europeana|Museum of Fine Arts|Harvard|Yale|Uffizi|Prado|Tate|British Museum|Internet Archive' THEN 5
+                     ELSE 0 END)
+             ) AS score
+      FROM artworks
+      WHERE commercial_ok = true
+        AND thumb_url IS NOT NULL AND thumb_url != ''
+        AND thumb_url NOT LIKE ${DEAD}
+        AND ( title ILIKE ${l0} OR artist ILIKE ${l0} OR medium ILIKE ${l0} OR bio ILIKE ${l0}
+           OR title ILIKE ${l1} OR artist ILIKE ${l1} OR medium ILIKE ${l1} OR bio ILIKE ${l1}
+           OR title ILIKE ${l2} OR artist ILIKE ${l2} OR medium ILIKE ${l2} OR bio ILIKE ${l2}
+           OR title ILIKE ${l3} OR artist ILIKE ${l3} OR medium ILIKE ${l3} OR bio ILIKE ${l3}
+           OR title ILIKE ${l4} OR artist ILIKE ${l4} OR medium ILIKE ${l4} OR bio ILIKE ${l4} )
+      ORDER BY score DESC, synced_at DESC
+      LIMIT 48`;
 
     return res.status(200).json({
-      works: unique.slice(0, 48),
-      total: unique.length,
+      works,
+      total: works.length,
       ai_description: ai?.description || '',
       ai_mood: ai?.mood || '',
       search_terms: terms,
