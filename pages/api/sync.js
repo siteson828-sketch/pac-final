@@ -948,9 +948,15 @@ async function syncBHL(sql) {
 
 // Digital Commonwealth — 170+ Massachusetts institutions. No key. JSON:API shape
 // (data[].attributes), not the Solr response.docs the original snippet assumed.
-async function syncDigitalCommonwealth(sql) {
+async function syncDigitalCommonwealth(sql, offset = 0) {
+  // Offset-chunked over the q=art / still-image / no-known-copyright set
+  // (261k+ records). `offset` is a record offset; each call ingests a bounded
+  // ~40-page window (≈4000 records) to stay within the per-invocation insert
+  // budget. Run at increasing offsets (0, 4000, 8000, …) to page deeper and
+  // grow the collection. Images come from Azure Blob (exemplary_image_key_base_ss).
   const works = [];
-  for (let page = 1; page <= 50; page++) {
+  const startPage = Math.floor(offset / 100) + 1;
+  for (let page = startPage; page < startPage + 40; page++) {
     try {
       const d = await fetchJson(`https://www.digitalcommonwealth.org/search.json?q=art&f[rights_ss][]=No+known+copyright+restrictions&f[type_of_resource_ssim][]=still+image&per_page=100&page=${page}`);
       const items = d.data || [];
@@ -1180,7 +1186,7 @@ export default async function handler(req, res) {
   if (src==='trove'              || src==='all') await run('Trove Australia',              () => syncTrove(sql));
   if (src==='digitalnz'          || src==='all') await run('Digital NZ',                   () => syncDigitalNZ(sql));
   if (src==='smithsonianall'     || src==='all') await run('Smithsonian All',              () => syncSmithsonianAll(sql));
-  if (src==='digitalcommonwealth'|| src==='all') await run('Digital Commonwealth',         () => syncDigitalCommonwealth(sql));
+  if (src==='digitalcommonwealth'|| src==='all') await run(`Digital Commonwealth (offset ${offset})`, () => syncDigitalCommonwealth(sql, offset));
   if (src==='bhl'                || src==='all') await run('Biodiversity Heritage Library', () => syncBHL(sql));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
   return res.status(200).json({ success:true, newWorks:total, totalInDb:parseInt(countRows[0].total), log });
