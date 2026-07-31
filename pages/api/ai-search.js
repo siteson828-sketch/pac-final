@@ -98,11 +98,13 @@ export default async function handler(req, res) {
       WHERE commercial_ok = true
         AND thumb_url IS NOT NULL AND thumb_url != ''
         AND thumb_url NOT LIKE ${DEAD}
-        AND ( title ILIKE ${l0} OR artist ILIKE ${l0} OR medium ILIKE ${l0} OR bio ILIKE ${l0}
-           OR title ILIKE ${l1} OR artist ILIKE ${l1} OR medium ILIKE ${l1} OR bio ILIKE ${l1}
-           OR title ILIKE ${l2} OR artist ILIKE ${l2} OR medium ILIKE ${l2} OR bio ILIKE ${l2}
-           OR title ILIKE ${l3} OR artist ILIKE ${l3} OR medium ILIKE ${l3} OR bio ILIKE ${l3}
-           OR title ILIKE ${l4} OR artist ILIKE ${l4} OR medium ILIKE ${l4} OR bio ILIKE ${l4} )
+        AND ( title ILIKE ${l0} OR artist ILIKE ${l0} OR medium ILIKE ${l0}
+           OR title ILIKE ${l1} OR artist ILIKE ${l1} OR medium ILIKE ${l1}
+           OR title ILIKE ${l2} OR artist ILIKE ${l2} OR medium ILIKE ${l2}
+           OR title ILIKE ${l3} OR artist ILIKE ${l3} OR medium ILIKE ${l3}
+           OR title ILIKE ${l4} OR artist ILIKE ${l4} OR medium ILIKE ${l4} )
+        -- bio stays in the score (below) but not in WHERE: it's an unindexed large
+        -- text field, so matching on it here would force a full-table scan
       ORDER BY score DESC, synced_at DESC
       LIMIT 48`;
 
