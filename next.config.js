@@ -38,6 +38,21 @@ const nextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
+  async redirects() {
+    // Canonical-domain redirect: 308 the bare Vercel production alias to the
+    // custom domain so there's a single live URL (SEO). Scoped to that host only
+    // (per-deploy preview URLs like pac-final-<hash>-glee.vercel.app are NOT
+    // matched, so previews keep working), and EXCLUDES /api/* so cron jobs and
+    // server-to-server calls that hit the .vercel.app host aren't redirected.
+    return [
+      {
+        source: '/:path((?!api/).*)',
+        has: [{ type: 'host', value: 'pac-final.vercel.app' }],
+        destination: 'https://publicartcollections.net/:path',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;
