@@ -39,8 +39,9 @@ const nextConfig = {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
   async redirects() {
-    // Canonical-domain redirect: 308 the bare Vercel production alias to the
-    // custom domain so there's a single live URL (SEO). Scoped to that host only
+    // Canonical-domain redirect: 308 the bare Vercel production alias straight to
+    // the canonical host (www — Vercel already redirects the apex to www), so it's
+    // a single hop and there's one live URL (SEO). Scoped to that host only
     // (per-deploy preview URLs like pac-final-<hash>-glee.vercel.app are NOT
     // matched, so previews keep working), and EXCLUDES /api/* so cron jobs and
     // server-to-server calls that hit the .vercel.app host aren't redirected.
@@ -48,7 +49,7 @@ const nextConfig = {
       {
         source: '/:path((?!api/).*)',
         has: [{ type: 'host', value: 'pac-final.vercel.app' }],
-        destination: 'https://publicartcollections.net/:path',
+        destination: 'https://www.publicartcollections.net/:path',
         permanent: true,
       },
     ];
