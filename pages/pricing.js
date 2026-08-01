@@ -3,7 +3,39 @@
 // ordering real Printful prints with a real checkout discount. No fabricated
 // dpi-download tiers, API access, white-label, bulk, "commercial license" (the
 // works are CC0 — already free for commercial use), or account-manager perks.
+import { useState } from 'react';
+import { useRouter } from 'next/router';
+import { useSession } from 'next-auth/react';
+
 export default function Pricing() {
+  const { status } = useSession();
+  const router = useRouter();
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+
+  async function startCheckout(tier) {
+    setError('');
+    // Not signed in → send to sign-in, then back here to pick a plan.
+    if (status !== 'authenticated') {
+      router.push('/sign-in?callbackUrl=' + encodeURIComponent('/pricing'));
+      return;
+    }
+    setBusy(tier);
+    try {
+      const r = await fetch('/api/create-subscription', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier }),
+      });
+      const d = await r.json();
+      if (r.ok && d.url) { window.location.href = d.url; return; }
+      setError(d.error || 'Could not start checkout. Please try again.');
+    } catch (e) {
+      setError('Could not start checkout. Please try again.');
+    }
+    setBusy('');
+  }
+
   const tiers = [
     {
       name: 'Free',
@@ -33,7 +65,8 @@ export default function Pricing() {
         'Fulfilled by Printful, ships to 180+ countries',
       ],
       cta: 'Become a Collector',
-      href: '/sign-up?tier=collector',
+      key: 'collector',
+      paid: true,
       highlighted: true,
     },
     {
@@ -47,7 +80,8 @@ export default function Pricing() {
         'Priority order handling',
       ],
       cta: 'Start a Trade account',
-      href: '/sign-up?tier=trade',
+      key: 'trade',
+      paid: true,
       highlighted: false,
     },
   ];
@@ -77,6 +111,11 @@ export default function Pricing() {
           <p style={{ fontSize: 16, color: '#8A8178', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
             Browsing, AI search, gigapixel zoom, and full-resolution downloads are free for everyone. Upgrade to order museum-quality prints with a member discount.
           </p>
+          {error && (
+            <div style={{ marginTop: 20, display: 'inline-block', background: 'rgba(180,60,40,0.12)', border: '0.5px solid rgba(200,80,60,0.4)', color: '#E0A090', borderRadius: 6, padding: '9px 16px', fontSize: 13 }}>
+              {error}
+            </div>
+          )}
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24, alignItems: 'start' }}>
@@ -105,14 +144,22 @@ export default function Pricing() {
                   </div>
                 ))}
               </div>
-              <a href={tier.href} style={{
-                display: 'block', textAlign: 'center', padding: '12px', borderRadius: 4, fontSize: 14, fontWeight: 600, textDecoration: 'none',
-                background: tier.highlighted ? '#B8942A' : 'transparent',
-                color: tier.highlighted ? '#1A1714' : '#F0EAD8',
-                border: tier.highlighted ? 'none' : '0.5px solid rgba(240,234,214,0.25)',
-              }}>
-                {tier.cta}
-              </a>
+              {(() => {
+                const ctaStyle = {
+                  display: 'block', width: '100%', textAlign: 'center', padding: '12px', borderRadius: 4,
+                  fontSize: 14, fontWeight: 600, textDecoration: 'none', fontFamily: 'inherit', cursor: 'pointer',
+                  background: tier.highlighted ? '#B8942A' : 'transparent',
+                  color: tier.highlighted ? '#1A1714' : '#F0EAD8',
+                  border: tier.highlighted ? 'none' : '0.5px solid rgba(240,234,214,0.25)',
+                };
+                return tier.paid ? (
+                  <button onClick={() => startCheckout(tier.key)} disabled={busy === tier.key} style={{ ...ctaStyle, opacity: busy === tier.key ? 0.6 : 1 }}>
+                    {busy === tier.key ? 'Starting checkout…' : tier.cta}
+                  </button>
+                ) : (
+                  <a href={tier.href} style={ctaStyle}>{tier.cta}</a>
+                );
+              })()}
             </div>
           ))}
         </div>

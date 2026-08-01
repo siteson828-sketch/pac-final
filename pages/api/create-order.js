@@ -1,4 +1,7 @@
 import { neon } from '@neondatabase/serverless';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './auth/[...nextauth]';
+import { db, getTierForUser, tierDiscount, PAID_TIERS } from '../../lib/authdb';
 import { printfulFetch, resolveCatalogVariant, hasPrintfulKey } from '../../lib/printful';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
@@ -92,6 +95,20 @@ export default async function handler(req, res) {
   const rl = await checkRateLimit({ scope: 'order', ip, limit: 10, windowSeconds: 3600 });
   if (!rl.allowed) return bad(res, 429, 'Too many orders from this address. Please try again later.');
 
+  // --- tier gate (real, server-side) ---
+  // Ordering is a paid feature. Resolve the caller's tier from the session and
+  // reject free/anonymous. This is the actual access control — the useShopGate
+  // UI is only a hint.
+  let authSession = null;
+  try { authSession = await getServerSession(req, res, authOptions); } catch (e) {}
+  let callerTier = 'free';
+  if (authSession?.user?.id) {
+    try { callerTier = await getTierForUser(db(), authSession.user.id); } catch (e) { callerTier = 'free'; }
+  }
+  if (!PAID_TIERS.has(callerTier)) {
+    return bad(res, 403, 'Ordering requires a Collector or Trade plan. Visit /pricing to subscribe.');
+  }
+
   // --- validation ---
   if (!productName || !CATALOG[productName]) return bad(res, 400, 'Unknown or missing product');
   if (!print_url) return bad(res, 400, 'Missing print_url (museum image URL)');
@@ -104,7 +121,13 @@ export default async function handler(req, res) {
   if (recipientErrors.length) return bad(res, 400, `Invalid recipient field(s): ${recipientErrors.join(', ')}`);
 
   const cfg = CATALOG[productName];
-  const price = getPrice(productName, size);
+  // Apply the member discount so the recorded + Printful retail price matches the
+  // discounted amount actually charged in create-payment-intent for this tier.
+  const basePrice = getPrice(productName, size);
+  const discount = tierDiscount(callerTier);
+  const price = discount && basePrice
+    ? (parseFloat(basePrice) * (1 - discount)).toFixed(2)
+    : basePrice;
   const sql = neon(process.env.DATABASE_URL);
   await ensureTable(sql);
 

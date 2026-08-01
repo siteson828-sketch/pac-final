@@ -1,7 +1,10 @@
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from './auth/[...nextauth]';
 import { hasStripe, createPaymentIntent } from '../../lib/stripe';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, isEmail, sameOrigin, clientIp } from '../../lib/sanitize';
+import { db, getTierForUser, tierDiscount, PAID_TIERS } from '../../lib/authdb';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,20 +36,34 @@ export default async function handler(req, res) {
   const unit = getPrice(productName, size);
   const unitCents = Math.round(parseFloat(unit || '0') * 100);
   if (!unitCents) return res.status(400).json({ error: 'Could not price this product' });
-  const amountCents = unitCents * qty;
+
+  // Tier gate: ordering is a paid feature. Resolve the caller's tier server-side
+  // and reject free/anonymous. Apply the advertised member discount to the charge.
+  let session = null;
+  try { session = await getServerSession(req, res, authOptions); } catch (e) {}
+  if (!session?.user?.id) return res.status(401).json({ error: 'Please sign in and subscribe to order prints.' });
+  let tier = 'free';
+  try { tier = await getTierForUser(db(), session.user.id); } catch (e) {}
+  if (!PAID_TIERS.has(tier)) return res.status(403).json({ error: 'Ordering requires a Collector or Trade plan.' });
+
+  const discount = tierDiscount(tier);
+  const amountCents = Math.round(unitCents * qty * (1 - discount));
 
   try {
     const pi = await createPaymentIntent({
       amountCents,
       currency: 'usd',
       receiptEmail,
-      metadata: { product: productName, size: size || '', quantity: String(qty), work: work || '' },
+      metadata: { product: productName, size: size || '', quantity: String(qty), work: work || '', tier, discount: String(discount) },
     });
     return res.status(200).json({
       configured: true,
       client_secret: pi.client_secret,
       payment_intent_id: pi.id,
       amount: amountCents,
+      full_amount: unitCents * qty,
+      discount,
+      tier,
       currency: 'usd',
     });
   } catch (e) {
