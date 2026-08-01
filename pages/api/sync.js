@@ -238,63 +238,88 @@ async function syncVAM(sql, offset=0) {
 }
 
 async function syncEuropeana(sql, key, offset=0) {
-  // Offset-chunked: `offset` is a starting index into the query list; process 5 queries per call.
+  // Cursor-paginated deep sync. `offset` selects a slice of query terms (5 per
+  // call) so one invocation stays within the serverless time budget; within each
+  // term we page with Europeana's opaque `cursor` (which goes PAST the 1000-row
+  // `start=` ceiling). Each term's cursor is persisted in sync_cursors.cursor_text
+  // (keyed 'europeana:<term>'), so repeated calls at the same offset keep pulling
+  // unseen records instead of re-scanning page 1. A term whose cursor is 'DONE'
+  // is exhausted and skipped.
   if (!key) return 0;
-  const works = [];
+  await sql`CREATE TABLE IF NOT EXISTS sync_cursors (source TEXT PRIMARY KEY, next_offset BIGINT NOT NULL DEFAULT 0, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+  await sql`ALTER TABLE sync_cursors ADD COLUMN IF NOT EXISTS cursor_text TEXT`;
+
   const queries = [
     'painting','portrait','landscape','sculpture','drawing',
     'watercolor','engraving','etching','miniature','fresco',
     'tapestry','mosaic','icon','altarpiece','print'
   ];
+  const works = [];
+  const MAX_PER_CALL = 5000;
+  const PAGES_PER_TERM = 20; // 20 * 100 = up to 2000 records per term per call
+
   for (let qi = offset; qi < offset + 5 && qi < queries.length; qi++) {
     const q = queries[qi];
-    for (let start = 1; start <= 1000; start += 100) {
+    const ckey = 'europeana:' + q;
+    let cursor = '*';
+    try {
+      const r = await sql`SELECT cursor_text FROM sync_cursors WHERE source = ${ckey}`;
+      if (r.length && r[0].cursor_text) cursor = r[0].cursor_text;
+    } catch (e) {}
+    if (cursor === 'DONE') continue; // already exhausted
+
+    let pages = 0;
+    while (pages < PAGES_PER_TERM && works.length < MAX_PER_CALL) {
+      let d;
       try {
         const url = 'https://api.europeana.eu/record/v2/search.json' +
           '?wskey=' + key +
           '&query=' + encodeURIComponent(q) +
-          '&reusability=open' +
-          '&media=true' +
-          '&qf=TYPE:IMAGE' +
-          '&rows=100' +
-          '&start=' + start +
-          '&profile=rich';
-        const d = await fetch(url).then(r => r.json());
-        if (!d.success || !d.items?.length) break;
-        for (const o of d.items) {
-          const previewArr = Array.isArray(o.edmPreview) ? o.edmPreview : (o.edmPreview ? [o.edmPreview] : []);
-          const thumb = previewArr[0];
-          if (!thumb) continue;
-          const shownBy = Array.isArray(o.edmIsShownBy) ? o.edmIsShownBy[0] : o.edmIsShownBy;
-          const recId = (o.id || '').replace(/^\//, '');
-          const provider = Array.isArray(o.dataProvider) ? o.dataProvider[0] : (o.dataProvider || 'Europeana');
-          const title = Array.isArray(o.title) ? o.title[0] : (o.title || 'Untitled');
-          const cleanTitle = title.replace(/painting,\s*/gi, '').replace(/,\s*$/, '').trim() || 'Untitled';
-          const artist = Array.isArray(o.dcCreator) ? o.dcCreator[0] : (o.dcCreator || '');
-          const cleanArtist = artist.replace(/^#/, '').replace(/_/g, ' ').trim();
-          works.push({
-            source: 'Europeana — ' + provider,
-            source_id: recId,
-            title: cleanTitle,
-            artist: cleanArtist,
-            date_text: Array.isArray(o.year) ? o.year[0] : (o.year || ''),
-            thumb_url: thumb,
-            full_url: shownBy || thumb,
-            detail_url: 'https://www.europeana.eu/en/item/' + recId,
-            rights: 'https://creativecommons.org/publicdomain/zero/1.0/',
-            rights_label: 'CC0 — Public Domain',
-            commercial_ok: true,
-            bio: Array.isArray(o.dcDescription) ? o.dcDescription[0] : (o.dcDescription || ''),
-          });
-        }
-        await sleep(500);
-        if (works.length >= 5000) break;
-      } catch(e) {
-        console.error('Europeana error:', e.message);
-        break;
+          '&reusability=open&media=true&qf=TYPE:IMAGE&rows=100&profile=rich' +
+          '&cursor=' + encodeURIComponent(cursor);
+        d = await fetch(url).then(r => r.json());
+      } catch (e) { console.error('Europeana error:', e.message); break; }
+      if (!d.success || !d.items?.length) { cursor = 'DONE'; break; }
+      for (const o of d.items) {
+        const previewArr = Array.isArray(o.edmPreview) ? o.edmPreview : (o.edmPreview ? [o.edmPreview] : []);
+        const thumb = previewArr[0];
+        if (!thumb) continue;
+        const shownBy = Array.isArray(o.edmIsShownBy) ? o.edmIsShownBy[0] : o.edmIsShownBy;
+        const recId = (o.id || '').replace(/^\//, '');
+        const provider = Array.isArray(o.dataProvider) ? o.dataProvider[0] : (o.dataProvider || 'Europeana');
+        const title = Array.isArray(o.title) ? o.title[0] : (o.title || 'Untitled');
+        const cleanTitle = title.replace(/painting,\s*/gi, '').replace(/,\s*$/, '').trim() || 'Untitled';
+        const artist = Array.isArray(o.dcCreator) ? o.dcCreator[0] : (o.dcCreator || '');
+        const cleanArtist = artist.replace(/^#/, '').replace(/_/g, ' ').trim();
+        works.push({
+          source: 'Europeana — ' + provider,
+          source_id: recId,
+          title: cleanTitle,
+          artist: cleanArtist,
+          date_text: Array.isArray(o.year) ? o.year[0] : (o.year || ''),
+          thumb_url: thumb,
+          full_url: shownBy || thumb,
+          detail_url: 'https://www.europeana.eu/en/item/' + recId,
+          rights: 'https://creativecommons.org/publicdomain/zero/1.0/',
+          rights_label: 'CC0 — Public Domain',
+          commercial_ok: true,
+          bio: Array.isArray(o.dcDescription) ? o.dcDescription[0] : (o.dcDescription || ''),
+        });
       }
+      pages++;
+      // Advance to the next page; absent nextCursor ⇒ end of this query.
+      if (d.nextCursor) cursor = d.nextCursor;
+      else { cursor = 'DONE'; break; }
+      await sleep(300);
     }
-    if (works.length >= 5000) break;
+
+    // Persist this term's cursor so the next call resumes here.
+    try {
+      await sql`INSERT INTO sync_cursors (source, next_offset, cursor_text, updated_at)
+                VALUES (${ckey}, 0, ${cursor}, NOW())
+                ON CONFLICT (source) DO UPDATE SET cursor_text = ${cursor}, updated_at = NOW()`;
+    } catch (e) {}
+    if (works.length >= MAX_PER_CALL) break;
   }
   return await upsert(sql, works);
 }
