@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 // Server-to-server webhook for AudienceLab identity-resolution events. It writes
 // enriched (sensitive) PII into the visitors table, so it MUST be authenticated:
-// a shared secret (AUDIENCELAB_WEBHOOK_SECRET) supplied as an `x-webhook-secret`
+// a shared secret (WEBHOOK_SECRET) supplied as an `x-webhook-secret`
 // header, `Authorization: Bearer <secret>`, or `?secret=` in the webhook URL.
 // Fails CLOSED — if the secret is unset or wrong, nothing is written. No CORS:
 // this is called by AudienceLab's servers, not browsers, so it stays same-origin
@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     req.headers['x-webhook-secret'] ||
     (req.headers.authorization || '').replace(/^Bearer\s+/i, '') ||
     req.query.secret;
-  if (!process.env.AUDIENCELAB_WEBHOOK_SECRET || provided !== process.env.AUDIENCELAB_WEBHOOK_SECRET) {
+  if (!process.env.WEBHOOK_SECRET || provided !== process.env.WEBHOOK_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
