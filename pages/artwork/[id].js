@@ -2,6 +2,7 @@ import { useState } from 'react';
 import Head from 'next/head';
 import { neon } from '@neondatabase/serverless';
 import { useShopGate, PinModal, TradeAccessPanel } from '../../lib/useShopGate';
+import AuthNav from '../../components/AuthNav';
 
 const PRODUCTS = [
   { icon: '🖼️', name: 'Fine Art Print', price: 'from $18' },
@@ -176,6 +177,7 @@ export default function ArtworkPage({ work, related }) {
         <a href="/#gallery" className="nav-back">← Back to gallery</a>
         <span className="nav-spacer" />
         <a href="/api/artworks" className="nav-api">API</a>
+        <AuthNav />
       </nav>
 
       {/* BREADCRUMB */}
