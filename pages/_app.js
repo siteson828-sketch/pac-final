@@ -1,4 +1,4 @@
-import { ClerkProvider } from '@clerk/nextjs';
+import { SessionProvider } from 'next-auth/react';
 import Head from 'next/head';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
@@ -39,13 +39,13 @@ export default function App({ Component, pageProps }) {
   }, [router.events]);
 
   return (
-    <ClerkProvider {...pageProps}>
+    <SessionProvider session={pageProps.session}>
       <Head>
         {/* Global viewport — without this, mobile browsers render pages at desktop
             width and content overflows/left-justifies. Zoom left enabled for a11y. */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </Head>
       <Component {...pageProps} />
-    </ClerkProvider>
+    </SessionProvider>
   );
 }
