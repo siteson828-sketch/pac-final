@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
+import AuthNav from '../components/AuthNav';
 import { saveIdentity } from '../lib/identity';
 
 const OSD_VERSION = '4.1.0';
@@ -800,6 +801,7 @@ export default function Viewer() {
               </span>
             )}
             <a href="/" className="topbar-home">← Home</a>
+            <AuthNav />
           </div>
 
           {/* GENRE + ORDER BAR */}

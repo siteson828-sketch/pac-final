@@ -87,7 +87,8 @@
       "PowerShell($env:NEXTAUTH_URL=\"http://localhost:3000\"; npx next build 2>&1 | Select-String -Pattern \"Compiled successfully|Failed|Invalid URL|error \" | Select-Object -First 5)",
       "Bash(node _tier_test.mjs)",
       "PowerShell($env:NEXTAUTH_URL=\"http://localhost:3000\"; npx next build 2>&1 | Select-String -Pattern \"Compiled successfully|Failed|error |Invalid URL|useShopGate|useSession\" | Select-Object -First 8)",
-      "PowerShell($env:NEXTAUTH_URL=\"http://localhost:3000\"; npx next build 2>&1 | Select-String -Pattern \"Compiled successfully|Failed|error |Invalid URL|create-subscription|stripe-webhook|setup-subscription\" | Select-Object -First 12)"
+      "PowerShell($env:NEXTAUTH_URL=\"http://localhost:3000\"; npx next build 2>&1 | Select-String -Pattern \"Compiled successfully|Failed|error |Invalid URL|create-subscription|stripe-webhook|setup-subscription\" | Select-Object -First 12)",
+      "PowerShell($env:NEXTAUTH_URL=\"http://localhost:3000\"; npx next build 2>&1 | Select-String -Pattern \"Compiled successfully|Failed|error |Invalid URL|AuthNav\" | Select-Object -First 6)"
     ]
   }
 }

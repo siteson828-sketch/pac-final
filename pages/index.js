@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
+import AuthNav from '../components/AuthNav';
 
 const COLLECTIONS = [
   { label: 'All',           search: '',              source: '' },
@@ -538,6 +539,7 @@ export default function Home() {
         </div>
         {total !== null && <span className="nav-count">{Number(total).toLocaleString()} works</span>}
         <a href="/viewer" className="nav-link">Browse by Museum →</a>
+        <AuthNav />
       </nav>
 
       {/* ORDER BANNER */}
