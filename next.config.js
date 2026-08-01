@@ -12,14 +12,15 @@ const csp = [
   "object-src 'none'",
   "frame-ancestors 'self'",
   "form-action 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdnjs.cloudflare.com https://cdn.audiencelab.io",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://cdnjs.cloudflare.com https://cdn.audiencelab.io https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "img-src 'self' data: https: blob:",
   "font-src 'self' https://fonts.gstatic.com data:",
   // 'https:' allows OpenSeadragon to fetch IIIF info.json/tiles from arbitrary
   // museum hosts and the client to reach Stripe / AudienceLab; tighten later.
   "connect-src 'self' https:",
-  "frame-src https://js.stripe.com",
+  "frame-src https://js.stripe.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
+  "worker-src 'self' blob:",
 ].join('; ');
 
 const securityHeaders = [
