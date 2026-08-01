@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
 import AuthNav from '../components/AuthNav';
-import { saveIdentity } from '../lib/identity';
+import { saveIdentity, loadIdentity } from '../lib/identity';
 
 const OSD_VERSION = '4.1.0';
 const OSD_SRC = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_VERSION}/openseadragon.min.js`;
@@ -451,6 +451,26 @@ export default function Viewer() {
   const elementsRef = useRef(null);
   const payElRef    = useRef(null);
 
+  // Fire a GoHighLevel journey event (fire-and-forget). Gated by a public flag
+  // so no traffic is generated until GHL is configured. Identity comes from the
+  // shipping form or the stored identity captured at a prior checkout; events
+  // with no known email/phone are skipped (GHL needs an identifier).
+  const trackGHL = (event, extra = {}) => {
+    if (process.env.NEXT_PUBLIC_GHL_ENABLED !== 'true') return;
+    try {
+      const id = loadIdentity() || {};
+      const email = ship.email || id.email || '';
+      const phone = ship.phone || id.phone || '';
+      if (!email && !phone) return;
+      const payload = JSON.stringify({ email, phone, event, ...extra });
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        navigator.sendBeacon('/api/ghl-event', new Blob([payload], { type: 'application/json' }));
+      } else {
+        fetch('/api/ghl-event', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload, keepalive: true }).catch(() => {});
+      }
+    } catch (e) {}
+  };
+
   const openCheckout = (product, art) => {
     setCheckout({ product, art });
     setCoStep('details');
@@ -462,6 +482,7 @@ export default function Viewer() {
     setAmountCents(null);
     stripeRef.current = null;
     elementsRef.current = null;
+    trackGHL('order_started', { artwork: art?.title, museum: art?.source });
   };
 
   const closeCheckout = () => { setCheckout(null); setCoBusy(false); };
@@ -507,6 +528,7 @@ export default function Viewer() {
       setClientSecret(data.client_secret);
       setAmountCents(data.amount);
       setCoStep('payment');
+      trackGHL('cart_started', { artwork: checkout.art?.title, museum: checkout.art?.source, orderTotal: (data.amount / 100).toFixed(2) });
     } catch (e) {
       setCoError(e.message);
     } finally {
@@ -551,6 +573,7 @@ export default function Viewer() {
         ? { ok: true, msg: data.message || 'Order placed', data }
         : { ok: false, msg: data.error || 'Payment succeeded but the order could not be created — contact support.' });
       setCoStep('result');
+      if (resp.ok) trackGHL('order_completed', { artwork: art?.title, museum: art?.source, orderTotal: amountCents ? (amountCents / 100).toFixed(2) : undefined });
     } catch (e) {
       setCoError(e.message);
     } finally {
@@ -581,6 +604,18 @@ export default function Viewer() {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = prev; };
   }, [checkout]);
+
+  // Abandoned-cart: if the user leaves mid-checkout (before the result step),
+  // fire a cart_abandoned event so a GHL workflow can follow up.
+  useEffect(() => {
+    if (!checkout || coStep === 'result') return;
+    const onLeave = () => trackGHL('cart_abandoned', {
+      artwork: checkout.art?.title, museum: checkout.art?.source,
+      orderTotal: amountCents ? (amountCents / 100).toFixed(2) : undefined,
+    });
+    window.addEventListener('beforeunload', onLeave);
+    return () => window.removeEventListener('beforeunload', onLeave);
+  }, [checkout, coStep, ship, amountCents]);
 
   useEffect(() => {
     document.title = 'World Museum Viewer — Public Art Collections';
@@ -905,7 +940,7 @@ export default function Viewer() {
               <>
                 <div className="art-grid">
                   {works.map(w => (
-                    <div key={w.id} className="art-card" onClick={() => setModal(w)}>
+                    <div key={w.id} className="art-card" onClick={() => { setModal(w); trackGHL('artwork_view', { artwork: w.title, museum: w.source }); }}>
                       <div className="card-img">
                         {w.thumb_url && !imgErrors[w.id] ? (
                           <img

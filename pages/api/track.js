@@ -1,4 +1,5 @@
 import { hasBloo, upsertContact } from '../../lib/bloo';
+import { hasGhl, upsertContact as ghlUpsert } from '../../lib/ghl';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, isEmail, isPhone, sameOrigin } from '../../lib/sanitize';
 
@@ -125,6 +126,23 @@ export default async function handler(req, res) {
         last_museum: body.museum,
         audiencelab_id: body.audiencelab_id,
         ip,
+      },
+    });
+  }
+
+  // Mirror the visit into GoHighLevel when configured (parallel to Bloo).
+  if (hasGhl() && (body.email || body.phone)) {
+    notified.ghl = await ghlUpsert({
+      email: body.email,
+      phone: body.phone,
+      name: body.name,
+      tags: ['pac-visitor', body.museum, body.source],
+      custom: {
+        last_artwork: body.artwork_title,
+        last_museum: body.museum,
+        audiencelab_id: body.audiencelab_id,
+        visitor_ip: ip,
+        journey_stage: 'visitor',
       },
     });
   }
