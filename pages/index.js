@@ -110,6 +110,28 @@ function fmt(s) {
     .split(',')[0];
 }
 
+// Faster grid thumbnails (kept in sync with pages/viewer.js):
+//  1) Shrink at the source (direct) where a size knob exists.
+//  2) Edge-cache dominant, server-fetchable sources via the hardened /api/img
+//     proxy (exempted from the 100/min firewall limit by the "RL img" rule).
+//  3) Everything else loads direct — notably Europeana/DPLA (arbitrary hosts the
+//     proxy can't whitelist) and Smithsonian (WAF blocks server-side fetches).
+const PROXY_HOSTS = new Set([
+  'bpldcassets.blob.core.windows.net', // Digital Commonwealth
+  'openaccess-cdn.clevelandart.org',   // Cleveland
+  'images.metmuseum.org',              // Met
+]);
+function getThumbUrl(url) {
+  if (!url) return '';
+  if (url.includes('/full/!400,400/')) return url.replace('/full/!400,400/', '/full/!300,300/'); // IIIF
+  if (url.includes('commons.wikimedia.org') && /[?&]width=\d+/.test(url)) return url.replace(/width=\d+/, 'width=300'); // Wikimedia/Wikidata
+  if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian (direct)
+  try {
+    if (PROXY_HOSTS.has(new URL(url).hostname)) return '/api/img?url=' + encodeURIComponent(url);
+  } catch (e) {}
+  return url;
+}
+
 function timeAgo(iso) {
   if (!iso) return null;
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
@@ -684,9 +706,11 @@ export default function Home() {
               <div className="card-img-wrap">
                 {w.thumb_url && !imgErrors[w.id] ? (
                   <img
-                    src={w.thumb_url}
+                    src={getThumbUrl(w.thumb_url)}
                     alt={w.title}
                     loading="lazy"
+                    style={{ opacity: 0, transition: 'opacity .35s ease' }}
+                    onLoad={e => { e.currentTarget.style.opacity = 1; }}
                     onError={() => setImgErrors(e => ({ ...e, [w.id]: true }))}
                   />
                 ) : (
