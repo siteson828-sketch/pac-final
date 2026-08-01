@@ -1,4 +1,5 @@
 import { hasGhl, findContactByEmail, upsertContact, updateContact, addTags, addNote } from '../../lib/ghl';
+import { crmDb, logEvent } from '../../lib/crm';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, isEmail, isPhone, sameOrigin, clientIp } from '../../lib/sanitize';
 
@@ -27,9 +28,7 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
 
-  if (!hasGhl()) return res.status(200).json({ ok: true, skipped: 'not_configured' });
-
-  // Rate-limit so this public endpoint can't be scripted to spam the CRM.
+  // Rate-limit so this public endpoint can't be scripted to spam.
   const rl = await checkRateLimit({ scope: 'ghl-event', ip: clientIp(req), limit: 30, windowSeconds: 600 });
   if (!rl.allowed) return res.status(200).json({ ok: true, skipped: 'rate_limited' });
 
@@ -43,6 +42,13 @@ export default async function handler(req, res) {
   const orderTotal = cleanStr(body.orderTotal, 20);
   const tier = cleanStr(body.tier, 20);
   const s = STAGES[event] || { tag: event || 'event', stage: 'Visitor' };
+
+  // Always record locally for the admin dashboard (this is our own queryable
+  // copy; it works whether or not GHL is configured).
+  await logEvent(crmDb(), { event, email, phone, name: cleanStr(body.name, 120), artwork, museum, orderTotal });
+
+  // The rest pushes to GoHighLevel only when it's configured.
+  if (!hasGhl()) return res.status(200).json({ ok: true, stage: s.stage, local: true });
 
   try {
     let contact = email ? await findContactByEmail(email) : null;

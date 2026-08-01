@@ -451,12 +451,11 @@ export default function Viewer() {
   const elementsRef = useRef(null);
   const payElRef    = useRef(null);
 
-  // Fire a GoHighLevel journey event (fire-and-forget). Gated by a public flag
-  // so no traffic is generated until GHL is configured. Identity comes from the
-  // shipping form or the stored identity captured at a prior checkout; events
-  // with no known email/phone are skipped (GHL needs an identifier).
+  // Fire a journey event (fire-and-forget) to /api/ghl-event, which records it
+  // locally for the admin dashboard and forwards to GHL when configured.
+  // Identity comes from the shipping form or the stored identity captured at a
+  // prior checkout; events with no known email/phone are skipped.
   const trackGHL = (event, extra = {}) => {
-    if (process.env.NEXT_PUBLIC_GHL_ENABLED !== 'true') return;
     try {
       const id = loadIdentity() || {};
       const email = ship.email || id.email || '';

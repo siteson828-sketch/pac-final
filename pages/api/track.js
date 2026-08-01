@@ -1,5 +1,6 @@
 import { hasBloo, upsertContact } from '../../lib/bloo';
 import { hasGhl, upsertContact as ghlUpsert } from '../../lib/ghl';
+import { crmDb, bumpDaily, logEvent } from '../../lib/crm';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, isEmail, isPhone, sameOrigin } from '../../lib/sanitize';
 
@@ -96,6 +97,14 @@ export default async function handler(req, res) {
   if (firstVisit) {
     res.setHeader('Set-Cookie',
       `${SEEN_COOKIE}=1; Path=/; Max-Age=${ONE_YEAR}; SameSite=Lax`);
+  }
+
+  // Local analytics for the admin dashboard: a per-day counter (all visits) plus
+  // an identified page_view event when we know who it is. Bounded + safe.
+  const cdb = crmDb();
+  await bumpDaily(cdb, firstVisit);
+  if (body.email || body.phone) {
+    await logEvent(cdb, { event: 'page_view', email: body.email, phone: body.phone, name: body.name, artwork: body.artwork_title, museum: body.museum });
   }
 
   const notified = { sms: null, bloo: null };
