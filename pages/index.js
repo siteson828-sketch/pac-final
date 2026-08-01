@@ -562,7 +562,7 @@ export default function Home() {
             {gate.shopUnlocked ? (
               <button className="order-confirm" onClick={() => { setOrderResult(null); setCheckoutOpen(true); }}>Confirm Order →</button>
             ) : (
-              <button className="order-confirm" onClick={gate.openPin}>🔒 Enter PIN to order</button>
+              <button className="order-confirm" onClick={gate.openPin}>{gate.authenticated ? '🔒 Upgrade to order' : '🔒 Sign in to order'}</button>
             )}
           </div>
           <button className="order-dismiss" onClick={() => setActiveTab(null)} title="Dismiss">×</button>
