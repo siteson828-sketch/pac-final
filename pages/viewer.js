@@ -200,15 +200,26 @@ function fmt(s) {
     .split(',')[0];
 }
 
-// Faster grid thumbnails: ask IIIF/CDN sources for a smaller derivative (fewer
-// bytes, still served directly by the museum — no proxy hop or bandwidth cost).
-// Sources without a known size knob (Met web-large, already-small blobs) pass
-// through unchanged.
+// Faster grid thumbnails. Three strategies, in order:
+//  1) Shrink at the source (direct, no proxy) for sources with a size knob.
+//  2) Edge-cache dominant, server-fetchable sources through the hardened proxy
+//     (/api/img) — exempted from the 100/min firewall limit by the "RL img" rule.
+//  3) Everything else loads direct — importantly Europeana/DPLA (hundreds of
+//     arbitrary hosts the proxy can't whitelist) and Smithsonian (its WAF blocks
+//     server-side fetches), which would 403/502 if proxied.
+const PROXY_HOSTS = new Set([
+  'bpldcassets.blob.core.windows.net', // Digital Commonwealth (dominant in the default feed)
+  'openaccess-cdn.clevelandart.org',   // Cleveland
+  'images.metmuseum.org',              // Met
+]);
 function getThumbUrl(url) {
   if (!url) return '';
   if (url.includes('/full/!400,400/')) return url.replace('/full/!400,400/', '/full/!300,300/'); // IIIF: V&A, AIC, MIA, LoC…
   if (url.includes('commons.wikimedia.org') && /[?&]width=\d+/.test(url)) return url.replace(/width=\d+/, 'width=300'); // Wikimedia/Wikidata
-  if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian
+  if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian (direct — WAF blocks proxy fetch)
+  try {
+    if (PROXY_HOSTS.has(new URL(url).hostname)) return '/api/img?url=' + encodeURIComponent(url);
+  } catch (e) {}
   return url;
 }
 
