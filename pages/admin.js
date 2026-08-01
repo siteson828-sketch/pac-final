@@ -171,37 +171,126 @@ export default function Admin() {
         {activeTab === 'visitors' && (
           <div>
             <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 300, marginBottom: 24 }}>Visitors ({visitors.length})</h2>
-            {visitors.length === 0 && <div style={{ color: '#6A6058', fontSize: 13 }}>No identified visitors yet. Rows appear once a visitor provides an email/phone (e.g. at checkout).</div>}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {visitors.map((v, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 120px 120px', gap: 12, padding: '14px 16px', background: '#2C2318', borderRadius: 6, border: '0.5px solid #3A3028', alignItems: 'center' }}>
+            {visitors.length === 0 && <div style={{ color: '#6A6058', fontSize: 13 }}>No identified visitors yet. Profiles appear once a visitor provides an email/phone (e.g. at checkout) or the pixel resolves an identity.</div>}
+            {visitors.map((v, i) => (
+              <div key={i} style={{ background: '#2C2318', borderRadius: 8, padding: 20, border: '0.5px solid #3A3028', marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 500 }}>{v.name || 'Anonymous'}</div>
-                    <div style={{ fontSize: 11, color: '#8A8178' }}>{v.email}</div>
-                    <div style={{ fontSize: 11, color: '#8A8178' }}>{v.phone}</div>
+                    <div style={{ fontSize: 16, fontWeight: 500, color: '#F0EAD8' }}>{v.name || v.audiencelab_name || 'Anonymous Visitor'}</div>
+                    <div style={{ fontSize: 12, color: '#8A8178' }}>{v.email || v.audiencelab_email} · {v.phone || v.audiencelab_phone}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#8A8178' }}>
-                    <div>{v.last_artwork}</div>
-                    <div style={{ color: '#6A6058' }}>{v.museums_viewed?.[0]}</div>
-                  </div>
-                  <div style={{ fontSize: 11, color: '#6A6058' }}>
-                    <div>First: {v.first_seen ? new Date(v.first_seen).toLocaleDateString() : '—'}</div>
-                    <div>Last: {v.last_seen ? new Date(v.last_seen).toLocaleDateString() : '—'}</div>
-                  </div>
-                  <div style={{ padding: '4px 10px', borderRadius: 20, fontSize: 10, fontWeight: 600, textAlign: 'center', background: (JOURNEY_COLORS[v.journey_stage] || '#8A8178') + '20', color: JOURNEY_COLORS[v.journey_stage] || '#8A8178', textTransform: 'capitalize' }}>
-                    {v.journey_stage || 'visitor'}
-                  </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {v.phone && (
-                      <button onClick={() => sendFollowUpSMS(v)}
-                        style={{ background: '#B8942A', color: '#1A1714', border: 'none', padding: '4px 10px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
-                        SMS
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, fontWeight: 600, background: (JOURNEY_COLORS[v.journey_stage] || '#8A8178') + '20', color: JOURNEY_COLORS[v.journey_stage] || '#8A8178', textTransform: 'capitalize' }}>
+                      {v.journey_stage || 'visitor'}
+                    </span>
+                    {(v.phone || v.audiencelab_phone) && (
+                      <button onClick={() => sendFollowUpSMS({ ...v, phone: v.phone || v.audiencelab_phone })}
+                        style={{ background: '#B8942A', color: '#1A1714', border: 'none', padding: '4px 12px', borderRadius: 4, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>
+                        Send SMS
                       </button>
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 12, padding: '10px', background: '#1A1714', borderRadius: 4 }}>
+                  <div>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '.1em', color: '#6A6058', marginBottom: 2 }}>First Visit</div>
+                    <div style={{ fontSize: 12, color: '#F0EAD8' }}>{v.first_visit_date ? new Date(v.first_visit_date).toLocaleDateString() : '—'}</div>
+                    <div style={{ fontSize: 11, color: '#8A8178' }}>{v.first_visit_time ? String(v.first_visit_time).slice(0, 5) : ''}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '.1em', color: '#6A6058', marginBottom: 2 }}>Last Visit</div>
+                    <div style={{ fontSize: 12, color: '#F0EAD8' }}>{v.last_visit_date ? new Date(v.last_visit_date).toLocaleDateString() : '—'}</div>
+                    <div style={{ fontSize: 11, color: '#8A8178' }}>{v.last_visit_time ? String(v.last_visit_time).slice(0, 5) : ''}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '.1em', color: '#6A6058', marginBottom: 2 }}>Pages Viewed</div>
+                    <div style={{ fontSize: 16, color: '#B8942A', fontFamily: 'Georgia,serif' }}>{v.pages_viewed || 1}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '.1em', color: '#6A6058', marginBottom: 2 }}>Cart Value</div>
+                    <div style={{ fontSize: 16, color: v.cart_value > 0 ? '#27AE60' : '#6A6058', fontFamily: 'Georgia,serif' }}>${v.cart_value || 0}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                  <div style={{ padding: 12, background: '#1A1714', borderRadius: 4, border: '0.5px solid rgba(184,148,42,0.2)' }}>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '.1em', color: '#B8942A', marginBottom: 8 }}>✦ AudienceLab Identity</div>
+                    {[
+                      ['Age Range', v.audiencelab_age_range], ['Gender', v.audiencelab_gender], ['Income', v.audiencelab_income],
+                      ['Net Worth', v.audiencelab_net_worth], ['Education', v.audiencelab_education], ['Occupation', v.audiencelab_occupation],
+                      ['Homeowner', v.audiencelab_homeowner], ['Marital Status', v.audiencelab_marital_status], ['Children', v.audiencelab_children],
+                    ].map(([label, value]) => value ? (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
+                        <span style={{ color: '#6A6058' }}>{label}</span>
+                        <span style={{ color: '#F0EAD8' }}>{value}</span>
+                      </div>
+                    ) : null)}
+                    {!v.audiencelab_age_range && !v.audiencelab_income && !v.audiencelab_gender && (
+                      <div style={{ fontSize: 10, color: '#6A6058' }}>No enrichment data</div>
+                    )}
+                    {v.audiencelab_interests?.length > 0 && (
+                      <div style={{ marginTop: 6 }}>
+                        <div style={{ fontSize: 9, color: '#6A6058', marginBottom: 3 }}>Interests</div>
+                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                          {(v.audiencelab_interests || []).slice(0, 5).map((interest, k) => (
+                            <span key={k} style={{ fontSize: 9, padding: '2px 6px', background: 'rgba(184,148,42,0.1)', color: '#B8942A', borderRadius: 3 }}>{typeof interest === 'object' ? JSON.stringify(interest) : interest}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: 12, background: '#1A1714', borderRadius: 4, border: '0.5px solid rgba(74,144,217,0.2)' }}>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '.1em', color: '#4A90D9', marginBottom: 8 }}>◎ Ad Attribution</div>
+                    {[
+                      ['GT Campaign', v.groundtruth_campaign], ['GT Location', v.groundtruth_location], ['GT Venue', v.groundtruth_venue_type],
+                      ['UTM Source', v.utm_source], ['UTM Medium', v.utm_medium], ['UTM Campaign', v.utm_campaign], ['UTM Content', v.utm_content],
+                      ['Referrer', v.referrer ? String(v.referrer).slice(0, 30) : null], ['Landing', v.landing_page ? String(v.landing_page).slice(0, 30) : null],
+                    ].map(([label, value]) => value ? (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
+                        <span style={{ color: '#6A6058' }}>{label}</span>
+                        <span style={{ color: '#F0EAD8', textAlign: 'right', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value}</span>
+                      </div>
+                    ) : null)}
+                    {!v.utm_source && !v.groundtruth_campaign && !v.referrer && (
+                      <div style={{ fontSize: 10, color: '#6A6058' }}>Direct / no attribution</div>
+                    )}
+                  </div>
+
+                  <div style={{ padding: 12, background: '#1A1714', borderRadius: 4, border: '0.5px solid rgba(240,234,214,0.1)' }}>
+                    <div style={{ fontSize: 9, textTransform: 'uppercase', letterSpacing: '.1em', color: '#8A8178', marginBottom: 8 }}>⬡ Device & Behavior</div>
+                    {[
+                      ['Device', v.device_type], ['Browser', v.browser], ['OS', v.os],
+                      ['City', v.city], ['State', v.state], ['Country', v.country], ['IP', v.ip],
+                    ].map(([label, value]) => value ? (
+                      <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 3 }}>
+                        <span style={{ color: '#6A6058' }}>{label}</span>
+                        <span style={{ color: '#F0EAD8' }}>{value}</span>
+                      </div>
+                    ) : null)}
+                    {v.artworks_viewed?.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 9, color: '#6A6058', marginBottom: 3 }}>Artworks Viewed</div>
+                        {(v.artworks_viewed || []).slice(-3).reverse().map((a, k) => (
+                          <div key={k} style={{ fontSize: 10, color: '#B0A898', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {typeof a === 'object' ? a.title : a}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {v.ai_searches?.length > 0 && (
+                      <div style={{ marginTop: 8 }}>
+                        <div style={{ fontSize: 9, color: '#6A6058', marginBottom: 3 }}>AI Searches</div>
+                        {(v.ai_searches || []).slice(-3).reverse().map((sr, k) => (
+                          <div key={k} style={{ fontSize: 10, color: '#B8942A', marginBottom: 2 }}>"{typeof sr === 'object' ? sr.query : sr}"</div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

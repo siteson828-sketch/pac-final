@@ -630,6 +630,44 @@ export default function Viewer() {
     s.id = 'audiencelab-pixel';
     s.async = true;
     s.src = `${AUDIENCELAB_SRC}?id=${encodeURIComponent(AUDIENCELAB_PIXEL_ID)}`;
+    // When the pixel resolves an identity, forward whatever it actually exposes
+    // (plus URL attribution) to our tracker. Best-effort + defensive: if the
+    // pixel has no client identity API, nothing is sent (no fabricated data).
+    const forwardEnrichment = () => {
+      try {
+        const AL = window.AudienceLab || {};
+        try { AL.identify && AL.identify({ page: window.location.href }); } catch (e) {}
+        const id = (typeof AL.getIdentity === 'function' && AL.getIdentity()) || AL.identity || window.AudienceLabIdentity || null;
+        const q = new URLSearchParams(window.location.search);
+        const hasAttr = q.get('utm_source') || q.get('gt_id') || q.get('gt_campaign');
+        if (!id && !hasAttr) return;
+        const nm = id && (id.name || [id.firstName, id.lastName].filter(Boolean).join(' ')) || undefined;
+        const payload = {
+          audiencelab_id: id?.id, audiencelab_email: id?.email, audiencelab_phone: id?.phone, audiencelab_name: nm,
+          audiencelab_age_range: id?.ageRange || id?.age_range, audiencelab_gender: id?.gender,
+          audiencelab_income: id?.householdIncome || id?.income, audiencelab_homeowner: id?.homeowner,
+          audiencelab_net_worth: id?.netWorth || id?.net_worth, audiencelab_education: id?.education,
+          audiencelab_occupation: id?.occupation, audiencelab_marital_status: id?.maritalStatus || id?.marital_status,
+          audiencelab_children: id?.children, audiencelab_interests: id?.interests || undefined, audiencelab_raw: id || undefined,
+          groundtruth_id: q.get('gt_id') || undefined, groundtruth_campaign: q.get('gt_campaign') || q.get('utm_campaign') || undefined,
+          groundtruth_ad_group: q.get('gt_adgroup') || undefined, groundtruth_creative: q.get('gt_creative') || undefined,
+          groundtruth_location: q.get('gt_location') || undefined, groundtruth_venue_type: q.get('gt_venue') || undefined,
+          utm_source: q.get('utm_source') || undefined, utm_medium: q.get('utm_medium') || undefined, utm_campaign: q.get('utm_campaign') || undefined,
+          utm_content: q.get('utm_content') || undefined, utm_term: q.get('utm_term') || undefined,
+          referrer: document.referrer, landing_page: window.location.href,
+          source: q.get('utm_source') || (document.referrer ? new URL(document.referrer).hostname : 'direct'),
+        };
+        // Only send if we have an identifier the server can key on.
+        if (!payload.audiencelab_id && !payload.audiencelab_email) {
+          const { email, phone } = loadIdentity() || {};
+          if (email) payload.email = email;
+          if (phone) payload.phone = phone;
+          if (!payload.email && !payload.phone) return; // anonymous → nothing to store
+        }
+        fetch('/api/track', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), keepalive: true }).catch(() => {});
+      } catch (e) {}
+    };
+    s.onload = () => { forwardEnrichment(); setTimeout(forwardEnrichment, 2500); };
     document.head.appendChild(s);
   }, []);
 

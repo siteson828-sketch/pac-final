@@ -1,5 +1,5 @@
 import { hasGhl, findContactByEmail, upsertContact, updateContact, addTags, addNote } from '../../lib/ghl';
-import { crmDb, logEvent } from '../../lib/crm';
+import { crmDb, logEvent, updateVisitorJourney } from '../../lib/crm';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, isEmail, isPhone, sameOrigin, clientIp } from '../../lib/sanitize';
 
@@ -45,7 +45,9 @@ export default async function handler(req, res) {
 
   // Always record locally for the admin dashboard (this is our own queryable
   // copy; it works whether or not GHL is configured).
-  await logEvent(crmDb(), { event, email, phone, name: cleanStr(body.name, 120), artwork, museum, orderTotal });
+  const cdb = crmDb();
+  await logEvent(cdb, { event, email, phone, name: cleanStr(body.name, 120), artwork, museum, orderTotal });
+  await updateVisitorJourney(cdb, { email, phone, name: cleanStr(body.name, 120), event, artwork, museum, orderTotal });
 
   // The rest pushes to GoHighLevel only when it's configured.
   if (!hasGhl()) return res.status(200).json({ ok: true, stage: s.stage, local: true });

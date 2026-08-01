@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless';
-import { ensureCrmTables } from '../../lib/crm';
+import { ensureCrmTables, ensureVisitorsTable } from '../../lib/crm';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +29,7 @@ export default async function handler(req, res) {
   }
   const sql = neon(process.env.DATABASE_URL);
   await safe(() => ensureCrmTables(sql), null);
+  await safe(() => ensureVisitorsTable(sql), null);
 
   // --- visitor counters (daily_visits) ---
   const visits = (await safe(() => sql`SELECT
@@ -63,40 +64,50 @@ export default async function handler(req, res) {
     added1 = num((await safe(() => sql([`SELECT COUNT(*) n FROM artworks WHERE ${tsCol} > NOW() - INTERVAL '1 hour'`]), [{ n: 0 }]))[0]?.n);
   }
 
-  // --- identified visitor profiles from crm_events ---
-  const events = await safe(() => sql`SELECT event, email, phone, name, artwork, museum, order_total, created_at
-    FROM crm_events WHERE email IS NOT NULL ORDER BY created_at DESC LIMIT 1000`, []);
-  const byEmail = new Map();
-  for (const e of events) {
-    let p = byEmail.get(e.email);
-    if (!p) { p = { email: e.email, phone: e.phone || null, name: e.name || null, last_artwork: null, museums: new Set(), journey_stage: 'visitor', rank: 0, first_seen: e.created_at, last_seen: e.created_at, order_total: null }; byEmail.set(e.email, p); }
-    if (!p.phone && e.phone) p.phone = e.phone;
-    if (!p.name && e.name) p.name = e.name;
-    if (e.museum) p.museums.add(e.museum);
-    if (!p.last_artwork && e.artwork) p.last_artwork = e.artwork;   // events are DESC → first seen is latest
-    if (e.order_total != null && p.order_total == null) p.order_total = num(e.order_total);
-    if (new Date(e.created_at) < new Date(p.first_seen)) p.first_seen = e.created_at;
-    if (new Date(e.created_at) > new Date(p.last_seen)) p.last_seen = e.created_at;
-    const rk = STAGE_RANK[EVENT_STAGE[e.event]] || 0;
-    if (rk > p.rank) { p.rank = rk; p.journey_stage = EVENT_STAGE[e.event]; }
-  }
-  const profiles = [...byEmail.values()].sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen));
-  const visitorsOut = profiles.slice(0, 50).map(p => ({
-    name: p.name, email: p.email, phone: p.phone, journey_stage: p.journey_stage,
-    last_artwork: p.last_artwork, museums_viewed: [...p.museums], first_seen: p.first_seen, last_seen: p.last_seen,
+  // --- rich visitor profiles (visitors table) ---
+  const asArr = v => Array.isArray(v) ? v : (() => { try { return JSON.parse(v || '[]'); } catch (e) { return []; } })();
+  const visitorRows = await safe(() => sql`SELECT
+      id, email, phone, name, first_name, last_name,
+      audiencelab_id, audiencelab_email, audiencelab_phone, audiencelab_name,
+      audiencelab_age_range, audiencelab_gender, audiencelab_income, audiencelab_homeowner,
+      audiencelab_net_worth, audiencelab_education, audiencelab_occupation,
+      audiencelab_marital_status, audiencelab_children, audiencelab_interests,
+      groundtruth_id, groundtruth_campaign, groundtruth_location, groundtruth_venue_type,
+      utm_source, utm_medium, utm_campaign, utm_content, referrer, landing_page,
+      ip, device_type, browser, os, city, state, country,
+      journey_stage, artworks_viewed, museums_viewed, ai_searches,
+      pages_viewed, cart_value, last_cart_artwork, total_orders, total_spent,
+      first_seen, last_seen, first_visit_date, first_visit_time, last_visit_date, last_visit_time,
+      sms_sent, sms_sent_at
+    FROM visitors ORDER BY last_seen DESC LIMIT 100`, []);
+  const visitorsOut = (visitorRows || []).map(v => ({
+    ...v,
+    audiencelab_interests: asArr(v.audiencelab_interests),
+    artworks_viewed: asArr(v.artworks_viewed),
+    museums_viewed: asArr(v.museums_viewed),
+    ai_searches: asArr(v.ai_searches),
   }));
-  const abandonedOut = profiles.filter(p => p.journey_stage === 'abandoned')
-    .map(p => ({ name: p.name, email: p.email, phone: p.phone, last_artwork: p.last_artwork, last_seen: p.last_seen, order_total: p.order_total }))
-    .slice(0, 25);
 
-  // funnel (distinct identified emails reaching each stage; subscriber from users)
-  const funnel = { visitor: Math.max(num(visits.total_u), byEmail.size), browser: 0, interested: 0, abandoned: 0, buyer: 0, subscriber: subs };
-  for (const p of byEmail.values()) {
-    if (p.rank >= STAGE_RANK.browser) funnel.browser++;
-    if (p.rank >= STAGE_RANK.interested) funnel.interested++;
-    if (p.rank === STAGE_RANK.abandoned) funnel.abandoned++;
-    if (p.rank >= STAGE_RANK.buyer) funnel.buyer++;
-  }
+  const abandonedRows = await safe(() => sql`SELECT name, email, phone, last_cart_artwork, cart_value, last_seen
+    FROM visitors WHERE cart_value > 0 AND journey_stage IN ('interested','abandoned')
+    ORDER BY last_seen DESC LIMIT 25`, []);
+  const abandonedOut = (abandonedRows || []).map(a => ({
+    name: a.name, email: a.email, phone: a.phone, last_artwork: a.last_cart_artwork, last_seen: a.last_seen, order_total: num(a.cart_value),
+  }));
+
+  // funnel from the visitors table (subscriber count from users)
+  const f = (await safe(() => sql`SELECT
+      COUNT(*) AS identified,
+      COUNT(*) FILTER (WHERE stage_rank >= 2) AS browser,
+      COUNT(*) FILTER (WHERE stage_rank >= 3) AS interested,
+      COUNT(*) FILTER (WHERE journey_stage = 'abandoned') AS abandoned,
+      COUNT(*) FILTER (WHERE stage_rank >= 5) AS buyer
+    FROM visitors`, [{}]))[0] || {};
+  const funnel = {
+    visitor: Math.max(num(visits.total_u), num(f.identified)),
+    browser: num(f.browser), interested: num(f.interested),
+    abandoned: num(f.abandoned), buyer: num(f.buyer), subscriber: subs,
+  };
 
   const topArtworks = await safe(() => sql`SELECT artwork AS title, COUNT(*) AS views FROM crm_events
     WHERE event='artwork_view' AND artwork IS NOT NULL AND artwork <> '' GROUP BY artwork ORDER BY views DESC LIMIT 10`, []);

@@ -1,6 +1,6 @@
 import { hasBloo, upsertContact } from '../../lib/bloo';
 import { hasGhl, upsertContact as ghlUpsert } from '../../lib/ghl';
-import { crmDb, bumpDaily, logEvent } from '../../lib/crm';
+import { crmDb, bumpDaily, logEvent, upsertVisitor } from '../../lib/crm';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, isEmail, isPhone, sameOrigin } from '../../lib/sanitize';
 
@@ -105,6 +105,35 @@ export default async function handler(req, res) {
   await bumpDaily(cdb, firstVisit);
   if (body.email || body.phone) {
     await logEvent(cdb, { event: 'page_view', email: body.email, phone: body.phone, name: body.name, artwork: body.artwork_title, museum: body.museum });
+  }
+
+  // Rich enrichment profile — identified visitors only (keeps the table bounded).
+  // Device parsed from the UA server-side; coarse geo from Vercel edge headers
+  // (falls back to whatever the pixel supplies). Demographic/attribution fields
+  // are pass-through: they only populate if the pixel actually sends them.
+  if (body.email || body.phone || body.audiencelab_id || body.audiencelab_email) {
+    const ua = req.headers['user-agent'] || '';
+    const device = /Mobi/i.test(ua) ? 'mobile' : /Tablet|iPad/i.test(ua) ? 'tablet' : 'desktop';
+    const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Other';
+    const os = /Windows/.test(ua) ? 'Windows' : /iPhone|iPad|iOS/.test(ua) ? 'iOS' : /Mac OS/.test(ua) ? 'Mac' : /Android/.test(ua) ? 'Android' : /Linux/.test(ua) ? 'Linux' : 'Other';
+    const hdr = k => { const v = req.headers[k]; if (!v) return null; try { return decodeURIComponent(v); } catch (e) { return v; } };
+    await upsertVisitor(cdb, {
+      email: body.email || null, phone: body.phone || null, name: body.name || null,
+      first_name: body.first_name, last_name: body.last_name,
+      audiencelab_id: body.audiencelab_id, audiencelab_email: body.audiencelab_email, audiencelab_phone: body.audiencelab_phone, audiencelab_name: body.audiencelab_name,
+      audiencelab_age_range: body.audiencelab_age_range, audiencelab_gender: body.audiencelab_gender, audiencelab_income: body.audiencelab_income,
+      audiencelab_homeowner: body.audiencelab_homeowner, audiencelab_net_worth: body.audiencelab_net_worth, audiencelab_education: body.audiencelab_education,
+      audiencelab_occupation: body.audiencelab_occupation, audiencelab_marital_status: body.audiencelab_marital_status, audiencelab_children: body.audiencelab_children,
+      audiencelab_interests: body.audiencelab_interests, audiencelab_raw: body.audiencelab_raw,
+      groundtruth_id: body.groundtruth_id, groundtruth_campaign: body.groundtruth_campaign, groundtruth_ad_group: body.groundtruth_ad_group,
+      groundtruth_creative: body.groundtruth_creative, groundtruth_location: body.groundtruth_location, groundtruth_venue_type: body.groundtruth_venue_type,
+      groundtruth_visit_time: body.groundtruth_visit_time, groundtruth_raw: body.groundtruth_raw,
+      source: body.source, utm_source: body.utm_source, utm_medium: body.utm_medium, utm_campaign: body.utm_campaign, utm_content: body.utm_content, utm_term: body.utm_term,
+      referrer: body.referrer, landing_page: body.landing_page,
+      ip, user_agent: ua, device_type: body.device_type || device, browser: body.browser || browser, os: body.os || os,
+      city: body.city || hdr('x-vercel-ip-city'), state: body.state || hdr('x-vercel-ip-country-region'), country: body.country || hdr('x-vercel-ip-country'),
+      latitude: body.latitude || hdr('x-vercel-ip-latitude'), longitude: body.longitude || hdr('x-vercel-ip-longitude'),
+    });
   }
 
   const notified = { sms: null, bloo: null };

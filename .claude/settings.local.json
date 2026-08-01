@@ -93,7 +93,8 @@
       "PowerShell($env:NEXTAUTH_URL=\"http://localhost:3000\"; npx next build 2>&1 | Select-String -Pattern \"Compiled successfully|Failed|error |Invalid URL|ghl-event|ghl-webhook|trackGHL|is not defined\" | Select-Object -First 12)",
       "Bash(npm uninstall *)",
       "PowerShell($env:NEXTAUTH_URL=\"http://localhost:3000\"; npx next build 2>&1 | Select-String -Pattern \"Compiled successfully|Failed|error |Invalid URL|/admin|admin-dashboard|admin-action\" | Select-Object -First 12)",
-      "Bash(node _seed.mjs)"
+      "Bash(node _seed.mjs)",
+      "PowerShell($env:NEXTAUTH_URL=\"http://localhost:3000\"; npx next build 2>&1 | Select-String -Pattern \"Compiled successfully|Failed|error |Invalid URL|Syntax\" | Select-Object -First 8)"
     ]
   }
 }
