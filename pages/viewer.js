@@ -200,6 +200,18 @@ function fmt(s) {
     .split(',')[0];
 }
 
+// Faster grid thumbnails: ask IIIF/CDN sources for a smaller derivative (fewer
+// bytes, still served directly by the museum — no proxy hop or bandwidth cost).
+// Sources without a known size knob (Met web-large, already-small blobs) pass
+// through unchanged.
+function getThumbUrl(url) {
+  if (!url) return '';
+  if (url.includes('/full/!400,400/')) return url.replace('/full/!400,400/', '/full/!300,300/'); // IIIF: V&A, AIC, MIA, LoC…
+  if (url.includes('commons.wikimedia.org') && /[?&]width=\d+/.test(url)) return url.replace(/width=\d+/, 'width=300'); // Wikimedia/Wikidata
+  if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian
+  return url;
+}
+
 // Mobile-first: base rules target small (360px+) screens; min-width media
 // queries scale the layout up to tablet and desktop. No layout dimensions are
 // set inline in the JSX — every grid and element is driven by a class here.
@@ -884,9 +896,11 @@ export default function Viewer() {
                       <div className="card-img">
                         {w.thumb_url && !imgErrors[w.id] ? (
                           <img
-                            src={w.thumb_url}
+                            src={getThumbUrl(w.thumb_url)}
                             alt={w.title}
                             loading="lazy"
+                            style={{ opacity: 0, transition: 'opacity .35s ease' }}
+                            onLoad={e => { e.currentTarget.style.opacity = 1; }}
                             onError={() => setImgErrors(e => ({ ...e, [w.id]: true }))}
                           />
                         ) : (
