@@ -9,15 +9,6 @@ export default function SignInPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [googleAvailable, setGoogleAvailable] = useState(false);
-
-  // Only show the Google button if the Google provider is actually configured.
-  useEffect(() => {
-    fetch('/api/auth/providers')
-      .then(r => r.json())
-      .then(p => setGoogleAvailable(!!p?.google))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (status === 'authenticated') router.replace('/viewer');
@@ -41,15 +32,6 @@ export default function SignInPage() {
           Public Art <span style={{ color: '#B8942A' }}>Collections</span>
         </a>
         <h1 style={title}>Sign in</h1>
-
-        {googleAvailable && (
-          <>
-            <button onClick={() => signIn('google', { callbackUrl: '/viewer' })} style={googleBtn}>
-              Continue with Google
-            </button>
-            <div style={divider}><span style={dividerText}>or</span></div>
-          </>
-        )}
 
         <form onSubmit={onSubmit}>
           <label style={label}>Email</label>

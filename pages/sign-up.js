@@ -10,14 +10,6 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [googleAvailable, setGoogleAvailable] = useState(false);
-
-  useEffect(() => {
-    fetch('/api/auth/providers')
-      .then(r => r.json())
-      .then(p => setGoogleAvailable(!!p?.google))
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     if (status === 'authenticated') router.replace('/pricing');
@@ -54,15 +46,6 @@ export default function SignUpPage() {
           Public Art <span style={{ color: '#B8942A' }}>Collections</span>
         </a>
         <h1 style={title}>Create your account</h1>
-
-        {googleAvailable && (
-          <>
-            <button onClick={() => signIn('google', { callbackUrl: '/pricing' })} style={googleBtn}>
-              Continue with Google
-            </button>
-            <div style={divider}><span style={dividerText}>or</span></div>
-          </>
-        )}
 
         <form onSubmit={onSubmit}>
           <label style={label}>Name (optional)</label>
