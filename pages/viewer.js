@@ -296,6 +296,7 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#FAF
 .live-head{font-size:13px;color:#8A8178;margin-bottom:14px}
 .live-badge{position:absolute;top:8px;left:8px;background:rgba(184,148,42,0.95);color:#1A1714;font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;z-index:2;letter-spacing:.02em}
 a.art-card{text-decoration:none;color:inherit}
+.live-adding{position:absolute;inset:0;background:rgba(26,23,20,0.55);color:#F0EAD8;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;z-index:3}
 .card-hover-label{font-size:10px;font-weight:500;color:#FAF8F4;letter-spacing:.04em}
 .card-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;color:#B8942A}
 .card-info{padding:8px 10px 10px;background:#FAF8F4;flex:1;display:flex;flex-direction:column}
@@ -436,8 +437,9 @@ export default function Viewer() {
   const [aiQuery, setAiQuery]       = useState('');
   const [aiSearching, setAiSearching] = useState(false);
   const [aiInfo, setAiInfo]         = useState(null);  // { description, mood } from the AI
-  const [liveWorks, setLiveWorks]   = useState([]);    // live museum-API results (view-only)
+  const [liveWorks, setLiveWorks]   = useState([]);    // live museum-API results
   const [liveLoading, setLiveLoading] = useState(false);
+  const [addingLive, setAddingLive] = useState(null);  // id of a live work being added to catalog
   const osdRef  = useRef(null);
   const osdInst = useRef(null);
   const gate = useShopGate();
@@ -795,6 +797,30 @@ export default function Viewer() {
       .finally(() => setLiveLoading(false));
   };
 
+  // Promote a live museum result into the catalog, then open it in the order
+  // modal (same flow as any DB work). Adding is free; ordering stays tier-gated.
+  const addLiveToCatalog = async (w) => {
+    if (addingLive) return;
+    setAddingLive(w.id);
+    try {
+      const d = await fetch('/api/add-to-catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(w),
+      }).then(r => r.json());
+      if (d.ok && d.work) {
+        setModal(d.work);
+        trackGHL('artwork_view', { artwork: d.work.title, museum: d.work.source });
+      } else {
+        alert(d.error || 'Could not add this work.');
+      }
+    } catch (e) {
+      alert('Could not add this work.');
+    } finally {
+      setAddingLive(null);
+    }
+  };
+
   const handleGenre = g => {
     setGenre(g);
     setSearch('');
@@ -1026,11 +1052,11 @@ export default function Viewer() {
                     <div className="live-head">
                       {liveLoading
                         ? '🔎 Searching museums live…'
-                        : `Also found live from museums (${liveWorks.length}) — view on the museum site`}
+                        : `Also found live from museums (${liveWorks.length}) — click to add to the catalog & order`}
                     </div>
                     <div className="art-grid">
                       {liveWorks.map(w => (
-                        <a key={w.id} className="art-card" href={w.detail_url || '#'} target="_blank" rel="noopener noreferrer">
+                        <div key={w.id} className="art-card" onClick={() => addLiveToCatalog(w)} title="Add to catalog & order">
                           <div className="card-img">
                             {w.thumb_url ? (
                               <img
@@ -1043,14 +1069,24 @@ export default function Viewer() {
                               />
                             ) : (<div className="card-ph">🖼️</div>)}
                             <div className="live-badge">Live · {w.live_source}</div>
+                            <div className="card-hover-overlay">
+                              <span className="card-hover-label">{addingLive === w.id ? 'Adding…' : '+ Add & Order →'}</span>
+                            </div>
+                            {addingLive === w.id && <div className="live-adding">Adding…</div>}
                           </div>
                           <div className="card-info">
                             <div className="card-source">{w.live_source}</div>
                             <div className="card-title">{w.title}</div>
                             <div className="card-artist">{w.artist || 'Unknown'}</div>
-                            {w.date_text && <div className="card-date">{w.date_text}</div>}
+                            {w.detail_url && (
+                              <a href={w.detail_url} target="_blank" rel="noopener noreferrer"
+                                 onClick={e => e.stopPropagation()}
+                                 style={{ fontSize: 11, color: '#8A8178', textDecoration: 'none' }}>
+                                View on museum ↗
+                              </a>
+                            )}
                           </div>
-                        </a>
+                        </div>
                       ))}
                     </div>
                   </div>
