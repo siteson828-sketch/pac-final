@@ -292,6 +292,10 @@ html,body{height:100%;font-family:'DM Sans',system-ui,sans-serif;background:#FAF
 .art-card:hover .card-img img{transform:scale(1.04)}
 .card-hover-overlay{position:absolute;inset:0;background:linear-gradient(transparent 55%,rgba(26,23,20,0.7));opacity:0;transition:opacity .2s;display:flex;align-items:flex-end;padding:8px}
 .art-card:hover .card-hover-overlay{opacity:1}
+.live-section{margin-top:36px;padding-top:16px;border-top:0.5px solid rgba(26,23,20,0.12)}
+.live-head{font-size:13px;color:#8A8178;margin-bottom:14px}
+.live-badge{position:absolute;top:8px;left:8px;background:rgba(184,148,42,0.95);color:#1A1714;font-size:10px;font-weight:600;padding:3px 8px;border-radius:4px;z-index:2;letter-spacing:.02em}
+a.art-card{text-decoration:none;color:inherit}
 .card-hover-label{font-size:10px;font-weight:500;color:#FAF8F4;letter-spacing:.04em}
 .card-ph{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:32px;color:#B8942A}
 .card-info{padding:8px 10px 10px;background:#FAF8F4;flex:1;display:flex;flex-direction:column}
@@ -432,6 +436,8 @@ export default function Viewer() {
   const [aiQuery, setAiQuery]       = useState('');
   const [aiSearching, setAiSearching] = useState(false);
   const [aiInfo, setAiInfo]         = useState(null);  // { description, mood } from the AI
+  const [liveWorks, setLiveWorks]   = useState([]);    // live museum-API results (view-only)
+  const [liveLoading, setLiveLoading] = useState(false);
   const osdRef  = useRef(null);
   const osdInst = useRef(null);
   const gate = useShopGate();
@@ -769,6 +775,7 @@ export default function Viewer() {
     setGenre(GENRES[0]);
     setAiActive(true);
     setWorks([]);
+    setLiveWorks([]);
     setHasMore(false);
     setNavOpen(false);
     try {
@@ -777,6 +784,15 @@ export default function Viewer() {
       setAiInfo({ description: d.ai_description || '', mood: d.ai_mood || '' });
     } catch (e) { console.error('AI search error:', e); }
     setAiSearching(false);
+
+    // Live museum-API results stream in separately (non-blocking) so the DB
+    // results above render instantly. View-only — they link out to the museum.
+    setLiveLoading(true);
+    fetch('/api/ai-search-live?query=' + encodeURIComponent(query))
+      .then(r => r.json())
+      .then(d => setLiveWorks(Array.isArray(d.works) ? d.works : []))
+      .catch(() => {})
+      .finally(() => setLiveLoading(false));
   };
 
   const handleGenre = g => {
@@ -1004,6 +1020,42 @@ export default function Viewer() {
                     </div>
                   ))}
                 </div>
+
+                {aiActive && (liveLoading || liveWorks.length > 0) && (
+                  <div className="live-section">
+                    <div className="live-head">
+                      {liveLoading
+                        ? '🔎 Searching museums live…'
+                        : `Also found live from museums (${liveWorks.length}) — view on the museum site`}
+                    </div>
+                    <div className="art-grid">
+                      {liveWorks.map(w => (
+                        <a key={w.id} className="art-card" href={w.detail_url || '#'} target="_blank" rel="noopener noreferrer">
+                          <div className="card-img">
+                            {w.thumb_url ? (
+                              <img
+                                src={getThumbUrl(w.thumb_url)}
+                                alt={w.title}
+                                loading="lazy"
+                                style={{ opacity: 0, transition: 'opacity .35s ease' }}
+                                onLoad={e => { e.currentTarget.style.opacity = 1; }}
+                                onError={e => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            ) : (<div className="card-ph">🖼️</div>)}
+                            <div className="live-badge">Live · {w.live_source}</div>
+                          </div>
+                          <div className="card-info">
+                            <div className="card-source">{w.live_source}</div>
+                            <div className="card-title">{w.title}</div>
+                            <div className="card-artist">{w.artist || 'Unknown'}</div>
+                            {w.date_text && <div className="card-date">{w.date_text}</div>}
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {hasMore && (
                   <div className="load-more-wrap">
                     <button
