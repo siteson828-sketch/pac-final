@@ -4,15 +4,18 @@
 // Repeatedly pokes /api/sync-fast, which advances a per-source cursor so each
 // run ingests NEW works. Fully sequential: the next cycle only fires after the
 // current request completes (never on a timer), so overlapping server-side runs
-// can't pile up. /api/sync-fast is a long (~100s) call, so we give it room:
+// can't pile up. /api/sync-fast is a long (~30-100s+) call, so we give it room:
 //   • 120s pause between successful cycles (SYNC_PAUSE_MS)
 //   • 180s per-request timeout so a hung connection is cleaned up, not left open
-//   • exponential backoff on failure (ECONNRESET etc.) instead of a 3s hammer,
-//     which is what caused the reset "storms": 30s → 60s → 120s → 180s (4+),
-//     reset back to no-backoff after any successful cycle.
+//   • exponential backoff on failure (ECONNRESET etc.) instead of a 3s hammer:
+//     30s → 60s → 120s → 180s (4+), reset back to no-backoff after a clean cycle.
+//
+// Transport is HTTP/2 (node's `http2`), NOT the `https` module. The Vercel edge
+// resets HTTP/1.1 connections to this endpoint at a hard ~38s ceiling, so any
+// cycle doing more than ~38s of work died with ECONNRESET. curl never hit this
+// because it negotiates HTTP/2 via ALPN; HTTP/2 from node clears it cleanly.
 
-const https = require('https');
-const http = require('http');
+const http2 = require('http2');
 
 const BASE = process.env.SYNC_BASE || 'https://pac-final.vercel.app';
 // Sent as an Authorization: Bearer header (never in the URL).
@@ -27,28 +30,44 @@ const backoffSeconds = (failures) => BACKOFF_S[Math.min(failures, BACKOFF_S.leng
 
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
+// One-shot HTTP/2 GET returning parsed JSON, with a hard overall timeout.
 function fetchJson(path, timeoutMs) {
   return new Promise((resolve, reject) => {
-    const url = `${BASE}${path}`;
-    const lib = url.startsWith('https') ? https : http;
     let settled = false;
     let hardTimer = null;
+    let client = null;
     const finish = (err, val) => {
       if (settled) return;
       settled = true;
       clearTimeout(hardTimer);
+      try { if (client) client.close(); } catch (e) { /* ignore */ }
       if (err) reject(err); else resolve(val);
     };
-    const req = lib.get(url, { timeout: timeoutMs, headers: { Authorization: `Bearer ${SECRET}` } }, (res) => {
-      let data = '';
-      res.on('data', (c) => (data += c));
-      res.on('end', () => { try { finish(null, JSON.parse(data)); } catch (e) { finish(new Error('bad JSON: ' + data.slice(0, 120))); } });
+    try { client = http2.connect(BASE); } catch (e) { return finish(e); }
+    client.on('error', (e) => finish(e));
+
+    const req = client.request({
+      ':path': path,
+      ':method': 'GET',
+      authorization: `Bearer ${SECRET}`,
+      'user-agent': 'pac-auto-sync/1.0',
+      accept: 'application/json',
     });
-    // Hard ceiling on the whole request so a hung/half-open connection is torn
-    // down rather than left dangling.
-    hardTimer = setTimeout(() => { req.destroy(new Error('request timeout')); }, timeoutMs);
+    let status = 0;
+    let data = '';
+    req.on('response', (h) => { status = h[':status']; });
+    req.on('data', (c) => (data += c));
+    req.on('end', () => {
+      if (status && status !== 200) return finish(new Error(`HTTP ${status}: ${data.slice(0, 120)}`));
+      try { finish(null, JSON.parse(data)); } catch (e) { finish(new Error('bad JSON: ' + data.slice(0, 120))); }
+    });
     req.on('error', (e) => finish(e));
-    req.on('timeout', () => { req.destroy(new Error('socket timeout')); });
+
+    // Hard ceiling on the whole request so a hung/half-open stream is torn down.
+    hardTimer = setTimeout(() => {
+      try { req.close(http2.constants.NGHTTP2_CANCEL); } catch (e) { /* ignore */ }
+      finish(new Error('request timeout'));
+    }, timeoutMs);
   });
 }
 
@@ -57,7 +76,7 @@ async function main() {
     console.error('Set SYNC_SECRET (or CRON_SECRET) in your environment first.');
     process.exit(1);
   }
-  console.log(`AUTO-SYNC → ${BASE}/api/sync-fast   (Ctrl+C to stop)`);
+  console.log(`AUTO-SYNC → ${BASE}/api/sync-fast  (HTTP/2, Ctrl+C to stop)`);
   console.log(`pause=${PAUSE_MS / 1000}s  req-timeout=${REQ_TIMEOUT_MS / 1000}s  backoff=${BACKOFF_S.join('/')}s`);
 
   let cycle = 0;
