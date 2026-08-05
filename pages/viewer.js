@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
 import AuthNav from '../components/AuthNav';
+import LeadPopup from '../components/LeadPopup';
 import { saveIdentity, loadIdentity } from '../lib/identity';
 
 const OSD_VERSION = '4.1.0';
@@ -1286,6 +1287,9 @@ export default function Viewer() {
 
       {/* PIN MODAL — trade access */}
       <PinModal gate={gate} />
+
+      {/* LEAD CAPTURE POPUP — appears after 8s */}
+      <LeadPopup />
     </>
   );
 }

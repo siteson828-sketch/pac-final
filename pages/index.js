@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
 import AuthNav from '../components/AuthNav';
+import LeadPopup from '../components/LeadPopup';
 
 const COLLECTIONS = [
   { label: 'All',           search: '',              source: '' },
@@ -908,6 +909,9 @@ export default function Home() {
 
       {/* PIN MODAL — trade access */}
       <PinModal gate={gate} />
+
+      {/* LEAD CAPTURE POPUP — appears after 8s */}
+      <LeadPopup />
     </>
   );
 }
