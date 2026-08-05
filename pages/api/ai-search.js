@@ -123,7 +123,16 @@ export default async function handler(req, res) {
     // its title or medium, so a "cityscapes" search can't be flooded by works
     // that merely matched a peripheral term (e.g. "metropolitan"). We always fold
     // in the raw query and its singular so a literal match is never gated out.
-    const singular = s => (s.length > 4 && s.endsWith('s')) ? s.slice(0, -1) : s;
+    // Fold a query's likely singular into the gate so a plural query ("cityscapes")
+    // still matches singular titles ("Cityscape"). Skip words that merely END in
+    // 's' but aren't plurals (religious, famous, canvas, virus, analysis).
+    const singular = (s) => {
+      if (s.length <= 4 || !s.endsWith('s')) return s;
+      if (/(ss|us|is|ous|as)$/.test(s)) return s;                     // not plurals
+      if (/ies$/.test(s)) return s.slice(0, -3) + 'y';                // berries → berry
+      if (/(ches|shes|sses|xes|zes)$/.test(s)) return s.slice(0, -2); // churches → church
+      return s.slice(0, -1);                                          // flowers → flower
+    };
     const mustTerms = [...new Set(
       [...(ai?.must_include || []), query, singular(query)]
         .map(t => cleanStr(t, 60).toLowerCase()).filter(t => t && t.length >= 3)
