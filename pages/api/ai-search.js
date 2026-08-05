@@ -17,26 +17,32 @@ const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
 async function expandQuery(query) {
   if (!process.env.ANTHROPIC_API_KEY) return { data: null, error: 'ANTHROPIC_API_KEY unset' };
-  const prompt = `You are an expert art curator and visual search specialist with deep knowledge of art history, styles, periods, and techniques.
+  const prompt = `You are an expert art curator and visual search specialist.
 
 The user searched for: "${query}"
 
-Find artworks that VISUALLY match this description. Think about what these works actually LOOK LIKE — colors, composition, mood, lighting — plus the art movements/periods/styles, the specific artists known for this look, and the medium/technique that produces it.
+CRITICAL: Only produce terms that will find artworks whose VISUAL CONTENT matches this exact subject — think about what the artwork literally DEPICTS.
+
+Rules:
+- Do NOT include generic terms like "painting", "art", "artwork", "canvas" — they match almost everything.
+- Do NOT include loosely-related or administrative words. (e.g. for "cityscapes", "metropolitan" is bad — it matches "Metropolitan Borough" documents.)
+- ONLY words describing the VISUAL SUBJECT of the artwork itself.
 
 Return ONLY valid JSON (no other text):
 {
-  "search_terms": [8-12 SPECIFIC keywords likely to appear in artwork titles/artists/mediums: specific artist names, art-movement names, visual descriptors (chiaroscuro, plein air, sfumato), medium/technique (oil on canvas, watercolor, engraving), subject matter (seascape, portrait, still life), period terms (Renaissance, Baroque, 17th century)],
-  "visual_description": "2-3 sentences describing exactly what these artworks look like — colors, composition, mood, lighting, technique",
-  "mood": "one-word emotional quality (peaceful, dramatic, melancholic, joyful, mysterious, ...)",
-  "exclude_terms": [3-5 terms to filter out irrelevant results]
+  "search_terms": [8-12 specific terms for ranking/recall: subject words, art movements, notable artists, techniques],
+  "must_include": [2-3 CORE subject words that EVERY relevant result must contain in its title or medium — the strict gate; keep them tight and unambiguous],
+  "exclude_terms": [2-5 words that signal a NON-matching result to filter out],
+  "visual_description": "2-3 sentences on what these artworks actually look like — colors, composition, mood, lighting",
+  "mood": "one-word emotional quality (peaceful, dramatic, melancholic, joyful, mysterious, ...)"
 }
 
 Examples:
-- "blue melancholy" → search_terms: ["Picasso","Munch","Whistler","blue","melancholy","nocturne","moonlight","sorrow","cool tones","twilight"]
-- "stormy seascape" → search_terms: ["Turner","Winslow Homer","Aivazovsky","storm","sea","ocean","waves","ship","tempest","maritime","shipwreck"]
-- "Japanese woodblock" → search_terms: ["Hokusai","Hiroshige","Utamaro","ukiyo-e","woodblock","edo","Mount Fuji","cherry blossom","kabuki","landscape"]
+- "cityscapes" → search_terms: ["cityscape","city","urban","street scene","architecture","skyline","rooftops","boulevard","Canaletto","Venice"], must_include: ["cityscape","city","urban"], exclude_terms: ["portrait","still life","landscape (rural)","botanical"]
+- "stormy seascape" → search_terms: ["Turner","Aivazovsky","storm","sea","ocean","waves","ship","tempest","maritime","shipwreck"], must_include: ["sea","ocean","seascape"], exclude_terms: ["portrait","still life","cityscape"]
+- "Japanese woodblock" → search_terms: ["Hokusai","Hiroshige","ukiyo-e","woodblock","Mount Fuji","cherry blossom","kabuki","Edo"], must_include: ["woodblock","ukiyo-e","japanese"], exclude_terms: ["oil painting","sculpture","photograph"]
 
-Be very specific about visual qualities. Return ONLY JSON.`;
+Be strict. must_include must be the tightest words that define the subject. Return ONLY JSON.`;
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -47,7 +53,7 @@ Be very specific about visual qualities. Return ONLY JSON.`;
       },
       body: JSON.stringify({
         model: ANTHROPIC_MODEL,
-        max_tokens: 700,
+        max_tokens: 800,
         messages: [{ role: 'user', content: prompt }],
       }),
     });
@@ -98,7 +104,7 @@ export default async function handler(req, res) {
   const DEAD = '%ark.digitalcommonwealth.org%'; // dead DC thumbnail endpoint
 
   try {
-    const cacheKey = query.toLowerCase();
+    const cacheKey = 'v2:' + query.toLowerCase(); // v2 = must_include/exclude shape
     let ai = await getCachedExpansion(sql, cacheKey);
     let aiError = null;
     const cached = !!ai;
@@ -109,20 +115,41 @@ export default async function handler(req, res) {
       if (ai) await putCachedExpansion(sql, cacheKey, ai);
     }
 
-    // Up to 8 expansion terms (was 5) for better recall on visual queries.
+    // search_terms → broad recall + weighted ranking (as before).
     const terms = (ai?.search_terms && ai.search_terms.length ? ai.search_terms : [query])
       .map(t => cleanStr(t, 60)).filter(Boolean).slice(0, 8);
 
-    // Fixed 8-slot shape (no dynamic SQL). Pad with a sentinel that can't match.
+    // must_include → the STRICT gate. Every result must contain one of these in
+    // its title or medium, so a "cityscapes" search can't be flooded by works
+    // that merely matched a peripheral term (e.g. "metropolitan"). We always fold
+    // in the raw query and its singular so a literal match is never gated out.
+    const singular = s => (s.length > 4 && s.endsWith('s')) ? s.slice(0, -1) : s;
+    const mustTerms = [...new Set(
+      [...(ai?.must_include || []), query, singular(query)]
+        .map(t => cleanStr(t, 60).toLowerCase()).filter(t => t && t.length >= 3)
+    )].slice(0, 6);
+    const excludeTerms = [...new Set(
+      (ai?.exclude_terms || []).map(t => cleanStr(t, 60).toLowerCase()).filter(t => t && t.length >= 3)
+    )].slice(0, 6);
+
+    // Fixed 8-slot shape for scoring (no dynamic SQL). Pad with a non-matching sentinel.
     const SENT = '~~no~match~sentinel~~';
     const padded = [...terms];
     while (padded.length < 8) padded.push(SENT);
     const [l0, l1, l2, l3, l4, l5, l6, l7] = padded.map(t => '%' + t + '%');
 
+    // Word-boundary alternation regex (Postgres \y) so "city" matches the WORD
+    // "city", not "electriCITY"/"capaCITY" — this is the partial-word fix.
+    const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const mustRe = mustTerms.length ? '\\y(' + mustTerms.map(reEsc).join('|') + ')\\y' : null;
+    const exclRe = excludeTerms.length ? '\\y(' + excludeTerms.map(reEsc).join('|') + ')\\y' : '~~no~exclude~~';
+
     // Weighted relevance: title 10 · artist 8 · medium 5 · bio 1 per term, plus a
     // source bonus lifting fine-art museums and penalizing Digital Commonwealth
     // documents. Image-quality guard: renderable http thumbnails only.
-    const works = await sql`
+    // STRICT pass: mandatory word-boundary gate on must_include (title/medium),
+    // exclude filter applied, ranked by the weighted search-term score.
+    const strict = mustRe ? await sql`
       SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
              iiif_info, iiif_manifest, detail_url, rights_label, bio,
              ( (CASE WHEN title ILIKE ${l0} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l0} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l0} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l0} THEN 1 ELSE 0 END)
@@ -141,16 +168,55 @@ export default async function handler(req, res) {
       WHERE commercial_ok = true
         AND thumb_url IS NOT NULL AND thumb_url != '' AND thumb_url LIKE 'http%'
         AND thumb_url NOT LIKE ${DEAD}
-        AND ( title ILIKE ${l0} OR artist ILIKE ${l0} OR medium ILIKE ${l0}
-           OR title ILIKE ${l1} OR artist ILIKE ${l1} OR medium ILIKE ${l1}
-           OR title ILIKE ${l2} OR artist ILIKE ${l2} OR medium ILIKE ${l2}
-           OR title ILIKE ${l3} OR artist ILIKE ${l3} OR medium ILIKE ${l3}
-           OR title ILIKE ${l4} OR artist ILIKE ${l4} OR medium ILIKE ${l4}
-           OR title ILIKE ${l5} OR artist ILIKE ${l5} OR medium ILIKE ${l5}
-           OR title ILIKE ${l6} OR artist ILIKE ${l6} OR medium ILIKE ${l6}
-           OR title ILIKE ${l7} OR artist ILIKE ${l7} OR medium ILIKE ${l7} )
+        AND (title ~* ${mustRe} OR medium ~* ${mustRe})
+        AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
       ORDER BY score DESC, synced_at DESC
-      LIMIT 48`;
+      LIMIT 48` : [];
+
+    let works = strict;
+    let broadened = false;
+    // Fallback: if the strict gate is sparse (rare/mood queries), fill up with the
+    // broad OR-match (old behavior) so results are never empty — strict hits still
+    // rank first because they're prepended and deduped.
+    if (works.length < 12) {
+      broadened = true;
+      const broad = await sql`
+        SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
+               iiif_info, iiif_manifest, detail_url, rights_label, bio,
+               ( (CASE WHEN title ILIKE ${l0} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l0} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l0} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l0} THEN 1 ELSE 0 END)
+               + (CASE WHEN title ILIKE ${l1} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l1} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l1} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l1} THEN 1 ELSE 0 END)
+               + (CASE WHEN title ILIKE ${l2} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l2} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l2} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l2} THEN 1 ELSE 0 END)
+               + (CASE WHEN title ILIKE ${l3} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l3} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l3} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l3} THEN 1 ELSE 0 END)
+               + (CASE WHEN title ILIKE ${l4} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l4} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l4} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l4} THEN 1 ELSE 0 END)
+               + (CASE WHEN title ILIKE ${l5} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l5} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l5} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l5} THEN 1 ELSE 0 END)
+               + (CASE WHEN title ILIKE ${l6} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l6} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l6} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l6} THEN 1 ELSE 0 END)
+               + (CASE WHEN title ILIKE ${l7} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l7} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l7} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l7} THEN 1 ELSE 0 END)
+               + (CASE WHEN source ILIKE '%Digital Commonwealth%' THEN -6
+                       WHEN source ~* 'Metropolitan|Art Institute|Cleveland|Rijksmuseum|Wikidata|Wikimedia|Louvre|Getty|National Gallery|Smithsonian|Europeana|Museum of Fine Arts|Harvard|Yale|Uffizi|Prado|Tate|British Museum|Internet Archive' THEN 5
+                       ELSE 0 END)
+               ) AS score
+        FROM artworks
+        WHERE commercial_ok = true
+          AND thumb_url IS NOT NULL AND thumb_url != '' AND thumb_url LIKE 'http%'
+          AND thumb_url NOT LIKE ${DEAD}
+          AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
+          AND ( title ILIKE ${l0} OR artist ILIKE ${l0} OR medium ILIKE ${l0}
+             OR title ILIKE ${l1} OR artist ILIKE ${l1} OR medium ILIKE ${l1}
+             OR title ILIKE ${l2} OR artist ILIKE ${l2} OR medium ILIKE ${l2}
+             OR title ILIKE ${l3} OR artist ILIKE ${l3} OR medium ILIKE ${l3}
+             OR title ILIKE ${l4} OR artist ILIKE ${l4} OR medium ILIKE ${l4}
+             OR title ILIKE ${l5} OR artist ILIKE ${l5} OR medium ILIKE ${l5}
+             OR title ILIKE ${l6} OR artist ILIKE ${l6} OR medium ILIKE ${l6}
+             OR title ILIKE ${l7} OR artist ILIKE ${l7} OR medium ILIKE ${l7} )
+        ORDER BY score DESC, synced_at DESC
+        LIMIT 48`;
+      const seen = new Set(works.map(w => w.id));
+      for (const w of broad) if (!seen.has(w.id)) { works.push(w); seen.add(w.id); }
+      works = works.slice(0, 48);
+    }
+
+    // Point (4): log what actually happened so relevance is auditable.
+    console.log(`ai-search "${query}" → strict=${strict.length}${broadened ? ` +broad(total ${works.length})` : ''} | must=[${mustTerms.join(', ')}] | terms=[${terms.join(', ')}]`);
 
     const description = ai?.visual_description || ai?.description || '';
     return res.status(200).json({
@@ -160,7 +226,10 @@ export default async function handler(req, res) {
       ai_visual_description: ai?.visual_description || '',
       ai_mood: ai?.mood || '',
       search_terms: terms,
-      exclude_terms: ai?.exclude_terms || [],
+      must_include: mustTerms,
+      exclude_terms: excludeTerms,
+      broadened,                         // true = strict set was sparse, broadened to fill
+      low_confidence: works.length < 6,  // UI can surface a "few strong matches" note
       original_query: query,
       ai: !!ai,
       cached,
