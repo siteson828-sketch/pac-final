@@ -50,12 +50,23 @@ export default async function handler(req, res) {
       const offset = await getCursor(sql, s.key);
       const signal = AbortSignal.timeout(280_000);
       const r = await fetch(`${baseUrl}/api/sync?source=${s.key}&offset=${offset}`, { headers: subHeaders, signal });
-      const d = await r.json();
-      if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
-      // Only advance the cursor on a successful run, so an error retries the
-      // same window next time rather than skipping it.
-      await setCursor(sql, s.key, advance(offset, s.step, s.cap));
-      return { key: s.key, offset, added: d.newWorks || 0 };
+      let d = {};
+      try { d = await r.json(); } catch (e) { throw new Error(`bad JSON from /api/sync (HTTP ${r.status})`); }
+      if (!r.ok) {
+        // d.error may be a string OR an object — stringify objects so the real
+        // detail survives instead of collapsing to "[object Object]".
+        const detail = typeof d.error === 'string' ? d.error
+          : d.error ? JSON.stringify(d.error) : `HTTP ${r.status}`;
+        throw new Error(detail);
+      }
+      // /api/sync catches each source's failure internally and records it in
+      // d.log as "<Name> error: <message>" while still returning HTTP 200. Surface
+      // that line so the real cause is visible instead of a silent added:0.
+      const errLine = Array.isArray(d.log) ? d.log.find(l => /error:/i.test(l)) : null;
+      // Only advance the cursor on a CLEAN run (no logged error), so a failed
+      // window retries next time rather than being skipped.
+      if (!errLine) await setCursor(sql, s.key, advance(offset, s.step, s.cap));
+      return { key: s.key, offset, added: d.newWorks || 0, error: errLine || null };
     })
   );
 
@@ -63,8 +74,14 @@ export default async function handler(req, res) {
   let added = 0;
   results.forEach((r, i) => {
     const key = FAST_SOURCES[i].key;
-    if (r.status === 'fulfilled') { added += r.value.added; sources[key] = { offset: r.value.offset, added: r.value.added, error: null }; }
-    else sources[key] = { added: 0, error: r.reason?.message || 'failed' };
+    if (r.status === 'fulfilled') {
+      added += r.value.added;
+      sources[key] = { offset: r.value.offset, added: r.value.added, error: r.value.error };
+    } else {
+      const e = r.reason;
+      const msg = e?.message || (typeof e === 'string' ? e : e ? JSON.stringify(e) : 'failed');
+      sources[key] = { added: 0, error: msg };
+    }
   });
 
   let totalInDb = null;
