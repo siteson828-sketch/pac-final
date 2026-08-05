@@ -90,7 +90,11 @@ export default async function handler(req, res) {
   // Rate limit tracking events per IP so this public endpoint can't be scripted
   // to trigger marketing SMS or inject CRM contacts. Stored in Neon (shared
   // across serverless instances). Fails open if the store is unavailable.
-  const rl = await checkRateLimit({ scope: 'track', ip, limit: 5, windowSeconds: 600 });
+  // Explicit lead-capture submissions (the after-8s popup) get a SEPARATE scope
+  // so the per-page-view beacons from _app.js can't exhaust the budget and cause
+  // a real lead to be dropped with a 429. Both stay bounded to deter abuse.
+  const isLead = body.source === 'lead_popup';
+  const rl = await checkRateLimit({ scope: isLead ? 'track-lead' : 'track', ip, limit: 5, windowSeconds: 600 });
   if (!rl.allowed) return res.status(429).json({ ok: false, error: 'rate_limited' });
 
   const firstVisit = !readCookie(req, SEEN_COOKIE);

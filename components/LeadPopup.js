@@ -5,6 +5,7 @@ export default function LeadPopup() {
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({ name: '', phone: '', email: '' });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     // Don't show if already submitted this session
@@ -18,9 +19,10 @@ export default function LeadPopup() {
   async function handleSubmit(e) {
     e.preventDefault();
     setLoading(true);
+    setError('');
 
     try {
-      await fetch('/api/track', {
+      const res = await fetch('/api/track', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -36,10 +38,19 @@ export default function LeadPopup() {
         })
       });
 
-      localStorage.setItem('pac_lead_captured', 'true');
-      setSubmitted(true);
-      setTimeout(() => setShow(false), 3000);
-    } catch(e) {}
+      // Only mark captured / show success when the submit actually succeeded, so a
+      // rate-limited (429) or failed request doesn't silently drop the lead and
+      // permanently suppress the popup. The visitor can retry instead.
+      if (res.ok) {
+        localStorage.setItem('pac_lead_captured', 'true');
+        setSubmitted(true);
+        setTimeout(() => setShow(false), 3000);
+      } else {
+        setError('Something went wrong — please try again in a moment.');
+      }
+    } catch(e) {
+      setError('Network error — please try again.');
+    }
 
     setLoading(false);
   }
@@ -151,6 +162,12 @@ export default function LeadPopup() {
                   <div key={b} style={{ fontSize: 12, color: '#4A4540', marginBottom: 4 }}>{b}</div>
                 ))}
               </div>
+
+              {error && (
+                <div style={{ fontSize: 12, color: '#B91C1C', marginBottom: 10, textAlign: 'center' }}>
+                  {error}
+                </div>
+              )}
 
               <button type="submit" disabled={loading} style={{
                 width: '100%',
