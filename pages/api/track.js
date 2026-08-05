@@ -1,6 +1,8 @@
-import { hasBloo, upsertContact } from '../../lib/bloo';
+import { hasBloo, hasBlooSms, upsertContact, sendSms, ownerNumber } from '../../lib/bloo';
 import { hasGhl, upsertContact as ghlUpsert } from '../../lib/ghl';
 import { crmDb, bumpDaily, logEvent, upsertVisitor } from '../../lib/crm';
+import { leadsDb, upsertLead, markWelcomeSent } from '../../lib/leads';
+import { sendEmail, emailShell, hasEmail } from '../../lib/email';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, isEmail, isPhone, sameOrigin } from '../../lib/sanitize';
 
@@ -187,6 +189,39 @@ export default async function handler(req, res) {
         journey_stage: 'visitor',
       },
     });
+  }
+
+  // ─── Explicit lead-popup opt-in → consented welcome ────────────────────────
+  // This is the ONLY entry point into the consented `leads` table. It records
+  // the opt-in and sends a ONE-TIME welcome (email via Resend; SMS via Bloo,
+  // gated behind ENABLE_VISITOR_SMS like all visitor SMS). Dedup via
+  // welcome_sent_at. Fire-and-forget — never fails the beacon. All drip
+  // follow-ups later target ONLY this table (never `visitors`).
+  if (isLead && (body.email || body.phone)) {
+    try {
+      const ldb = leadsDb();
+      const lead = await upsertLead(ldb, {
+        email: body.email, phone: body.phone, name: body.name,
+        source: 'lead_popup', smsConsent: !!body.phone,
+      });
+      if (lead && !lead.welcome_sent_at && !lead.unsubscribed_at) {
+        const first = (body.name || '').split(' ')[0];
+        if (body.email && hasEmail()) {
+          const inner = `
+            <h1 style="font-size:28px;font-weight:300;margin:0 0 16px;line-height:1.2;">Welcome${first ? ', ' + first : ''}!</h1>
+            <p style="font-size:15px;color:#B0A898;line-height:1.8;margin-bottom:24px;">You now have access to over a million public-domain artworks from 120+ museums worldwide. Browse, search by AI, and order museum-quality prints delivered to your door.</p>
+            <a href="https://www.publicartcollections.net/viewer" style="display:inline-block;background:#B8942A;color:#1A1714;padding:14px 24px;border-radius:4px;font-size:15px;font-weight:600;text-decoration:none;">Browse the collection →</a>`;
+          await sendEmail({ to: body.email, subject: 'Welcome to Public Art Collections 🎨', html: emailShell(inner, body.email) });
+        }
+        if (body.phone && hasBlooSms() && process.env.ENABLE_VISITOR_SMS === 'true') {
+          await sendSms({ to: body.phone, message: `Hi ${first || 'there'}! Welcome to Public Art Collections 🎨 Browse 1M+ museum masterpieces at publicartcollections.net/viewer — Reply STOP to opt out` });
+        }
+        if (ownerNumber() && hasBlooSms()) {
+          await sendSms({ to: ownerNumber(), message: `New PAC lead: ${body.name || 'Anonymous'} · ${body.email || 'no email'} · ${body.phone || 'no phone'}` });
+        }
+        await markWelcomeSent(ldb, lead.lead_key);
+      }
+    } catch (e) { /* never fail the beacon */ }
   }
 
   return res.status(200).json({ ok: true, firstVisit, notified });

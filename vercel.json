@@ -50,6 +50,9 @@
     { "path": "/api/sync-heavy?group=2",                       "schedule": "30 6 * * *" },
     { "path": "/api/sync-heavy?group=3",                       "schedule": "30 7 * * *" },
     { "path": "/api/sync-heavy?group=4",                       "schedule": "30 8 * * *" },
-    { "path": "/api/sync-heavy?group=5",                       "schedule": "30 9 * * *" }
+    { "path": "/api/sync-heavy?group=5",                       "schedule": "30 9 * * *" },
+    { "path": "/api/send-followup?type=day1",                  "schedule": "0 10 * * *" },
+    { "path": "/api/send-followup?type=day3",                  "schedule": "30 10 * * *" },
+    { "path": "/api/send-followup?type=weekly",                "schedule": "0 9 * * 1" }
   ]
 }
