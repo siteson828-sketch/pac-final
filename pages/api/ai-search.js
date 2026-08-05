@@ -170,7 +170,6 @@ export default async function handler(req, res) {
              + (CASE WHEN title ILIKE ${l6} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l6} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l6} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l6} THEN 1 ELSE 0 END)
              + (CASE WHEN title ILIKE ${l7} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l7} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l7} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l7} THEN 1 ELSE 0 END)
              + (CASE WHEN source ILIKE '%Digital Commonwealth%' THEN -6
-                     WHEN source ILIKE '%Internet Archive%' THEN -5
                      WHEN source ~* 'Metropolitan|Art Institute|Cleveland|Rijksmuseum|Wikidata|Wikimedia|Louvre|Getty|National Gallery|Smithsonian|Europeana|Museum of Fine Arts|Harvard|Yale|Uffizi|Prado|Tate|British Museum' THEN 5
                      ELSE 0 END)
              + (CASE WHEN artist ~* 'FiveThirtyEight|Pics Wire' THEN -10 ELSE 0 END)
@@ -182,6 +181,7 @@ export default async function handler(req, res) {
         AND (title ~* ${mustRe} OR medium ~* ${mustRe})
         AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
         AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
+        AND source NOT ILIKE '%Internet Archive%'
       ORDER BY score DESC, synced_at DESC
       LIMIT 48` : [];
 
@@ -204,7 +204,6 @@ export default async function handler(req, res) {
                + (CASE WHEN title ILIKE ${l6} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l6} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l6} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l6} THEN 1 ELSE 0 END)
                + (CASE WHEN title ILIKE ${l7} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l7} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l7} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l7} THEN 1 ELSE 0 END)
                + (CASE WHEN source ILIKE '%Digital Commonwealth%' THEN -6
-                       WHEN source ILIKE '%Internet Archive%' THEN -5
                        WHEN source ~* 'Metropolitan|Art Institute|Cleveland|Rijksmuseum|Wikidata|Wikimedia|Louvre|Getty|National Gallery|Smithsonian|Europeana|Museum of Fine Arts|Harvard|Yale|Uffizi|Prado|Tate|British Museum' THEN 5
                        ELSE 0 END)
                + (CASE WHEN artist ~* 'FiveThirtyEight|Pics Wire' THEN -10 ELSE 0 END)
@@ -215,6 +214,7 @@ export default async function handler(req, res) {
           AND thumb_url NOT LIKE ${DEAD}
           AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
           AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
+          AND source NOT ILIKE '%Internet Archive%'
           AND ( title ILIKE ${l0} OR artist ILIKE ${l0} OR medium ILIKE ${l0}
              OR title ILIKE ${l1} OR artist ILIKE ${l1} OR medium ILIKE ${l1}
              OR title ILIKE ${l2} OR artist ILIKE ${l2} OR medium ILIKE ${l2}
