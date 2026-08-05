@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 // Calls the PAID Anthropic API per request → rate-limited per IP (fail-open),
 // query length-capped, expansion cached. Falls back to a plain title/artist
 // search if the AI call fails or the key is unset.
-const ANTHROPIC_MODEL = 'claude-sonnet-4-6';
+const ANTHROPIC_MODEL = 'claude-haiku-4-5-20251001';
 
 async function expandQuery(query) {
   if (!process.env.ANTHROPIC_API_KEY) return { data: null, error: 'ANTHROPIC_API_KEY unset' };
