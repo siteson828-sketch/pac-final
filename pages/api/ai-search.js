@@ -168,7 +168,7 @@ export default async function handler(req, res) {
       WHERE commercial_ok = true
         AND thumb_url IS NOT NULL AND thumb_url != '' AND thumb_url LIKE 'http%'
         AND thumb_url NOT LIKE ${DEAD}
-        AND title ~* ${mustRe}
+        AND (title ~* ${mustRe} OR medium ~* ${mustRe})
         AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
       ORDER BY score DESC, synced_at DESC
       LIMIT 48` : [];
