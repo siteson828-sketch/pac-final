@@ -13,7 +13,7 @@ export const config = { maxDuration: 30 };
 // arbitrary content hosted on those platforms).
 const ALLOWED = new Set([
   'framemark.vam.ac.uk', 'collections.vam.ac.uk',
-  'www.artic.edu', 'lakeimagesweb.artic.edu', 'aggregator-data.artic.edu',
+  'www.artic.edu',
   'openaccess-api.clevelandart.org', 'openaccess-cdn.clevelandart.org',
   'collectionapi.metmuseum.org', 'images.metmuseum.org',
   'www.rijksmuseum.nl',

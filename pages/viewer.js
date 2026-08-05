@@ -215,11 +215,10 @@ const PROXY_HOSTS = new Set([
 ]);
 function getThumbUrl(url) {
   if (!url) return '';
-  // AIC (artic.edu) FIRST: its IIIF origin is slow, so proxy through /api/img to
-  // edge-cache the (downsized) thumbnail. Must precede the generic IIIF line below
-  // so it isn't caught by it and returned un-proxied.
-  if (url.includes('artic.edu/iiif')) return '/api/img?url=' + encodeURIComponent(url.replace('/full/!400,400/', '/full/!300,300/'));
-  if (url.includes('/full/!400,400/')) return url.replace('/full/!400,400/', '/full/!300,300/'); // IIIF: V&A, MIA, LoC…
+  // NOTE: do NOT proxy artic.edu (AIC) through /api/img — AIC's origin blocks
+  // Vercel's datacenter egress IPs (403), while direct browser loads succeed.
+  // Loading AIC IIIF thumbnails directly is the working path.
+  if (url.includes('/full/!400,400/')) return url.replace('/full/!400,400/', '/full/!300,300/'); // IIIF: V&A, AIC, MIA, LoC…
   if (url.includes('commons.wikimedia.org') && /[?&]width=\d+/.test(url)) return url.replace(/width=\d+/, 'width=300'); // Wikimedia/Wikidata
   if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian (direct — WAF blocks proxy fetch)
   try {
