@@ -424,7 +424,7 @@ a.art-card{text-decoration:none;color:inherit}
 export default function Viewer() {
   const [selected, setSelected]     = useState(null);
   const [genre, setGenre]           = useState(GENRES[0]);
-  const [sortOrder, setSortOrder]   = useState('recent');
+  const [sortOrder, setSortOrder]   = useState('random');
   const [works, setWorks]           = useState([]);
   const [loading, setLoading]       = useState(false);
   const [hasMore, setHasMore]       = useState(false);

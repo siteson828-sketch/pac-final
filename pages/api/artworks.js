@@ -18,7 +18,7 @@ export default async function handler(req, res) {
     const { search, source, order, count } = req.query;
     const lim = Math.min(Math.abs(parseInt(req.query.limit) || 24), 100);
     const off = Math.abs(parseInt(req.query.offset) || 0);
-    const rand = order === 'random';
+    const rand = order === 'random' || req.query.random === 'true';
 
     if (count === 'true') {
       const rows = await sql`SELECT COUNT(*) as total FROM artworks WHERE commercial_ok = true`;

@@ -429,7 +429,7 @@ export default function Home() {
   useEffect(() => {
     document.title = 'Public Art Collections — Museum Prints & Art Marketplace';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotal(d.total));
-    load(true, '', '', 'recent', COLLECTIONS[0], 0);
+    load(true, '', '', 'random', COLLECTIONS[0], 0);
   }, [load]);
 
   useEffect(() => {
