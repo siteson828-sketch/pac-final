@@ -439,6 +439,7 @@ export default function Viewer() {
   const [zoomOpen, setZoomOpen]     = useState(false); // OpenSeadragon IIIF viewer open
   const [aiActive, setAiActive]     = useState(false); // showing AI-search results (no museum selected)
   const [aiQuery, setAiQuery]       = useState('');
+  const [artistQuery, setArtistQuery] = useState(''); // dedicated "search by artist" box
   const [aiSearching, setAiSearching] = useState(false);
   const [aiInfo, setAiInfo]         = useState(null);  // { description, mood } from the AI
   const [liveWorks, setLiveWorks]   = useState([]);    // live museum-API results
@@ -985,6 +986,20 @@ export default function Viewer() {
                 <button onClick={() => doAISearch()} disabled={aiSearching}
                   style={{ background: '#B8942A', color: '#1A1714', border: 'none', padding: '0 18px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', minHeight: 44 }}>
                   {aiSearching ? '🤔 Thinking…' : '✨ AI Search'}
+                </button>
+              </div>
+              {/* SEARCH BY ARTIST — our catalog + live across every connected museum */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <input
+                  value={artistQuery}
+                  onChange={e => setArtistQuery(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && doArtistSearch(artistQuery)}
+                  placeholder="🎨 Search by artist — e.g. “Rembrandt”, “Monet”, “Hokusai” (across all museums, live)"
+                  style={{ flex: 1, padding: '10px 14px', border: '0.5px solid rgba(26,23,20,0.2)', borderRadius: 6, fontSize: 14, background: '#FAF8F4', color: '#1A1714', outline: 'none', minHeight: 44 }}
+                />
+                <button onClick={() => doArtistSearch(artistQuery)} disabled={aiSearching}
+                  style={{ background: '#1A1714', color: '#FAF8F4', border: 'none', padding: '0 18px', borderRadius: 6, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', minHeight: 44 }}>
+                  🎨 By Artist
                 </button>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
