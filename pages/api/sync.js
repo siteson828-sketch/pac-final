@@ -635,8 +635,8 @@ async function syncWikidataMuseum(sql, qid, sourceName, offset=0) {
   try {
     const query = `
       SELECT ?item ?itemLabel ?image ?creator ?creatorLabel ?inv ?date WHERE {
-        ?item wdt:P195 wd:${qid};
-              wdt:P18 ?image.
+        { ?item wdt:P195 wd:${qid} } UNION { ?item wdt:P276 wd:${qid} }
+        ?item wdt:P18 ?image.
         OPTIONAL { ?item wdt:P217 ?inv. }
         OPTIONAL { ?item wdt:P170 ?creator. }
         OPTIONAL { ?item wdt:P571 ?date. }
