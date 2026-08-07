@@ -56,7 +56,7 @@ async function upsert(sql, works) {
 // Sized to finish well within the 300s function limit.
 const MET_DEPTS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,21];
 async function syncMetComplete(sql) {
-  const STEP = 4000, CONC = 8;
+  const STEP = 6000, BLOCK = 1000, CONC = 8;
   // Build the filtered ID list (cheap: one IDs-only search per department).
   // Deterministic order (dept order, then search order) so the cursor is stable.
   let ids = [];
@@ -71,27 +71,35 @@ async function syncMetComplete(sql) {
   if (!ids.length) throw new Error('Met search returned no IDs (throttled?)');
 
   const offset = await getCursor(sql, 'metcomplete');
-  const slice = ids.slice(offset, offset + STEP);
-  const works = [];
-  for (let i = 0; i < slice.length; i += CONC) {
-    const batch = slice.slice(i, i + CONC);
-    const details = await Promise.all(batch.map(id =>
-      fetchJson(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`).catch(() => null)
-    ));
-    for (const o of details) {
-      if (!o || !o.isPublicDomain || !o.primaryImageSmall) continue;
-      works.push({ source: 'Metropolitan Museum of Art', source_id: String(o.objectID),
-        title: o.title || 'Untitled', artist: o.artistDisplayName || '', date_text: o.objectDate || '',
-        medium: o.medium || '', department: o.department || '',
-        thumb_url: o.primaryImageSmall, full_url: o.primaryImage || o.primaryImageSmall,
-        iiif_manifest: `https://collectionapi.metmuseum.org/public/collection/v1/iiif/${o.objectID}/manifest.json`,
-        detail_url: o.objectURL || '', bio: o.creditLine || '' });
+  let saved = 0, processed = 0;
+  // Process up to STEP ids in BLOCK-sized checkpoints: upsert each block AND
+  // advance the cursor immediately, so if the 300s limit kills the run mid-way
+  // the completed blocks are saved and the cursor never gets stuck reprocessing.
+  for (let b = 0; b < STEP; b += BLOCK) {
+    const chunk = ids.slice(offset + b, offset + b + BLOCK);
+    if (!chunk.length) break;
+    const works = [];
+    for (let i = 0; i < chunk.length; i += CONC) {
+      const batch = chunk.slice(i, i + CONC);
+      const details = await Promise.all(batch.map(id =>
+        fetchJson(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`).catch(() => null)
+      ));
+      for (const o of details) {
+        if (!o || !o.isPublicDomain || !o.primaryImageSmall) continue;
+        works.push({ source: 'Metropolitan Museum of Art', source_id: String(o.objectID),
+          title: o.title || 'Untitled', artist: o.artistDisplayName || '', date_text: o.objectDate || '',
+          medium: o.medium || '', department: o.department || '',
+          thumb_url: o.primaryImageSmall, full_url: o.primaryImage || o.primaryImageSmall,
+          iiif_manifest: `https://collectionapi.metmuseum.org/public/collection/v1/iiif/${o.objectID}/manifest.json`,
+          detail_url: o.objectURL || '', bio: o.creditLine || '' });
+      }
+      await sleep(80);
     }
-    await sleep(80);
+    saved += await upsert(sql, works);
+    processed += chunk.length;
+    const nc = offset + processed;                 // checkpoint cursor after each block (wrap at end)
+    await setCursor(sql, 'metcomplete', nc >= ids.length ? 0 : nc);
   }
-  const saved = await upsert(sql, works);
-  // Advance only after a successful slice; wrap at end of the filtered list.
-  await setCursor(sql, 'metcomplete', advance(offset, STEP, ids.length || STEP));
   return saved;
 }
 
