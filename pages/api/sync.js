@@ -45,6 +45,42 @@ async function upsert(sql, works) {
   return saved;
 }
 
+// COMPLETE Met sync: cursor-driven pass over the Met's FULL object-ID list
+// (~502k). Each run processes one `offset`-based slice, fetches per-object detail,
+// and keeps ONLY genuine public-domain works with an image (o.isPublicDomain &&
+// o.primaryImageSmall) — so the CC0 labelling in upsert() is truthful. Stable
+// source_id = objectID (proper dedup; NEVER random). Sized to finish well within
+// the 300s function limit; driven continuously by sync-fast's cursor (see
+// FAST_SOURCES) so the collection fills in the background across runs.
+async function syncMetComplete(sql, offset = 0) {
+  const STEP = 1000, CONC = 8;
+  let list;
+  try {
+    const d = await fetchJson('https://collectionapi.metmuseum.org/public/collection/v1/objects');
+    list = d.objectIDs || [];
+  } catch (e) { throw new Error('Met objects list: ' + e.message); }
+  const slice = list.slice(offset, offset + STEP);
+  if (!slice.length) return 0; // past end of list — cursor wraps via cap
+  const works = [];
+  for (let i = 0; i < slice.length; i += CONC) {
+    const batch = slice.slice(i, i + CONC);
+    const details = await Promise.all(batch.map(id =>
+      fetchJson(`https://collectionapi.metmuseum.org/public/collection/v1/objects/${id}`).catch(() => null)
+    ));
+    for (const o of details) {
+      if (!o || !o.isPublicDomain || !o.primaryImageSmall) continue; // PD + image only
+      works.push({ source: 'Metropolitan Museum of Art', source_id: String(o.objectID),
+        title: o.title || 'Untitled', artist: o.artistDisplayName || '', date_text: o.objectDate || '',
+        medium: o.medium || '', department: o.department || '',
+        thumb_url: o.primaryImageSmall, full_url: o.primaryImage || o.primaryImageSmall,
+        iiif_manifest: `https://collectionapi.metmuseum.org/public/collection/v1/iiif/${o.objectID}/manifest.json`,
+        detail_url: o.objectURL || '', bio: o.creditLine || '' });
+    }
+    await sleep(60);
+  }
+  return upsert(sql, works);
+}
+
 async function syncMet(sql) {
   const works = [];
   const seen = new Set();
@@ -1072,6 +1108,7 @@ export default async function handler(req, res) {
   const src = req.query.source || 'all';
   const offset = parseInt(req.query.offset || '0', 10) || 0;
   if (src==='met'        ||src==='all') await run('Met Museum',         () => syncMet(sql));
+  if (src==='metcomplete')              await run('Met Complete',       () => syncMetComplete(sql, offset));
   if (src==='artic'      ||src==='all') await run('Art Inst. Chicago',  () => syncArtic(sql));
   if (src==='cleveland'  ||src==='all') await run('Cleveland',          () => syncCleveland(sql));
   if (src==='rijks'      ||src==='all') await run('Rijksmuseum',        () => syncRijks(sql, offset));

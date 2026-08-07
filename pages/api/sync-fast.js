@@ -22,6 +22,7 @@ const FAST_SOURCES = [
   { key: 'europeana',      step: 5,    cap: 15 },     // query-list index (15 queries)
   { key: 'dpla',           step: 2,    cap: 10 },     // term-list index (10 terms)
   { key: 'loc',            step: 2,    cap: 5 },      // term-list index (5 terms)
+  { key: 'metcomplete',    step: 1000, cap: 503000 }, // Met object-ID list slice, 1000/run (fills the full ~502k)
 ];
 
 export default async function handler(req, res) {
