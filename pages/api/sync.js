@@ -103,6 +103,45 @@ async function syncMetComplete(sql) {
   return saved;
 }
 
+// COMPLETE Cleveland sync: cursor-chunked + resumable. Cleveland's open-access
+// API returns full records per page (no per-item detail fetch), and ALL with-image
+// works are CC0 (verified: has_image total == cc0 total), so `cc0=1&has_image=1`
+// is the complete, correctly-licensed set (~41k). Processes STEP records/run in
+// PAGE-sized blocks, upserting + checkpointing the cursor per page so a 300s
+// timeout can't lose progress or get stuck. Wraps to 0 at the end of the list.
+async function syncClevelandComplete(sql) {
+  const STEP = 6000, PAGE = 100;
+  const offset = await getCursor(sql, 'clevelandcomplete');
+  let saved = 0, processed = 0;
+  for (let p = 0; p < STEP; p += PAGE) {
+    const skip = offset + p;
+    let d;
+    try {
+      d = await fetchJson(`https://openaccess-api.clevelandart.org/api/artworks/?cc0=1&has_image=1&limit=${PAGE}&skip=${skip}`);
+    } catch (e) { break; } // transient error — stop; cursor stays at last checkpoint, retries next run
+    const items = d.data || [];
+    if (!items.length) { await setCursor(sql, 'clevelandcomplete', 0); return saved; } // past end → wrap
+    const works = [];
+    for (const o of items) {
+      const thumb = o.images?.web?.url;
+      if (!thumb) continue;
+      works.push({ source: 'Cleveland Museum of Art', source_id: String(o.id),
+        title: o.title || 'Untitled', artist: o.creators?.[0]?.description || '',
+        date_text: o.creation_date || '', medium: o.technique || o.type || '',
+        department: o.department || '', thumb_url: thumb,
+        full_url: o.images?.print?.url || o.images?.full?.url || thumb,
+        detail_url: o.url || `https://www.clevelandart.org/art/${o.id}`,
+        bio: o.tombstone || '' });
+    }
+    saved += await upsert(sql, works);
+    processed += items.length;
+    if (items.length < PAGE) { await setCursor(sql, 'clevelandcomplete', 0); return saved; } // last page → wrap
+    await setCursor(sql, 'clevelandcomplete', offset + processed); // checkpoint
+    await sleep(150);
+  }
+  return saved;
+}
+
 async function syncMet(sql) {
   const works = [];
   const seen = new Set();
@@ -1131,6 +1170,7 @@ export default async function handler(req, res) {
   const offset = parseInt(req.query.offset || '0', 10) || 0;
   if (src==='met'        ||src==='all') await run('Met Museum',         () => syncMet(sql));
   if (src==='metcomplete')              await run('Met Complete',       () => syncMetComplete(sql));
+  if (src==='clevelandcomplete')        await run('Cleveland Complete', () => syncClevelandComplete(sql));
   if (src==='artic'      ||src==='all') await run('Art Inst. Chicago',  () => syncArtic(sql));
   if (src==='cleveland'  ||src==='all') await run('Cleveland',          () => syncCleveland(sql));
   if (src==='rijks'      ||src==='all') await run('Rijksmuseum',        () => syncRijks(sql, offset));
