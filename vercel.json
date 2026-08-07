@@ -55,6 +55,7 @@
     { "path": "/api/send-followup?type=day3",                  "schedule": "30 10 * * *" },
     { "path": "/api/send-followup?type=weekly",                "schedule": "0 9 * * 1" },
     { "path": "/api/sync?source=metcomplete",                  "schedule": "0 */3 * * *" },
-    { "path": "/api/sync?source=clevelandcomplete",            "schedule": "0 */6 * * *" }
+    { "path": "/api/sync?source=clevelandcomplete",            "schedule": "0 */6 * * *" },
+    { "path": "/api/sync?source=miacomplete",                  "schedule": "0 5 * * *" }
   ]
 }

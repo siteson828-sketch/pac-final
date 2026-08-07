@@ -142,6 +142,45 @@ async function syncClevelandComplete(sql) {
   return saved;
 }
 
+// COMPLETE MIA (Minneapolis) sync: cursor-chunked + resumable. MIA's search API
+// returns full records per page and exposes a clear license flag, so we keep
+// ONLY genuine public-domain works (public_access===1 && rights_type==='Public
+// Domain' && image==='valid'). NOTE: the backend is Elasticsearch with a ~10k
+// from/size window (from>=10000 → HTTP 500), so this covers the first ~10k
+// records (~9.5k PD at ~95% density) and wraps; the full ~90k needs an ES
+// search_after pass (follow-up). Image host is already in /api/img's allowlist.
+async function syncMIAComplete(sql) {
+  const STEP = 6000, PAGE = 100, MAX_FROM = 9900;
+  const offset = await getCursor(sql, 'miacomplete');
+  let saved = 0, processed = 0;
+  for (let p = 0; p < STEP; p += PAGE) {
+    const skip = offset + p;
+    if (skip >= MAX_FROM) { await setCursor(sql, 'miacomplete', 0); return saved; } // ES window cap → wrap
+    let d;
+    try { d = await fetchJson(`https://search.artsmia.org/*?size=${PAGE}&from=${skip}`); }
+    catch (e) { break; }
+    const items = (d.hits?.hits || []).map(h => h._source).filter(Boolean);
+    if (!items.length) { await setCursor(sql, 'miacomplete', 0); return saved; }
+    const works = [];
+    for (const o of items) {
+      if (!(o.public_access === 1 && o.rights_type === 'Public Domain' && o.image === 'valid' && o.id)) continue;
+      works.push({ source: 'Minneapolis Institute of Art', source_id: String(o.id),
+        title: o.title || 'Untitled', artist: o.artist || '', date_text: o.dated || '',
+        medium: o.medium || '', department: o.department || '',
+        thumb_url: `https://1.api.artsmia.org/${o.id}.jpg`,
+        full_url: `https://1.api.artsmia.org/${o.id}.jpg`,
+        detail_url: `https://collections.artsmia.org/art/${o.id}`,
+        bio: o.description || '' });
+    }
+    saved += await upsert(sql, works);
+    processed += items.length;
+    if (items.length < PAGE) { await setCursor(sql, 'miacomplete', 0); return saved; }
+    await setCursor(sql, 'miacomplete', offset + processed);
+    await sleep(150);
+  }
+  return saved;
+}
+
 async function syncMet(sql) {
   const works = [];
   const seen = new Set();
@@ -1171,6 +1210,7 @@ export default async function handler(req, res) {
   if (src==='met'        ||src==='all') await run('Met Museum',         () => syncMet(sql));
   if (src==='metcomplete')              await run('Met Complete',       () => syncMetComplete(sql));
   if (src==='clevelandcomplete')        await run('Cleveland Complete', () => syncClevelandComplete(sql));
+  if (src==='miacomplete')              await run('MIA Complete',       () => syncMIAComplete(sql));
   if (src==='artic'      ||src==='all') await run('Art Inst. Chicago',  () => syncArtic(sql));
   if (src==='cleveland'  ||src==='all') await run('Cleveland',          () => syncCleveland(sql));
   if (src==='rijks'      ||src==='all') await run('Rijksmuseum',        () => syncRijks(sql, offset));
