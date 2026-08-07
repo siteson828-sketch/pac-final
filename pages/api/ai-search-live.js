@@ -30,7 +30,8 @@ export default async function handler(req, res) {
   if (!rl.allowed) return res.status(429).json({ error: 'Too many searches. Please wait a moment.' });
 
   const sql = neon(process.env.DATABASE_URL);
-  const key = query.toLowerCase();
+  const mode = req.query.mode === 'artist' ? 'artist' : 'keyword';
+  const key = (mode === 'artist' ? 'artist:' : '') + query.toLowerCase();
 
   // Cache lookup (fresh within TTL).
   try {
@@ -47,7 +48,7 @@ export default async function handler(req, res) {
 
   // Live fetch (bounded + fail-soft inside liveSearch).
   let result = { works: [], sources: {} };
-  try { result = await liveSearch(query); } catch (e) { console.error('live-search error:', e.message); }
+  try { result = await liveSearch(query, { mode }); } catch (e) { console.error('live-search error:', e.message); }
 
   const payload = { works: result.works, sources: result.sources, total: result.works.length };
   // Best-effort cache write.

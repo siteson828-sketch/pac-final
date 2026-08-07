@@ -801,6 +801,29 @@ export default function Viewer() {
       .finally(() => setLiveLoading(false));
   };
 
+  // Cross-museum "by artist" study search: our catalog (direct artist match) PLUS
+  // live results from every connected museum API (mode=artist), shown in the same
+  // aiActive viewer. Live results are view-only until added to the catalog.
+  const doArtistSearch = async (artist) => {
+    const name = (artist || '').trim();
+    if (!name || name === 'Unknown') return;
+    setAiSearching(true); setAiInfo(null); setSelected(null); setModal(null);
+    setGenre(GENRES[0]); setAiActive(true); setAiQuery(name);
+    setWorks([]); setLiveWorks([]); setHasMore(false); setNavOpen(false);
+    try {
+      const d = await fetch('/api/artworks?limit=48&search=' + encodeURIComponent(name)).then(r => r.json());
+      setWorks(d.works || []);
+      setAiInfo({ description: `Works by “${name}” — from our collection and live across museums.`, mood: '' });
+    } catch (e) { console.error('artist search error:', e); }
+    setAiSearching(false);
+    setLiveLoading(true);
+    fetch('/api/ai-search-live?query=' + encodeURIComponent(name) + '&mode=artist')
+      .then(r => r.json())
+      .then(d => setLiveWorks(Array.isArray(d.works) ? d.works : []))
+      .catch(() => {})
+      .finally(() => setLiveLoading(false));
+  };
+
   // Promote a live museum result into the catalog, then open it in the order
   // modal (same flow as any DB work). Adding is free; ordering stays tier-gated.
   const addLiveToCatalog = async (w) => {
@@ -1044,7 +1067,12 @@ export default function Viewer() {
                       <div className="card-info">
                         <div className="card-source">{fmt(w.source)}</div>
                         <div className="card-title">{w.title}</div>
-                        <div className="card-artist">{w.artist || 'Unknown'}</div>
+                        <div className="card-artist"
+                          onClick={w.artist && w.artist !== 'Unknown' ? (e => { e.stopPropagation(); doArtistSearch(w.artist); }) : undefined}
+                          style={{ cursor: w.artist && w.artist !== 'Unknown' ? 'pointer' : 'default' }}
+                          title={w.artist && w.artist !== 'Unknown' ? `More by ${w.artist}` : ''}>
+                          {w.artist || 'Unknown'}
+                        </div>
                         {w.date_text && <div className="card-date">{w.date_text}</div>}
                       </div>
                     </div>
@@ -1140,6 +1168,12 @@ export default function Viewer() {
               <div className="modal-artist">
                 {[modal.artist, modal.date_text].filter(Boolean).join(' · ') || 'Unknown artist'}
               </div>
+              {modal.artist && modal.artist !== 'Unknown' && (
+                <button onClick={() => doArtistSearch(modal.artist)}
+                  style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: '#B8942A', fontSize: 12, cursor: 'pointer', padding: 0, fontFamily: 'inherit' }}>
+                  → More by {modal.artist} across museums
+                </button>
+              )}
               <div className="divider" />
               <div className="meta-row">
                 {modal.medium && <div className="meta-item"><label>Medium</label><span>{modal.medium}</span></div>}
