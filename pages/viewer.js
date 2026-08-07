@@ -1003,6 +1003,14 @@ export default function Viewer() {
                 </button>
               </div>
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                {['Rembrandt', 'Monet', 'Van Gogh', 'Hokusai', 'Vermeer', 'Degas', 'Turner', 'Klimt', 'Cézanne', 'Goya'].map(a => (
+                  <button key={a} onClick={() => { setArtistQuery(a); doArtistSearch(a); }}
+                    style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: '0.5px solid rgba(26,23,20,0.2)', background: 'transparent', color: '#6A6058' }}>
+                    🎨 {a}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
                 {['blue and melancholy', 'powerful women', 'Japanese nature', 'Dutch golden age', 'war and suffering', 'impressionist light'].map(s => (
                   <button key={s} onClick={() => { setAiQuery(s); doAISearch(s); }}
                     style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: '0.5px solid rgba(26,23,20,0.2)', background: 'transparent', color: '#8A8178' }}>

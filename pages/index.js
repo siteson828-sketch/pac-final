@@ -656,6 +656,14 @@ export default function Home() {
             🎨 By Artist
           </button>
         </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 10 }}>
+          {['Rembrandt', 'Monet', 'Van Gogh', 'Hokusai', 'Vermeer', 'Degas', 'Turner', 'Klimt', 'Cézanne', 'Goya'].map(a => (
+            <button key={a} onClick={() => { setArtistQuery(a); doArtistSearch(a); }}
+              style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: '0.5px solid #3A3028', background: 'transparent', color: '#8A8178', fontFamily: 'system-ui' }}>
+              🎨 {a}
+            </button>
+          ))}
+        </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
           {['blue melancholy', 'powerful women', 'Dutch golden age', 'war and suffering', 'Japanese nature', 'impressionist light', 'ancient mythology', 'romantic landscapes'].map(s => (
             <button key={s} onClick={() => { setAiQuery(s); doAISearch(s); }}
