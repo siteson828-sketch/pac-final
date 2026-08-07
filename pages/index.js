@@ -353,6 +353,7 @@ export default function Home() {
   const [heroFading, setHeroFading]     = useState(false);
   const [imgErrors, setImgErrors]       = useState({});
   const [aiQuery, setAiQuery]           = useState('');
+  const [artistQuery, setArtistQuery]   = useState(''); // dedicated "search by artist" box
   const [aiSearching, setAiSearching]   = useState(false);
   const [aiInfo, setAiInfo]             = useState(null); // { description, mood } from AI search
   const [activeTab, setActiveTab]             = useState(null);
@@ -431,6 +432,17 @@ export default function Home() {
     } catch (e) { console.error('AI search error:', e); }
     setLoading(false);
     setAiSearching(false);
+    if (typeof document !== 'undefined') document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Search by artist — fills the gallery with our catalog works by that maker
+  // (reuses load()'s search). The full live cross-museum artist view is in the Viewer.
+  const doArtistSearch = (a) => {
+    const name = ((a ?? artistQuery) || '').trim();
+    if (!name) return;
+    setMuseum(''); setCollection(COLLECTIONS[0]); setSearchInput(''); setAppliedSearch(name);
+    setAiInfo({ description: `Works by “${name}” in the collection — explore more live across museums in the Viewer →`, mood: '' });
+    load(true, name, '', order, null, 0);
     if (typeof document !== 'undefined') document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' });
   };
 
@@ -628,6 +640,20 @@ export default function Home() {
           <button onClick={() => doAISearch(aiQuery)} disabled={aiSearching}
             style={{ background: '#B8942A', color: '#1A1714', border: 'none', padding: '12px 20px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
             {aiSearching ? '🤔...' : '✨ Search'}
+          </button>
+        </div>
+        {/* SEARCH BY ARTIST */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+          <input
+            value={artistQuery}
+            onChange={e => setArtistQuery(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && doArtistSearch(artistQuery)}
+            placeholder="🎨 Search by artist — Rembrandt, Monet, Hokusai, Van Gogh…"
+            style={{ flex: 1, background: '#2C2318', border: '0.5px solid #3A3028', borderRadius: 4, padding: '12px 16px', color: '#F0EAD8', fontSize: 13, fontFamily: 'system-ui' }}
+          />
+          <button onClick={() => doArtistSearch(artistQuery)} disabled={aiSearching}
+            style={{ background: '#1A1714', color: '#F0EAD8', border: '0.5px solid #3A3028', padding: '12px 20px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+            🎨 By Artist
           </button>
         </div>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
