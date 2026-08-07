@@ -189,14 +189,14 @@ body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4
 .order-dismiss:hover{color:#F0EAD8}
 
 /* HERO */
-.hero{position:relative;height:540px;overflow:hidden;background:#2C2318}
-.hero-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0.55;transition:opacity 1s ease}
-.hero-img.fade{opacity:0}
-.hero-gradient{position:absolute;inset:0;background:linear-gradient(105deg,rgba(26,23,20,0.92) 0%,rgba(26,23,20,0.5) 55%,rgba(26,23,20,0.18) 100%)}
+.hero{position:relative;height:540px;overflow:hidden;background:linear-gradient(135deg,#160a2b,#3d1450,#7a1e5a,#c25b1e)}
+.hero-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:50%}
+.hero-mosaic img{width:100%;height:100%;object-fit:cover;display:block}
+.hero-gradient{position:absolute;inset:0;background:linear-gradient(110deg,rgba(15,7,28,0.95) 0%,rgba(46,16,70,0.82) 34%,rgba(158,38,102,0.5) 66%,rgba(242,140,52,0.34) 100%)}
 .hero-content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:52px 56px}
 .hero-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.2em;color:#B8942A;margin-bottom:16px;font-weight:500}
 .hero-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(38px,5vw,72px);font-weight:300;line-height:1.04;color:#F3EFE8;margin-bottom:14px;max-width:640px}
-.hero-title em{font-style:italic;color:#C9A84C}
+.hero-title em{font-style:italic;background:linear-gradient(90deg,#FFCE63,#FF7AAE 55%,#FF9A5A);-webkit-background-clip:text;background-clip:text;color:transparent}
 .hero-sub{font-size:14px;color:rgba(240,234,216,0.65);margin-bottom:32px;max-width:440px;line-height:1.7}
 .hero-actions{display:flex;gap:12px;flex-wrap:wrap}
 .hero-btn{padding:12px 28px;font-size:13px;font-weight:500;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .18s;text-decoration:none;border:none;letter-spacing:.01em}
@@ -208,11 +208,19 @@ body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4
 .hero-caption strong{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:400;color:rgba(240,234,216,0.7)}
 
 /* COLLECTION BAR */
-.coll-bar{background:#FAF8F4;border-bottom:0.5px solid rgba(26,23,20,0.1);padding:0 32px;display:flex;align-items:stretch;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.coll-bar{background:#FAF8F4;border-bottom:0.5px solid rgba(26,23,20,0.1);padding:12px 24px;display:flex;align-items:center;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .coll-bar::-webkit-scrollbar{display:none}
-.coll-chip{padding:14px 18px;font-size:11px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:#8A8178;cursor:pointer;background:none;border:none;border-bottom:2px solid transparent;white-space:nowrap;transition:color .15s,border-color .15s;font-family:'DM Sans',sans-serif;flex-shrink:0}
-.coll-chip:hover{color:#1A1714}
-.coll-chip.active{color:#1A1714;border-bottom-color:#B8942A}
+.coll-chip{padding:7px 15px;margin-right:8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c,#8A8178);cursor:pointer;background:#fff;border:1.5px solid var(--c,#ccc);border-radius:20px;white-space:nowrap;transition:all .15s;font-family:'DM Sans',sans-serif;flex-shrink:0}
+.coll-chip:hover{background:var(--c,#B8942A);color:#fff}
+.coll-chip.active{background:var(--c,#B8942A);color:#fff;box-shadow:0 3px 12px rgba(0,0,0,0.14)}
+.coll-chip:nth-child(8n+1){--c:#B8942A}
+.coll-chip:nth-child(8n+2){--c:#2E86C1}
+.coll-chip:nth-child(8n+3){--c:#C0392B}
+.coll-chip:nth-child(8n+4){--c:#117A65}
+.coll-chip:nth-child(8n+5){--c:#8E44AD}
+.coll-chip:nth-child(8n+6){--c:#16A085}
+.coll-chip:nth-child(8n+7){--c:#CA6F1E}
+.coll-chip:nth-child(8n+8){--c:#1E8449}
 
 /* MUSEUM BAR */
 .museum-bar{background:#F5F2ED;border-bottom:0.5px solid rgba(26,23,20,0.07);padding:0 32px;display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none;gap:0}
@@ -575,14 +583,14 @@ export default function Home() {
       {/* HERO */}
       {hero && (
         <div className="hero">
-          {hero.thumb_url && (
-            <img
-              key={hero.id}
-              src={hero.full_url || hero.thumb_url}
-              alt={hero.title}
-              className={`hero-img${heroFading ? ' fade' : ''}`}
-            />
-          )}
+          <div className="hero-mosaic">
+            {works.slice(0, 12).map((w, i) => (
+              w.thumb_url
+                ? <img key={w.id || i} src={getThumbUrl(w.thumb_url)} alt="" loading="lazy"
+                    onError={e => { e.currentTarget.style.visibility = 'hidden'; }} />
+                : <div key={i} />
+            ))}
+          </div>
           <div className="hero-gradient" />
           <div className="hero-content">
             <p className="hero-eyebrow">{fmt(hero.source)}</p>
