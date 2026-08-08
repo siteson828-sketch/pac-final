@@ -11,6 +11,21 @@ export const dynamic = 'force-dynamic';
 // automation signature but serves 200 image/jpeg to real browsers — verified
 // with a de-automated headless Chrome — so those images display fine.)
 
+// Cross-language synonym expansion for themed searches, so e.g. "nude" also
+// surfaces French "nu"/"nue", German "Akt", Dutch "naakt", Italian "nudo",
+// Spanish "desnudo". Matched with word boundaries (Postgres \y) so it never hits
+// "avenue"/"continue"/"contact"/"abstrakt". Extend this map with more concepts.
+const SYNONYMS = {
+  nude: ['nude', 'nudes', 'naked', 'nu', 'nue', 'nus', 'nues', 'nackt', 'akt', 'akte', 'nudo', 'nuda', 'nudi', 'desnudo', 'desnuda', 'naakt', 'nudité', 'nudita'],
+};
+function synonymRegex(q) {
+  const norm = String(q || '').trim().toLowerCase().replace(/s$/, ''); // nude/nudes → nude
+  const set = SYNONYMS[norm];
+  if (!set) return null;
+  const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return '\\y(' + [...new Set(set)].map(esc).join('|') + ')\\y';
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
   try {
@@ -31,9 +46,16 @@ export default async function handler(req, res) {
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
         : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     } else if (search) {
-      works = rand
-        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
-        : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+      const syn = synonymRegex(search); // multilingual word-boundary regex, or null
+      if (syn) {
+        works = rand
+          ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ~* ${syn} OR medium ~* ${syn} OR artist ~* ${syn}) ORDER BY RANDOM() LIMIT ${lim}`
+          : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ~* ${syn} OR medium ~* ${syn} OR artist ~* ${syn}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+      } else {
+        works = rand
+          ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
+          : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+      }
     } else if (source) {
       works = rand
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY RANDOM() LIMIT ${lim}`
