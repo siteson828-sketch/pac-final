@@ -11,8 +11,9 @@ import LeadPopup from '../components/LeadPopup';
 //    (LoC/Smithsonian archives, Digital Commonwealth, Internet Archive) where
 //    "photograph" is just the medium; the AI path penalizes those sources and
 //    boosts fine-art museums, so results are actual art photography.
-// The remaining descriptive chips (Portraits/Landscapes) match literally and
-// stay on the fast direct search.
+// Only the "All" chip uses the plain feed; every themed chip routes through the
+// AI search so results are quality-gated (fine-art museums boosted, Internet
+// Archive excluded, Digital Commonwealth documents penalized) and paginated.
 const COLLECTIONS = [
   { label: 'All',           search: '',                    source: '' },
   { label: 'Impressionism', search: 'impressionism',       source: '', ai: true },
@@ -20,8 +21,8 @@ const COLLECTIONS = [
   { label: 'Renaissance',   search: 'renaissance',         source: '', ai: true },
   { label: 'Modern Art',    search: 'modern art',          source: '', ai: true },
   { label: 'Photography',   search: 'fine art photography', source: '', ai: true },
-  { label: 'Portraits',     search: 'portrait',            source: '' },
-  { label: 'Landscapes',    search: 'landscape',           source: '' },
+  { label: 'Portraits',     search: 'portrait',            source: '', ai: true },
+  { label: 'Landscapes',    search: 'landscape painting',   source: '', ai: true },
 ];
 
 const PRODUCTS = [
