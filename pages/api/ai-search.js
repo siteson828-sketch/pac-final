@@ -110,6 +110,10 @@ export default async function handler(req, res) {
   // when curated is off, so free-text search keeps its full reach.
   const CURATED_SOURCE_RE = 'Metropolitan Museum|Art Institute of Chicago|Cleveland Museum|Rijksmuseum|SMK|Getty|Walters|Minneapolis Institute|Yale University Art|Philadelphia Museum|Museum of Fine Arts|Detroit Institute|Museum of Modern Art|MoMA|Louvre|Orsay|Cluny|Uffizi|Vatican|Brera|Palazzo Pitti|Doria Pamphilj|Capodimonte|Nazionale Romano|Prado|Picasso|Kunsthistorisches|Hermitage|National Palace Museum|Tokyo National|National Gallery|National Galleries|Tate|Smithsonian American Art|Cooper Hewitt|National Museum of Asian Art|Hirshhorn|National Portrait Gallery|Harvard Art|Victoria & Albert|Van Gogh|Mauritshuis|Nelson-Atkins|LACMA|Los Angeles County|Guggenheim|Whitney|Frick|Gardner|Barnes|Norton Simon|Hammer|Ashmolean|Fitzwilliam|Courtauld|Wallace Collection|Dulwich|Nasjonalmuseet|Moderna Museet|National Gallery of Canada|Montreal Museum|Art Gallery of Ontario|Tretyakov|Pushkin|Russian Museum|Städel|Alte Pinakothek|Gemäldegalerie|Belvedere|Albertina|Reina Sof|Stedelijk|Rodin|Centre Pompidou|Boston|Toledo Museum|Kimbell|Blanton';
   const srcGate = req.query.curated === '1' ? CURATED_SOURCE_RE : '.';
+  // Saleability ranking: lift blue-chip, print-selling masters to the TOP of any
+  // category (a big score bonus), so recognizable, sellable work leads and the
+  // obscure long tail sinks toward the end. Public-domain-era names dominate CC0.
+  const FAMOUS_ARTISTS_RE = 'Monet|Manet|Renoir|Degas|C[eé]zanne|Van Gogh|Gauguin|Toulouse-Lautrec|Seurat|Pissarro|Sisley|Caillebotte|Rembrandt|Vermeer|Rubens|Frans Hals|Caravaggio|Titian|Raphael|Michelangelo|Leonardo|Botticelli|Bruegel|Brueghel|D[uü]rer|Goya|Vel[aá]zquez|El Greco|Turner|Constable|Gainsborough|Klimt|Schiele|Munch|Hokusai|Hiroshige|Utamaro|Whistler|Sargent|Cassatt|Winslow Homer|Waterhouse|Hieronymus Bosch|Delacroix|Ingres|Caspar David Friedrich|Rossetti|Millais|Burne-Jones|Alphonse Mucha|Tissot|Bouguereau|Corot|Courbet|Millet|Fragonard|Watteau|Canaletto|Vermeer|Hopper|Georgia O.Keeffe';
 
   const sql = neon(process.env.DATABASE_URL);
   const DEAD = '%ark.digitalcommonwealth.org%'; // dead DC thumbnail endpoint
@@ -188,6 +192,9 @@ export default async function handler(req, res) {
                      WHEN source ~* 'Metropolitan|Art Institute|Cleveland|Rijksmuseum|Wikidata|Wikimedia|Louvre|Getty|National Gallery|Smithsonian|Europeana|Museum of Fine Arts|Harvard|Yale|Uffizi|Prado|Tate|British Museum' THEN 5
                      ELSE 0 END)
              + (CASE WHEN artist ~* 'FiveThirtyEight|Pics Wire' THEN -10 ELSE 0 END)
+             + (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END)
+             + (CASE WHEN COALESCE(artist,'') = '' THEN -8 ELSE 0 END)
+             + (CASE WHEN title ILIKE 'untitled%' OR title = '' THEN -6 ELSE 0 END)
              ) AS score
       FROM artworks
       WHERE commercial_ok = true
@@ -227,6 +234,9 @@ export default async function handler(req, res) {
                        WHEN source ~* 'Metropolitan|Art Institute|Cleveland|Rijksmuseum|Wikidata|Wikimedia|Louvre|Getty|National Gallery|Smithsonian|Europeana|Museum of Fine Arts|Harvard|Yale|Uffizi|Prado|Tate|British Museum' THEN 5
                        ELSE 0 END)
                + (CASE WHEN artist ~* 'FiveThirtyEight|Pics Wire' THEN -10 ELSE 0 END)
+               + (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END)
+               + (CASE WHEN COALESCE(artist,'') = '' THEN -8 ELSE 0 END)
+               + (CASE WHEN title ILIKE 'untitled%' OR title = '' THEN -6 ELSE 0 END)
                ) AS score
         FROM artworks
         WHERE commercial_ok = true

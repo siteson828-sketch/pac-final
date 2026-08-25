@@ -23,6 +23,10 @@ const COLLECTIONS = [
   { label: 'Photography',   search: 'fine art photography', source: '', ai: true },
   { label: 'Portraits',     search: 'portrait',            source: '', ai: true },
   { label: 'Landscapes',    search: 'landscape painting',   source: '', ai: true },
+  { label: 'American Art',  search: 'american art',         source: '', ai: true },
+  { label: 'Asian Art',     search: 'asian art',            source: '', ai: true },
+  { label: 'Still Life',    search: 'still life',           source: '', ai: true },
+  { label: 'Mythology',     search: 'mythology',            source: '', ai: true },
 ];
 
 const PRODUCTS = [
@@ -380,6 +384,7 @@ export default function Home() {
   const [order, setOrder]               = useState('recent');
   const [loading, setLoading]           = useState(false);
   const [total, setTotal]               = useState(null);
+  const [museumCounts, setMuseumCounts] = useState(null); // {source: n} — hide empty museum chips
   const [hasMore, setHasMore]           = useState(false);
   const [modal, setModal]               = useState(null);
   const [heroIdx, setHeroIdx]           = useState(0);
@@ -499,6 +504,7 @@ export default function Home() {
   useEffect(() => {
     document.title = 'Public Art Collections — Museum Prints & Art Marketplace';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotal(d.total));
+    fetch('/api/artworks?sourceCounts=1').then(r => r.json()).then(d => setMuseumCounts(d.counts || {})).catch(() => {});
     load(true, '', '', 'random', COLLECTIONS[0], 0);
   }, [load]);
 
@@ -750,9 +756,10 @@ export default function Home() {
         ))}
       </div>
 
-      {/* MUSEUM FILTER BAR */}
+      {/* MUSEUM FILTER BAR — hide chips whose collection has no works yet
+          (e.g. a Smithsonian unit still syncing), so a filter is never empty. */}
       <div className="museum-bar">
-        {MUSEUMS.map(m => (
+        {MUSEUMS.filter(m => !museumCounts || (museumCounts[m.key] || 0) > 0).map(m => (
           <button
             key={m.key}
             className={`museum-chip${museum === m.key ? ' active' : ''}`}
