@@ -460,48 +460,121 @@ async function syncEuropeana(sql, key, offset=0) {
   return await upsert(sql, works);
 }
 
-async function syncSmithsonian(sql, key, offset = 0) {
-  if (!key) return 0;
-  const works = [];
-  const seen = new Set();
-  // Query the MEDIA-RICH units only (uppercase unit_code + online_media_type:"Images").
-  // The other units (NMAH/NMAI/NMNH/FSG) return records with no online_media in the
-  // search response, so they'd waste calls. Offset-chunked: each run pages a WINDOW
-  // of records per unit starting at `offset`, so successive runs (0, 600, 1200, …)
-  // page deeper and grow the collection. Deep `start` paging is verified to return
-  // distinct thumbnailed records. A transient page error is skipped (not fatal).
-  const units = ['SAAM', 'CHNDM', 'NMAAHC', 'NPG', 'NASM', 'HMSG'];
-  const WINDOW = 600;      // records/unit per run
-  const SAFETY_CAP = 5000; // hard per-run insert ceiling
-  outer:
-  for (const unit of units) {
-    const q = encodeURIComponent(`unit_code:${unit} AND online_media_type:"Images"`);
-    for (let start = offset; start < offset + WINDOW; start += 100) {
-      let rows;
-      try {
-        const d = await fetchJson(
-          `https://api.si.edu/openaccess/api/v1.0/search?q=${q}&start=${start}&rows=100&api_key=${key}`
-        );
-        rows = d.response?.rows || [];
-      } catch (e) { await sleep(400); continue; } // skip a transient page error, keep going
-      if (!rows.length) break; // this unit is exhausted at this depth
-      for (const o of rows) {
-        if (seen.has(o.id)) continue;
-        const media = (o.content?.descriptiveNonRepeating?.online_media?.media || []).find(m => m?.thumbnail);
-        if (!media) continue;
-        seen.add(o.id);
-        works.push({ source:'Smithsonian Institution', source_id:o.id,
-          title:o.title||'Untitled', artist:o.content?.freetext?.name?.[0]?.content||'',
-          date_text:o.content?.freetext?.date?.[0]?.content||'',
-          medium:o.content?.freetext?.physicalDescription?.[0]?.content||'',
-          thumb_url:media.thumbnail, full_url:media.content||media.thumbnail,
-          detail_url:o.content?.descriptiveNonRepeating?.record_link||'', bio:'' });
-      }
-      if (works.length >= SAFETY_CAP) break outer;
-      await sleep(250);
-    }
+// COMPLETE Smithsonian sync: all 15 art/cultural units, CC0-only, resumable.
+// The Open Access API exposes ~4.5M records, but ~4.4M are natural-history
+// SPECIMENS (pressed plants, pinned insects, bird skins, fossils) under the
+// NMNH* units — excluded here because this is an art site. We ingest the ~120k
+// genuine art/cultural works across these 15 units.
+// TWO things the naive approach gets wrong, both verified against the live API:
+//   1. unit_code MUST go inside q= as `unit_code:SAAM`. The &unit_code= URL
+//      param is silently IGNORED (returns the full 14.5M rowCount every time).
+//   2. upsert() hardcodes rights=CC0 / commercial_ok=true, so we MUST filter to
+//      media_usage:"CC0" — most NMAH/NMAI images are rights-restricted (NMAH has
+//      702k images but only 12k CC0; NMAI 143k→180). Labeling those as CC0/
+//      commercial would be false. The CC0 filter keeps the stored rights truthful.
+// Resumable via a self-managed cursor (source key 'smithsonian') encoded as
+// unitIdx*SI_UNIT_SPAN + start, so a plain cron advances through every unit over
+// successive runs, checkpointing per page, then wraps to 0 to refresh. Image URLs
+// come from the ids.si.edu delivery service (already in /api/img's allowlist).
+const SI_UNITS = [
+  { code: 'CHNDM',  name: 'Cooper Hewitt, Smithsonian Design Museum' },
+  { code: 'SAAM',   name: 'Smithsonian American Art Museum' },
+  { code: 'NPG',    name: 'National Portrait Gallery' },
+  { code: 'NMAAHC', name: 'National Museum of African American History and Culture' },
+  { code: 'NMAH',   name: 'National Museum of American History' },
+  { code: 'NPM',    name: 'National Postal Museum' },
+  { code: 'SIA',    name: 'Smithsonian Institution Archives' },
+  { code: 'NMAA',   name: 'National Museum of Asian Art' },
+  { code: 'NMAI',   name: 'National Museum of the American Indian' },
+  { code: 'NASM',   name: 'National Air and Space Museum' },
+  { code: 'HMSG',   name: 'Hirshhorn Museum and Sculpture Garden' },
+  { code: 'HAC',    name: 'Smithsonian Gardens' },
+  { code: 'ACM',    name: 'Anacostia Community Museum' },
+  { code: 'NMAfA',  name: 'National Museum of African Art' },
+  { code: 'SIL',    name: 'Smithsonian Libraries' },
+];
+const SI_UNIT_SPAN = 1000000; // per-unit start offsets never approach this
+
+// Build an ids.si.edu delivery URL at a given max dimension from a media object.
+function siImageUrl(media, id, max) {
+  const base = media?.content || media?.thumbnail ||
+    (media?.idsId ? `https://ids.si.edu/ids/deliveryService?id=${media.idsId}` : null) ||
+    (id ? `https://ids.si.edu/ids/deliveryService?id=${id}` : null);
+  if (!base) return null;
+  if (base.includes('deliveryService') && !/[?&]max=/.test(base)) {
+    return base + (base.includes('?') ? '&' : '?') + 'max=' + max;
   }
-  return upsert(sql, works);
+  return base;
+}
+
+async function syncSmithsonian(sql, key) {
+  if (!key) return 0;
+  const STEP = 6000, PAGE = 100;
+  const cursor = await getCursor(sql, 'smithsonian');
+  let unitIdx = Math.floor(cursor / SI_UNIT_SPAN);
+  let start = cursor % SI_UNIT_SPAN;
+  if (unitIdx >= SI_UNITS.length) { unitIdx = 0; start = 0; }
+
+  let saved = 0, processed = 0;
+  while (processed < STEP && unitIdx < SI_UNITS.length) {
+    const unit = SI_UNITS[unitIdx];
+    const q = encodeURIComponent(`unit_code:${unit.code} AND online_media_type:"Images" AND media_usage:"CC0"`);
+    let rows;
+    try {
+      const d = await fetchJson(`https://api.si.edu/openaccess/api/v1.0/search?q=${q}&rows=${PAGE}&start=${start}&api_key=${key}`);
+      rows = d.response?.rows || [];
+    } catch (e) {
+      // transient page error — stop this run; cursor stays put so the next run retries here
+      console.error(`Smithsonian ${unit.code} error at ${start}:`, e.message);
+      break;
+    }
+    if (!rows.length) { // unit exhausted → advance to next unit, checkpoint
+      unitIdx++; start = 0;
+      await setCursor(sql, 'smithsonian', unitIdx >= SI_UNITS.length ? 0 : unitIdx * SI_UNIT_SPAN);
+      continue;
+    }
+    const works = [];
+    for (const o of rows) {
+      const mediaArr = o.content?.descriptiveNonRepeating?.online_media?.media;
+      const mediaList = Array.isArray(mediaArr) ? mediaArr : (mediaArr ? [mediaArr] : []);
+      // the record matched media_usage:CC0, but a record can mix licenses — pick the CC0 image
+      const media = mediaList.find(m => m?.type === 'Images' && m?.usage?.access === 'CC0') ||
+                    mediaList.find(m => m?.usage?.access === 'CC0');
+      if (!media) continue;
+      const thumb = siImageUrl(media, o.id, 400);
+      const full = siImageUrl(media, o.id, 1200);
+      if (!thumb || !thumb.startsWith('http')) continue;
+      const freetext = o.content?.freetext || {};
+      const names = Array.isArray(freetext.name) ? freetext.name : [];
+      const artist = names.find(n => ['Artist','Creator','Maker','Designer','Photographer','Manufacturer','Author'].includes(n.label))?.content
+                     || names[0]?.content || '';
+      works.push({
+        source: unit.name,
+        source_id: `${unit.code}_${o.id}`,
+        title: o.title || 'Untitled',
+        artist,
+        date_text: freetext.date?.[0]?.content || '',
+        medium: freetext.physicalDescription?.[0]?.content || freetext.medium?.[0]?.content || '',
+        department: unit.name,
+        thumb_url: thumb,
+        full_url: full || thumb,
+        detail_url: o.content?.descriptiveNonRepeating?.record_link || `https://collections.si.edu/search/detail/${o.id}`,
+        rights: 'CC0', rights_label: 'CC0 — Public Domain', commercial_ok: true,
+        bio: freetext.notes?.[0]?.content || freetext.creditLine?.[0]?.content || '',
+      });
+    }
+    saved += await upsert(sql, works);
+    processed += rows.length;
+    start += rows.length;
+    // checkpoint after each page so a 300s timeout never loses progress
+    await setCursor(sql, 'smithsonian', unitIdx * SI_UNIT_SPAN + start);
+    if (rows.length < PAGE) { // last page of this unit → advance to next unit
+      unitIdx++; start = 0;
+      await setCursor(sql, 'smithsonian', unitIdx >= SI_UNITS.length ? 0 : unitIdx * SI_UNIT_SPAN);
+    }
+    await sleep(200);
+  }
+  return saved;
 }
 
 async function syncHarvard(sql) {
@@ -1062,40 +1135,6 @@ async function syncDigitalNZ(sql) {
 
 // Smithsonian Open Access (multiple units). Uses existing SMITHSONIAN_KEY.
 // Upserts per unit so a 300s timeout still persists completed units.
-async function syncSmithsonianAll(sql) {
-  if (!process.env.SMITHSONIAN_KEY) return 0;
-  let saved = 0;
-  const units = ['NMAH','NMAAHC','NASM','NMNHANTHRO','NPG','HMSG','SAAM','CHNDM','FSG','NMAfA','NMAI','NPM'];
-  for (const unit of units) {
-    const works = [];
-    for (let start = 0; start < 2000; start += 100) {
-      try {
-        const d = await fetchJson(`https://api.si.edu/openaccess/api/v1.0/search?q=art&unit_code=${unit}&rows=100&start=${start}&api_key=${process.env.SMITHSONIAN_KEY}`);
-        const rows = d.response?.rows || [];
-        if (!rows.length) break;
-        for (const o of rows) {
-          const media = o.content?.descriptiveNonRepeating?.online_media?.media?.[0];
-          if (!media?.thumbnail) continue;
-          works.push({
-            source: 'Smithsonian — ' + (o.unitCode || unit),
-            source_id: o.id, title: o.title || 'Untitled',
-            artist: o.content?.freetext?.name?.[0]?.content || '',
-            date_text: o.content?.freetext?.date?.[0]?.content || '',
-            medium: o.content?.freetext?.physicalDescription?.[0]?.content || '',
-            thumb_url: media.thumbnail, full_url: media.content || media.thumbnail,
-            detail_url: o.content?.descriptiveNonRepeating?.record_link || '',
-            rights: 'CC0', rights_label: 'CC0 — Public Domain', commercial_ok: true,
-            bio: o.content?.freetext?.notes?.[0]?.content || '',
-          });
-        }
-        await sleep(200);
-      } catch (e) { break; }
-    }
-    saved += await upsert(sql, works);
-  }
-  return saved;
-}
-
 // Biodiversity Heritage Library — natural-history illustrations. Needs BHL_KEY.
 async function syncBHL(sql) {
   if (!process.env.BHL_KEY) return 0;
@@ -1217,7 +1256,7 @@ export default async function handler(req, res) {
   if (src==='smk'        ||src==='all') await run('SMK Denmark',        () => syncSMK(sql, offset));
   if (src==='vam'        ||src==='all') await run('V&A Museum',         () => syncVAM(sql, offset));
   if (src==='europeana'  ||src==='all') await run('Europeana',          () => syncEuropeana(sql, process.env.EUROPEANA_KEY, offset));
-  if (src==='smithsonian'||src==='all') await run(`Smithsonian (offset ${offset})`, () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY, offset));
+  if (src==='smithsonian'||src==='smithsonianall'||src==='all') await run('Smithsonian', () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
   if (src==='harvard'    ||src==='all') await run('Harvard',            () => syncHarvard(sql));
   if (src==='getty'      ||src==='all') await run('Getty Museum',       () => syncWikidataMuseum(sql, 'Q1700481', 'Getty Museum'));
   if (src==='walters'    ||src==='all') await run('Walters Art Museum', () => syncWikidataMuseum(sql, 'Q210081',  'Walters Art Museum'));
@@ -1363,7 +1402,6 @@ export default async function handler(req, res) {
   if (src==='wikidataglobal') await run(`Wikidata Global (offset ${offset})`, () => syncWikidataGlobal(sql, offset));
   if (src==='trove'              || src==='all') await run('Trove Australia',              () => syncTrove(sql));
   if (src==='digitalnz'          || src==='all') await run('Digital NZ',                   () => syncDigitalNZ(sql));
-  if (src==='smithsonianall'     || src==='all') await run('Smithsonian All',              () => syncSmithsonianAll(sql));
   if (src==='digitalcommonwealth'|| src==='all') await run(`Digital Commonwealth (offset ${offset})`, () => syncDigitalCommonwealth(sql, offset));
   if (src==='bhl'                || src==='all') await run('Biodiversity Heritage Library', () => syncBHL(sql));
   const countRows = await sql`SELECT COUNT(*) as total FROM artworks`;
