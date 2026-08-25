@@ -96,9 +96,12 @@ async function putCachedExpansion(sql, key, data) {
 export default async function handler(req, res) {
   const query = cleanStr(req.query.query, 200);
   if (!query) return res.status(400).json({ error: 'No query' });
-
-  const rl = await checkRateLimit({ scope: 'ai-search', ip: clientIp(req), limit: 20, windowSeconds: 600 });
-  if (!rl.allowed) return res.status(429).json({ error: 'Too many searches. Please wait a moment.' });
+  // Pagination: `offset` pages the result set; `mode` ('strict'|'broad') is echoed
+  // back from the first page so later pages continue in the SAME set (the endpoint
+  // is stateless, so the client tells us which set it's paging through).
+  const off = Math.abs(parseInt(req.query.offset) || 0);
+  const reqMode = req.query.mode === 'broad' ? 'broad' : null;
+  const PAGE = 48;
 
   const sql = neon(process.env.DATABASE_URL);
   const DEAD = '%ark.digitalcommonwealth.org%'; // dead DC thumbnail endpoint
@@ -109,6 +112,10 @@ export default async function handler(req, res) {
     let aiError = null;
     const cached = !!ai;
     if (!ai) {
+      // Rate-limit ONLY the paid Claude expansion (cache miss). Cached queries —
+      // including every load-more page — skip the limit so paging is never blocked.
+      const rl = await checkRateLimit({ scope: 'ai-search', ip: clientIp(req), limit: 20, windowSeconds: 600 });
+      if (!rl.allowed) return res.status(429).json({ error: 'Too many searches. Please wait a moment.' });
       const r = await expandQuery(query);
       ai = r.data;
       aiError = r.error;
@@ -158,7 +165,7 @@ export default async function handler(req, res) {
     // documents. Image-quality guard: renderable http thumbnails only.
     // STRICT pass: mandatory word-boundary gate on must_include (title/medium),
     // exclude filter applied, ranked by the weighted search-term score.
-    const strict = mustRe ? await sql`
+    const strict = (mustRe && reqMode !== 'broad') ? await sql`
       SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
              iiif_info, iiif_manifest, detail_url, rights_label, bio,
              ( (CASE WHEN title ILIKE ${l0} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l0} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l0} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l0} THEN 1 ELSE 0 END)
@@ -183,15 +190,19 @@ export default async function handler(req, res) {
         AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
         AND source NOT ILIKE '%Internet Archive%'
       ORDER BY score DESC, synced_at DESC
-      LIMIT 48` : [];
+      LIMIT ${PAGE} OFFSET ${off}` : [];
 
     let works = strict;
     let broadened = false;
-    // Fallback: if the strict gate is sparse (rare/mood queries), fill up with the
-    // broad OR-match (old behavior) so results are never empty — strict hits still
-    // rank first because they're prepended and deduped.
-    if (works.length < 12) {
+    let mode = 'strict';
+    // Fallback: if the strict gate is sparse (rare/mood queries — includes art
+    // MOVEMENTS like "impressionism", whose name isn't in any title/medium), fill
+    // from the broad OR-match. This is also the paginated set for such queries:
+    // once page 0 broadens, the client sends mode=broad so later pages page the
+    // broad set directly.
+    if (reqMode === 'broad' || (off === 0 && works.length < 12)) {
       broadened = true;
+      mode = 'broad';
       const broad = await sql`
         SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
                iiif_info, iiif_manifest, detail_url, rights_label, bio,
@@ -224,11 +235,13 @@ export default async function handler(req, res) {
              OR title ILIKE ${l6} OR artist ILIKE ${l6} OR medium ILIKE ${l6}
              OR title ILIKE ${l7} OR artist ILIKE ${l7} OR medium ILIKE ${l7} )
         ORDER BY score DESC, synced_at DESC
-        LIMIT 48`;
+        LIMIT ${PAGE} OFFSET ${off}`;
       const seen = new Set(works.map(w => w.id));
       for (const w of broad) if (!seen.has(w.id)) { works.push(w); seen.add(w.id); }
-      works = works.slice(0, 48);
+      works = works.slice(0, PAGE);
     }
+    // A full page implies there is likely a next page (client shows "Load more").
+    const hasMore = works.length === PAGE;
 
     // Point (4): log what actually happened so relevance is auditable.
     console.log(`ai-search "${query}" → strict=${strict.length}${broadened ? ` +broad(total ${works.length})` : ''} | must=[${mustTerms.join(', ')}] | terms=[${terms.join(', ')}]`);
@@ -243,6 +256,9 @@ export default async function handler(req, res) {
       search_terms: terms,
       must_include: mustTerms,
       exclude_terms: excludeTerms,
+      has_more: hasMore,                 // another page exists → client can load more
+      mode,                              // 'strict'|'broad' — echo back on load-more
+      offset: off,
       broadened,                         // true = strict set was sparse, broadened to fill
       low_confidence: works.length < 6,  // UI can surface a "few strong matches" note
       original_query: query,

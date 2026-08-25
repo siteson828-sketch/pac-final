@@ -384,6 +384,8 @@ export default function Home() {
   const [artistQuery, setArtistQuery]   = useState(''); // dedicated "search by artist" box
   const [aiSearching, setAiSearching]   = useState(false);
   const [aiInfo, setAiInfo]             = useState(null); // { description, mood } from AI search
+  const [aiMode, setAiMode]             = useState(null); // active AI query string (null when browsing normally)
+  const [aiPageMode, setAiPageMode]     = useState(null); // 'strict'|'broad' — echoed to page the same set
   const [activeTab, setActiveTab]             = useState(null);
   const [selected, setSelected]               = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -446,21 +448,32 @@ export default function Home() {
 
   // AI search: /api/ai-search (Claude term expansion + relevance ranking) →
   // populate the gallery with the results and show what the AI understood.
-  const doAISearch = async (q) => {
+  // Paginated: `append` fetches the next page (offset = current count) in the same
+  // result set (aiPageMode is echoed back so 'broad' movement queries keep paging).
+  const doAISearch = async (q, { append = false } = {}) => {
     const query = ((q ?? aiQuery) || '').trim();
     if (!query) return;
-    setAiSearching(true);
-    setAiInfo(null);
     setLoading(true);
+    if (!append) { setAiSearching(true); setAiInfo(null); setAiMode(query); }
     try {
-      const d = await fetch('/api/ai-search?query=' + encodeURIComponent(query)).then(r => r.json());
-      setWorks(d.works || []);
-      setHasMore(false);
-      setAiInfo({ description: d.ai_description || '', mood: d.ai_mood || '' });
+      const off = append ? works.length : 0;
+      const url = '/api/ai-search?query=' + encodeURIComponent(query) + '&offset=' + off +
+        (append && aiPageMode ? '&mode=' + aiPageMode : '');
+      const d = await fetch(url).then(r => r.json());
+      const w = d.works || [];
+      // Dedup by id on append so a cross-page overlap never creates duplicate React keys.
+      setWorks(prev => {
+        if (!append) return w;
+        const seen = new Set(prev.map(x => x.id));
+        return [...prev, ...w.filter(x => !seen.has(x.id))];
+      });
+      setHasMore(!!d.has_more);
+      setAiPageMode(d.mode || aiPageMode);
+      if (!append) setAiInfo({ description: d.ai_description || '', mood: d.ai_mood || '' });
     } catch (e) { console.error('AI search error:', e); }
     setLoading(false);
     setAiSearching(false);
-    if (typeof document !== 'undefined') document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' });
+    if (!append && typeof document !== 'undefined') document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   // Search by artist — fills the gallery with our catalog works by that maker
@@ -468,6 +481,7 @@ export default function Home() {
   const doArtistSearch = (a) => {
     const name = ((a ?? artistQuery) || '').trim();
     if (!name) return;
+    setAiMode(null);
     setMuseum(''); setCollection(COLLECTIONS[0]); setSearchInput(''); setAppliedSearch(name);
     setAiInfo({ description: `Works by “${name}” in the collection — explore more live across museums in the Viewer →`, mood: '' });
     load(true, name, '', order, null, 0);
@@ -535,12 +549,14 @@ export default function Home() {
   }, []);
 
   const handleSearch = () => {
+    setAiMode(null);
     setAppliedSearch(searchInput);
     setMuseum('');
     setCollection(COLLECTIONS[0]);
     load(true, searchInput, '', order, null, 0);
   };
   const handleClear = () => {
+    setAiMode(null);
     setSearchInput(''); setAppliedSearch('');
     load(true, '', museum, order, collection, 0);
   };
@@ -548,9 +564,11 @@ export default function Home() {
     setCollection(coll); setMuseum(''); setAppliedSearch(''); setSearchInput('');
     // Movement chips (ai:true) have no literal metadata to match — expand via AI.
     if (coll.ai) { doAISearch(coll.search || coll.label); return; }
+    setAiMode(null);
     load(true, '', '', order, coll, 0);
   };
   const handleMuseum = src => {
+    setAiMode(null);
     const next = src === museum ? '' : src;
     setMuseum(next); setAppliedSearch(''); setSearchInput('');
     load(true, '', next, order, next ? null : collection, 0);
@@ -558,9 +576,14 @@ export default function Home() {
   const handleShuffle = () => {
     const next = order === 'random' ? 'recent' : 'random';
     setOrder(next);
+    if (aiMode) { doAISearch(aiMode); return; } // re-run the AI query (shuffle isn't applicable)
     load(true, appliedSearch, museum, next, collection, 0);
   };
-  const handleLoadMore = () => load(false, appliedSearch, museum, order, collection, works.length);
+  // Load-more continues the active AI result set when in AI mode, else the DB feed.
+  const handleLoadMore = () => {
+    if (aiMode) { doAISearch(aiMode, { append: true }); return; }
+    load(false, appliedSearch, museum, order, collection, works.length);
+  };
 
   const hero = works[heroIdx % Math.max(works.length, 1)];
   const galleryLabel = appliedSearch
