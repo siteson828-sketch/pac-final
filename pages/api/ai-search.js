@@ -189,6 +189,14 @@ export default async function handler(req, res) {
     const artistGated  = artistList.length > 0;
     const artistGateRe = artistGated ? '\\y(' + artistList.map(reEsc).join('|') + ')\\y' : '~~no~artist~~';
     const mustReSafe   = mustRe || '~~no~must~~';
+    // Normalize an artist to its FIRST LINE, before any "(" — collapses format
+    // variants ("Georgia O'Keeffe" / "…(American, 1887–1986)" / "…\nAmerican…")
+    // to one key, and reduces a junk multi-artist field (name1\nname2\n…) to its
+    // first name so it can't match every artist gate. Passed as params (NL/STRIP)
+    // to dodge SQL-in-template backslash escaping.
+    const NL = '\n';
+    const STRIP = '\\s*\\(.*$';
+    // SQL fragment reused for gate + diversity partition (uses the ${NL}/${STRIP} params).
 
     // Weighted relevance: title 10 · artist 8 · medium 5 · bio 1 per term, plus a
     // source bonus lifting fine-art museums and penalizing Digital Commonwealth
@@ -219,14 +227,14 @@ export default async function handler(req, res) {
       WHERE commercial_ok = true
         AND thumb_url IS NOT NULL AND thumb_url != '' AND thumb_url LIKE 'http%'
         AND thumb_url NOT LIKE ${DEAD}
-        AND ( (${artistGated} AND artist ~* ${artistGateRe})
+        AND ( (${artistGated} AND regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, '') ~* ${artistGateRe})
            OR (NOT ${artistGated} AND (title ~* ${mustReSafe} OR medium ~* ${mustReSafe})) )
         AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
         AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
         AND source NOT ILIKE '%Internet Archive%'
         AND source ~* ${srcGate}
       ) s
-      ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(regexp_replace(coalesce(artist,''), '\\s*\\(.*$', '')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
+      ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, '')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
       LIMIT ${PAGE} OFFSET ${off}` : [];
 
     let works = strict;
@@ -277,7 +285,7 @@ export default async function handler(req, res) {
              OR title ILIKE ${l6} OR artist ILIKE ${l6} OR medium ILIKE ${l6}
              OR title ILIKE ${l7} OR artist ILIKE ${l7} OR medium ILIKE ${l7} )
         ) s
-        ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(regexp_replace(coalesce(artist,''), '\\s*\\(.*$', '')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
+        ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, '')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
         LIMIT ${PAGE} OFFSET ${off}`;
       const seen = new Set(works.map(w => w.id));
       for (const w of broad) if (!seen.has(w.id)) { works.push(w); seen.add(w.id); }

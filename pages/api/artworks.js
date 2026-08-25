@@ -40,6 +40,10 @@ export default async function handler(req, res) {
     const lim = Math.min(Math.abs(parseInt(req.query.limit) || 24), 100);
     const off = Math.abs(parseInt(req.query.offset) || 0);
     const rand = order === 'random' || req.query.random === 'true';
+    // Artist normalization (first line, before "(") for the diversity partition —
+    // passed as params to avoid SQL-in-template backslash escaping.
+    const NL = '\n';
+    const STRIP = '\\s*\\(.*$';
 
     if (count === 'true') {
       const rows = await sql`SELECT COUNT(*) as total FROM artworks WHERE commercial_ok = true`;
@@ -77,7 +81,7 @@ export default async function handler(req, res) {
     } else if (source) {
       works = rand
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY RANDOM() LIMIT ${lim}`
-        : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(regexp_replace(coalesce(artist,''), '\\s*\\(.*$', '')) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+        : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, '')) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     } else {
       works = rand
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' ORDER BY RANDOM() LIMIT ${lim}`
