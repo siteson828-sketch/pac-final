@@ -1,4 +1,121 @@
+/* ============================================================================
+   PUBLIC ART COLLECTIONS — Neoclassical Museum design system
+   Shared tokens + base typography. Page-level CSS references these variables so
+   the whole site can inherit one classical palette, type scale, and set of
+   primitives (hairline rules, small-caps labels, framed cards, squared buttons).
+   ============================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap');
+
+:root {
+  /* Palette — ivory ground, ink text, muted gold accent, charcoal for dark sections */
+  --ivory:      #FAF8F4;   /* page ground */
+  --paper:      #FCFAF6;   /* cards / raised surfaces */
+  --ink:        #1A1714;   /* primary text */
+  --ink-soft:   #4A4540;   /* secondary text */
+  --muted:      #8A817699; /* faint text (with alpha) */
+  --muted-solid:#8A8178;
+  --gold:       #9C7C38;   /* accent — muted antique gold */
+  --gold-bright:#B8942A;   /* accent on hover / emphasis */
+  --charcoal:   #14110E;   /* dark sections, footer */
+  --charcoal-2: #221C16;   /* dark surfaces on charcoal */
+  --cream-dk:   #E9E3D8;   /* image placeholders / skeleton */
+  --parchment:  #F3EEE4;   /* subtle tinted panels */
+
+  /* Hairlines — the backbone of the classical look */
+  --line:       rgba(26,23,20,0.14);
+  --line-soft:  rgba(26,23,20,0.08);
+  --line-gold:  rgba(156,124,56,0.55);
+
+  /* Type */
+  --serif: 'Cormorant Garamond', 'Hoefler Text', Georgia, 'Times New Roman', serif;
+  --sans:  'DM Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* Shape — near-square corners; classical restraint */
+  --radius: 2px;
+
+  /* Motion */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html, body { max-width: 100%; overflow-x: hidden; }
-body { font-family: system-ui, sans-serif; }
-button { touch-action: manipulation; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: var(--sans);
+  background: var(--ivory);
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, .serif { font-family: var(--serif); font-weight: 400; }
+
+button { touch-action: manipulation; font-family: var(--sans); }
+
+::selection { background: rgba(156,124,56,0.22); color: var(--ink); }
+
+a { color: inherit; }
+
+/* --- Shared classical primitives (available site-wide) --- */
+
+/* Letter-spaced small-caps eyebrow/label */
+.eyebrow {
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+}
+
+/* Hairline rule */
+.rule { height: 1px; background: var(--line); border: 0; }
+
+/* Centered ornamental label flanked by rules:  ——— label ——— */
+.ornament {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--muted-solid);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+.ornament::before,
+.ornament::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Squared classical button */
+.c-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 11px 22px;
+  font-family: var(--sans);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-decoration: none;
+  transition: background .2s var(--ease), border-color .2s var(--ease), color .2s var(--ease);
+}
+.c-btn:hover { border-color: var(--ink); background: rgba(26,23,20,0.04); }
+.c-btn--dark { background: var(--ink); color: var(--ivory); border-color: var(--ink); }
+.c-btn--dark:hover { background: var(--charcoal-2); }
+.c-btn--gold { background: var(--gold); color: var(--ivory); border-color: var(--gold); }
+.c-btn--gold:hover { background: var(--gold-bright); border-color: var(--gold-bright); }

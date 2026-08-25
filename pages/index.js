@@ -151,189 +151,205 @@ function abbr(n) {
 }
 
 const CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:opsz,wght@9..40,400;9..40,500&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:'DM Sans',system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A1714}
+/* Fonts + palette tokens are defined in styles/globals.css (shared system).
+   This block styles the homepage in the Neoclassical Museum aesthetic. */
 
 /* NAV */
-.nav{position:sticky;top:0;z-index:100;background:rgba(250,248,244,0.97);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:0.5px solid rgba(26,23,20,0.12);height:62px;display:flex;align-items:center;gap:16px;padding:0 32px}
-.nav-logo{font-family:'Cormorant Garamond',Georgia,serif;font-size:20px;font-weight:400;text-decoration:none;color:#1A1714;white-space:nowrap;flex-shrink:0;letter-spacing:.01em}
-.nav-logo span{color:#B8942A}
-.nav-search{flex:1;max-width:520px;display:flex;gap:8px}
-.nav-input{flex:1;padding:8px 14px;border:0.5px solid rgba(26,23,20,0.22);border-radius:4px;font-size:13px;background:#FAF8F4;outline:none;font-family:'DM Sans',sans-serif;color:#1A1714}
-.nav-input:focus{border-color:#B8942A;box-shadow:0 0 0 3px rgba(184,148,42,0.1)}
-.nav-count{font-size:12px;color:#8A8178;white-space:nowrap;flex-shrink:0;margin-left:auto}
-.btn{display:inline-flex;align-items:center;padding:8px 16px;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid rgba(26,23,20,0.2);color:#1A1714;background:transparent;font-family:'DM Sans',sans-serif;transition:background .15s;white-space:nowrap;text-decoration:none}
-.btn:hover{background:rgba(26,23,20,0.06)}
-.btn-dark{background:#1A1714;color:#FAF8F4;border-color:#1A1714}
-.btn-dark:hover{background:#2C2318}
-.btn-icon{padding:8px 10px;font-size:16px;line-height:1}
-.nav-link{font-size:13px;color:#4A4540;text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color .15s}
-.nav-link:hover{color:#1A1714}
+.nav{position:sticky;top:0;z-index:100;background:rgba(250,248,244,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);height:68px;display:flex;align-items:center;gap:20px;padding:0 36px}
+.nav-logo{font-family:var(--serif);font-size:23px;font-weight:500;text-decoration:none;color:var(--ink);white-space:nowrap;flex-shrink:0;letter-spacing:.02em}
+.nav-logo span{color:var(--gold);font-style:italic}
+.nav-search{flex:1;max-width:520px;display:flex;gap:10px}
+.nav-input{flex:1;padding:9px 14px;border:1px solid var(--line);border-radius:var(--radius);font-size:13px;background:var(--paper);outline:none;font-family:var(--sans);color:var(--ink);transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}
+.nav-input::placeholder{color:var(--muted-solid)}
+.nav-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(156,124,56,0.12)}
+.nav-count{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted-solid);white-space:nowrap;flex-shrink:0;margin-left:auto}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:9px 18px;border-radius:var(--radius);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;border:1px solid var(--line);color:var(--ink);background:transparent;font-family:var(--sans);transition:background .2s var(--ease),border-color .2s var(--ease),color .2s var(--ease);white-space:nowrap;text-decoration:none}
+.btn:hover{background:rgba(26,23,20,0.04);border-color:var(--ink)}
+.btn-dark{background:var(--ink);color:var(--ivory);border-color:var(--ink)}
+.btn-dark:hover{background:var(--charcoal-2);color:var(--ivory)}
+.btn-icon{padding:9px 12px;font-size:15px;line-height:1;letter-spacing:0}
+.nav-link{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color .2s var(--ease)}
+.nav-link:hover{color:var(--gold)}
 
 /* ORDER BANNER */
-.order-banner{background:#2C2318;color:#F0EAD8;padding:14px 32px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
-.order-banner-img{width:52px;height:52px;object-fit:cover;border-radius:4px;flex-shrink:0;background:#3A3028}
+.order-banner{background:var(--charcoal);color:#EDE7DA;padding:16px 36px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--gold)}
+.order-banner-img{width:54px;height:54px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;background:#3A3028;border:1px solid rgba(237,231,218,0.18)}
 .order-banner-info{flex:1;min-width:0}
-.order-banner-label{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#B8942A;margin-bottom:3px}
-.order-banner-work{font-family:'Cormorant Garamond',Georgia,serif;font-size:16px;font-weight:300;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.order-banner-prod{font-size:12px;color:#B0A898;margin-top:2px}
-.order-banner-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.order-qty{display:flex;align-items:center;gap:6px;font-size:13px}
-.order-qty button{width:26px;height:26px;border-radius:50%;border:0.5px solid rgba(240,234,216,0.25);background:transparent;color:#F0EAD8;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .15s}
-.order-qty button:hover{background:rgba(240,234,216,0.1)}
-.order-confirm{padding:8px 20px;background:#B8942A;color:#1A1714;border:none;border-radius:4px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;transition:background .15s}
-.order-confirm:hover{background:#C9A84C}
-.order-dismiss{background:none;border:none;color:#6A6058;font-size:20px;cursor:pointer;line-height:1;padding:4px;transition:color .15s;flex-shrink:0}
-.order-dismiss:hover{color:#F0EAD8}
+.order-banner-label{font-size:9px;text-transform:uppercase;letter-spacing:.2em;color:var(--gold);margin-bottom:4px;font-weight:600}
+.order-banner-work{font-family:var(--serif);font-size:18px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.order-banner-prod{font-size:11px;color:#B0A898;margin-top:3px;letter-spacing:.02em}
+.order-banner-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.order-qty{display:flex;align-items:center;gap:8px;font-size:13px}
+.order-qty button{width:28px;height:28px;border-radius:50%;border:1px solid rgba(237,231,218,0.3);background:transparent;color:#EDE7DA;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .2s var(--ease)}
+.order-qty button:hover{background:rgba(237,231,218,0.1)}
+.order-confirm{padding:10px 22px;background:var(--gold);color:var(--ivory);border:none;border-radius:var(--radius);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:background .2s var(--ease)}
+.order-confirm:hover{background:var(--gold-bright)}
+.order-dismiss{background:none;border:none;color:#6A6058;font-size:22px;cursor:pointer;line-height:1;padding:4px;transition:color .2s var(--ease);flex-shrink:0}
+.order-dismiss:hover{color:#EDE7DA}
 
 /* HERO */
-.hero{position:relative;height:540px;overflow:hidden;background:linear-gradient(135deg,#160a2b,#3d1450,#7a1e5a,#c25b1e)}
+.hero{position:relative;height:560px;overflow:hidden;background:var(--charcoal)}
 .hero-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:50%}
-.hero-mosaic img{width:100%;height:100%;object-fit:cover;display:block}
-.hero-gradient{position:absolute;inset:0;background:linear-gradient(110deg,rgba(15,7,28,0.95) 0%,rgba(46,16,70,0.82) 34%,rgba(158,38,102,0.5) 66%,rgba(242,140,52,0.34) 100%)}
-.hero-content{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;padding:52px 56px}
-.hero-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.2em;color:#B8942A;margin-bottom:16px;font-weight:500}
-.hero-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:clamp(38px,5vw,72px);font-weight:300;line-height:1.04;color:#F3EFE8;margin-bottom:14px;max-width:640px}
-.hero-title em{font-style:italic;background:linear-gradient(90deg,#FFCE63,#FF7AAE 55%,#FF9A5A);-webkit-background-clip:text;background-clip:text;color:transparent}
-.hero-sub{font-size:14px;color:rgba(240,234,216,0.65);margin-bottom:32px;max-width:440px;line-height:1.7}
-.hero-actions{display:flex;gap:12px;flex-wrap:wrap}
-.hero-btn{padding:12px 28px;font-size:13px;font-weight:500;border-radius:4px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .18s;text-decoration:none;border:none;letter-spacing:.01em}
-.hero-btn-light{background:#FAF8F4;color:#1A1714}
+.hero-mosaic img{width:100%;height:100%;object-fit:cover;display:block;filter:saturate(0.92) brightness(0.94)}
+.hero-gradient{position:absolute;inset:0;background:linear-gradient(180deg,rgba(20,17,14,0.55) 0%,rgba(20,17,14,0.35) 32%,rgba(20,17,14,0.72) 78%,rgba(20,17,14,0.94) 100%)}
+.hero-frame{position:absolute;inset:22px;border:1px solid rgba(240,234,216,0.28);pointer-events:none;z-index:2}
+.hero-content{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:56px;z-index:3}
+.hero-eyebrow{font-size:10px;text-transform:uppercase;letter-spacing:.32em;color:var(--gold);margin-bottom:22px;font-weight:600}
+.hero-title{font-family:var(--serif);font-size:clamp(42px,6vw,84px);font-weight:400;line-height:1.02;color:#F5F1E8;margin-bottom:20px;letter-spacing:.01em}
+.hero-title em{font-style:italic;color:var(--gold-bright)}
+.hero-ornament{display:flex;align-items:center;gap:16px;color:rgba(240,234,216,0.65);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.26em;margin-bottom:26px}
+.hero-ornament::before,.hero-ornament::after{content:'';width:56px;height:1px;background:rgba(240,234,216,0.4)}
+.hero-sub{font-size:14px;color:rgba(240,234,216,0.72);margin-bottom:34px;max-width:500px;line-height:1.8}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.hero-btn{padding:13px 30px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;border-radius:var(--radius);cursor:pointer;font-family:var(--sans);transition:all .22s var(--ease);text-decoration:none;border:1px solid transparent}
+.hero-btn-light{background:var(--ivory);color:var(--ink)}
 .hero-btn-light:hover{background:#EDE8DF}
-.hero-btn-outline{background:transparent;color:#F3EFE8;border:0.5px solid rgba(240,234,216,0.45)}
-.hero-btn-outline:hover{background:rgba(240,234,216,0.08);border-color:rgba(240,234,216,0.75)}
-.hero-caption{position:absolute;bottom:22px;right:32px;font-size:11px;color:rgba(240,234,216,0.4);text-align:right;max-width:260px;line-height:1.5}
-.hero-caption strong{display:block;font-family:'Cormorant Garamond',Georgia,serif;font-size:14px;font-weight:400;color:rgba(240,234,216,0.7)}
+.hero-btn-outline{background:transparent;color:#F3EFE8;border-color:rgba(240,234,216,0.5)}
+.hero-btn-outline:hover{background:rgba(240,234,216,0.1);border-color:rgba(240,234,216,0.85)}
+.hero-caption{position:absolute;bottom:34px;right:44px;font-size:10px;color:rgba(240,234,216,0.45);text-align:right;max-width:260px;line-height:1.6;z-index:3;letter-spacing:.04em}
+.hero-caption strong{display:block;font-family:var(--serif);font-size:15px;font-weight:400;font-style:italic;color:rgba(240,234,216,0.78);margin-bottom:2px}
 
-/* COLLECTION BAR */
-.coll-bar{background:#FAF8F4;border-bottom:0.5px solid rgba(26,23,20,0.1);padding:12px 24px;display:flex;align-items:center;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+/* SEARCH SECTION (AI + artist) */
+.search-sec{max-width:720px;margin:0 auto;padding:48px 20px 8px}
+.search-head{text-align:center;margin-bottom:22px}
+.search-head .eyebrow{margin-bottom:10px;display:block}
+.search-head p{font-family:var(--serif);font-size:22px;font-weight:400;font-style:italic;color:var(--ink-soft)}
+.search-row{display:flex;gap:10px;margin-bottom:12px}
+.search-input{flex:1;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);padding:13px 16px;color:var(--ink);font-size:13px;font-family:var(--sans);outline:none;transition:border-color .2s var(--ease),box-shadow .2s var(--ease)}
+.search-input::placeholder{color:var(--muted-solid)}
+.search-input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(156,124,56,0.12)}
+.search-submit{border:none;padding:13px 24px;border-radius:var(--radius);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;white-space:nowrap;font-family:var(--sans);transition:background .2s var(--ease),opacity .2s}
+.search-submit--gold{background:var(--gold);color:var(--ivory)}
+.search-submit--gold:hover{background:var(--gold-bright)}
+.search-submit--ink{background:var(--ink);color:var(--ivory)}
+.search-submit--ink:hover{background:var(--charcoal-2)}
+.search-submit:disabled{opacity:.55;cursor:default}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:10px}
+.taste-chip{padding:5px 14px;border-radius:var(--radius);font-size:11px;letter-spacing:.04em;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-family:var(--sans);transition:all .2s var(--ease)}
+.taste-chip:hover{border-color:var(--gold);color:var(--gold);background:rgba(156,124,56,0.05)}
+.ai-note{margin-top:14px;padding:12px 16px;background:var(--parchment);border-radius:var(--radius);border:1px solid var(--line-soft);border-left:2px solid var(--gold);font-size:12px;color:var(--ink-soft);line-height:1.6}
+.ai-note b{color:var(--gold);font-weight:600;text-transform:uppercase;letter-spacing:.1em;font-size:10px}
+
+/* COLLECTION BAR — uniform classical chips */
+.coll-bar{background:var(--ivory);border-top:1px solid var(--line-soft);border-bottom:1px solid var(--line);padding:16px 28px;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .coll-bar::-webkit-scrollbar{display:none}
-.coll-chip{padding:7px 15px;margin-right:8px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--c,#8A8178);cursor:pointer;background:#fff;border:1.5px solid var(--c,#ccc);border-radius:20px;white-space:nowrap;transition:all .15s;font-family:'DM Sans',sans-serif;flex-shrink:0}
-.coll-chip:hover{background:var(--c,#B8942A);color:#fff}
-.coll-chip.active{background:var(--c,#B8942A);color:#fff;box-shadow:0 3px 12px rgba(0,0,0,0.14)}
-.coll-chip:nth-child(8n+1){--c:#B8942A}
-.coll-chip:nth-child(8n+2){--c:#2E86C1}
-.coll-chip:nth-child(8n+3){--c:#C0392B}
-.coll-chip:nth-child(8n+4){--c:#117A65}
-.coll-chip:nth-child(8n+5){--c:#8E44AD}
-.coll-chip:nth-child(8n+6){--c:#16A085}
-.coll-chip:nth-child(8n+7){--c:#CA6F1E}
-.coll-chip:nth-child(8n+8){--c:#1E8449}
+.coll-chip{padding:8px 18px;font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft);cursor:pointer;background:transparent;border:1px solid var(--line);border-radius:var(--radius);white-space:nowrap;transition:all .2s var(--ease);font-family:var(--sans);flex-shrink:0}
+.coll-chip:hover{border-color:var(--gold);color:var(--gold)}
+.coll-chip.active{background:var(--ink);color:var(--ivory);border-color:var(--ink)}
 
 /* MUSEUM BAR */
-.museum-bar{background:#F5F2ED;border-bottom:0.5px solid rgba(26,23,20,0.07);padding:0 32px;display:flex;align-items:stretch;overflow-x:auto;scrollbar-width:none;gap:0}
+.museum-bar{background:var(--parchment);border-bottom:1px solid var(--line-soft);padding:0 36px;display:flex;align-items:stretch;justify-content:center;overflow-x:auto;scrollbar-width:none;gap:0}
 .museum-bar::-webkit-scrollbar{display:none}
-.museum-chip{padding:10px 14px;font-size:11px;color:#6A6058;cursor:pointer;background:none;border:none;white-space:nowrap;font-family:'DM Sans',sans-serif;flex-shrink:0;border-bottom:1.5px solid transparent;transition:color .15s,border-color .15s}
-.museum-chip:hover{color:#1A1714}
-.museum-chip.active{color:#1A1714;border-bottom-color:#B8942A;font-weight:500}
+.museum-chip{padding:12px 16px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted-solid);cursor:pointer;background:none;border:none;white-space:nowrap;font-family:var(--sans);flex-shrink:0;border-bottom:2px solid transparent;transition:color .2s var(--ease),border-color .2s var(--ease)}
+.museum-chip:hover{color:var(--ink)}
+.museum-chip.active{color:var(--ink);border-bottom-color:var(--gold);font-weight:600}
 
 /* GALLERY HEADER */
-.gallery-header{padding:32px 32px 0;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:10px}
-.gallery-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:28px;font-weight:300;letter-spacing:.01em}
-.gallery-title span{color:#B8942A}
-.gallery-meta{font-size:12px;color:#8A8178}
-.btn-shuffle{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:4px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid rgba(26,23,20,0.2);color:#1A1714;background:transparent;font-family:'DM Sans',sans-serif;transition:all .15s}
-.btn-shuffle:hover{background:rgba(26,23,20,0.06)}
-.btn-shuffle.active{background:#1A1714;color:#FAF8F4;border-color:#1A1714}
+.gallery-header{max-width:1360px;margin:0 auto;padding:44px 36px 0;display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.gallery-title{font-family:var(--serif);font-size:34px;font-weight:400;letter-spacing:.01em}
+.gallery-title span{color:var(--gold);font-style:italic;font-size:.7em}
+.gallery-meta{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-solid)}
+.btn-shuffle{display:inline-flex;align-items:center;gap:8px;padding:9px 16px;border-radius:var(--radius);font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;border:1px solid var(--line);color:var(--ink);background:transparent;font-family:var(--sans);transition:all .2s var(--ease)}
+.btn-shuffle:hover{border-color:var(--ink)}
+.btn-shuffle.active{background:var(--ink);color:var(--ivory);border-color:var(--ink)}
 
-/* GALLERY GRID */
-.gallery-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;padding:24px 32px 64px}
-.gallery-card{cursor:pointer;border-radius:8px;overflow:hidden;background:#EDE8DF;box-shadow:0 1px 4px rgba(26,23,20,0.08);transition:box-shadow .22s,transform .22s;display:flex;flex-direction:column}
-.gallery-card:hover{box-shadow:0 12px 40px rgba(26,23,20,0.18);transform:translateY(-3px)}
-.card-img-wrap{position:relative;overflow:hidden;background:#D4CEC3;aspect-ratio:3/4;flex-shrink:0}
-.card-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .4s ease}
-.gallery-card:hover .card-img-wrap img{transform:scale(1.05)}
-.card-hover{position:absolute;inset:0;background:linear-gradient(transparent 50%,rgba(26,23,20,0.75));opacity:0;transition:opacity .22s;display:flex;align-items:flex-end;padding:12px}
+/* GALLERY GRID — framed prints */
+.gallery-grid{max-width:1360px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:28px;padding:28px 36px 72px}
+.gallery-card{cursor:pointer;border-radius:0;overflow:hidden;background:var(--paper);border:1px solid var(--line);box-shadow:0 1px 2px rgba(26,23,20,0.04);transition:box-shadow .3s var(--ease),transform .3s var(--ease),border-color .3s var(--ease);display:flex;flex-direction:column}
+.gallery-card:hover{box-shadow:0 16px 44px rgba(26,23,20,0.16);transform:translateY(-4px);border-color:var(--line-gold)}
+.card-img-wrap{position:relative;overflow:hidden;background:var(--cream-dk);aspect-ratio:3/4;flex-shrink:0;border-bottom:1px solid var(--line)}
+.card-img-wrap img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s var(--ease)}
+.gallery-card:hover .card-img-wrap img{transform:scale(1.045)}
+.card-hover{position:absolute;inset:0;background:linear-gradient(transparent 45%,rgba(20,17,14,0.72));opacity:0;transition:opacity .3s var(--ease);display:flex;align-items:flex-end;padding:14px}
 .gallery-card:hover .card-hover{opacity:1}
-.card-hover-label{font-size:11px;font-weight:500;color:#FAF8F4;letter-spacing:.05em}
-.card-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:48px;color:#B8942A}
-.card-body{padding:12px 14px 14px;background:#FAF8F4;flex:1;display:flex;flex-direction:column}
-.card-museum{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#B8942A;margin-bottom:4px;font-weight:500}
-.card-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:15px;font-weight:400;line-height:1.3;margin-bottom:3px;color:#1A1714;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1}
-.card-artist{font-size:11px;color:#8A8178;margin-bottom:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card-foot{display:flex;align-items:center;justify-content:space-between}
-.card-price{font-size:11px;font-weight:500;color:#4A4540}
-.card-badge{font-size:9px;padding:2px 7px;border-radius:10px;background:#DCFCE7;color:#166534;font-weight:500;letter-spacing:.04em;white-space:nowrap}
+.card-hover-label{font-size:10px;font-weight:600;color:var(--ivory);letter-spacing:.16em;text-transform:uppercase}
+.card-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:38px;font-style:italic;color:var(--gold);opacity:.6}
+.card-body{padding:15px 16px 16px;background:var(--paper);flex:1;display:flex;flex-direction:column}
+.card-museum{font-size:8.5px;text-transform:uppercase;letter-spacing:.2em;color:var(--gold);margin-bottom:6px;font-weight:600}
+.card-title{font-family:var(--serif);font-size:17px;font-weight:500;line-height:1.25;margin-bottom:4px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;flex:1}
+.card-artist{font-size:11px;font-style:italic;color:var(--muted-solid);margin-bottom:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-foot{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--line-soft)}
+.card-price{font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:var(--ink-soft)}
+.card-badge{font-size:8.5px;padding:3px 9px;border-radius:var(--radius);background:transparent;border:1px solid var(--line-gold);color:var(--gold);font-weight:600;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
 
 /* SKELETON */
-.skeleton{animation:pulse 1.5s ease-in-out infinite}
-.skeleton-card{border-radius:8px;overflow:hidden;background:#EDE8DF}
-.skeleton-img{aspect-ratio:3/4;background:#E0DAD0}
-.skeleton-body{padding:12px 14px 14px}
-.skeleton-line{height:10px;background:#D4CEC3;border-radius:3px;margin-bottom:8px}
+.skeleton{animation:pulse 1.6s ease-in-out infinite}
+.skeleton-card{border:1px solid var(--line);overflow:hidden;background:var(--paper)}
+.skeleton-img{aspect-ratio:3/4;background:var(--cream-dk)}
+.skeleton-body{padding:15px 16px 16px}
+.skeleton-line{height:10px;background:var(--cream-dk);border-radius:2px;margin-bottom:9px}
 @keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
 
 /* LOAD MORE / EMPTY */
-.load-more{text-align:center;padding:0 0 64px}
-.empty-state{padding:96px 32px;text-align:center;color:#8A8178}
-.empty-icon{font-size:52px;margin-bottom:16px}
-.empty-text{font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:300;margin-bottom:20px}
+.load-more{text-align:center;padding:0 0 72px}
+.empty-state{padding:110px 32px;text-align:center;color:var(--muted-solid)}
+.empty-icon{font-family:var(--serif);font-size:44px;font-style:italic;color:var(--gold);opacity:.5;margin-bottom:14px}
+.empty-text{font-family:var(--serif);font-size:26px;font-weight:400;font-style:italic;margin-bottom:22px;color:var(--ink-soft)}
 
 /* MODAL */
-.modal-bg{position:fixed;inset:0;background:rgba(26,23,20,0.72);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
-.modal{background:#FAF8F4;border-radius:12px;max-width:880px;width:100%;max-height:92vh;overflow:hidden;position:relative;box-shadow:0 32px 80px rgba(26,23,20,0.35)}
+.modal-bg{position:fixed;inset:0;background:rgba(20,17,14,0.78);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+.modal{background:var(--ivory);border-radius:0;max-width:900px;width:100%;max-height:92vh;overflow:hidden;position:relative;box-shadow:0 40px 90px rgba(20,17,14,0.45);border:1px solid var(--gold)}
 .modal-layout{display:grid;grid-template-columns:1fr 1fr;max-height:92vh;overflow-y:auto}
-.modal-img-side{background:#2C2318;display:flex;align-items:center;justify-content:center;min-height:400px;position:sticky;top:0;max-height:92vh}
-.modal-img-side img{width:100%;height:100%;object-fit:contain;max-height:92vh}
-.modal-img-ph{font-size:72px;color:#B8942A}
-.modal-close{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:rgba(26,23,20,0.55);border:none;color:#FAF8F4;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:background .15s;line-height:1}
-.modal-close:hover{background:rgba(26,23,20,0.85)}
-.modal-detail{padding:28px 24px 24px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
-.modal-museum{font-size:9px;text-transform:uppercase;letter-spacing:.18em;color:#B8942A;font-weight:500}
-.modal-title{font-family:'Cormorant Garamond',Georgia,serif;font-size:24px;font-weight:300;line-height:1.1}
-.modal-artist{font-size:13px;color:#4A4540}
-.divider{height:0.5px;background:rgba(26,23,20,0.1);flex-shrink:0}
-.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.meta-item label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#8A8178;display:block;margin-bottom:3px}
-.meta-item span{font-size:13px;font-weight:500;color:#1A1714}
-.modal-bio{font-size:12px;color:#4A4540;line-height:1.78}
-.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.prod-item{background:#2C2318;border:0.5px solid #3A3028;border-radius:6px;padding:10px 8px;text-align:center;cursor:pointer;transition:all .15s;color:#F0EAD8}
-.prod-item:hover{background:#B8942A;color:#1A1714}
-.prod-emoji{font-size:20px;margin-bottom:4px}
-.prod-name{font-size:11px;font-weight:500;margin-bottom:2px;font-family:'DM Sans',sans-serif}
-.prod-price{font-size:10px;opacity:.7;font-family:'DM Sans',sans-serif}
-.modal-cta{display:flex;flex-direction:column;gap:8px;margin-top:auto}
-.cta-btn{display:block;text-align:center;padding:11px;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;border:none;text-decoration:none}
-.cta-primary{background:#1A1714;color:#FAF8F4}
-.cta-primary:hover{background:#2C2318}
-.cta-secondary{background:transparent;color:#1A1714;border:0.5px solid rgba(26,23,20,0.22)}
-.cta-secondary:hover{background:rgba(26,23,20,0.05)}
+.modal-img-side{background:var(--charcoal);display:flex;align-items:center;justify-content:center;min-height:400px;position:sticky;top:0;max-height:92vh;padding:20px}
+.modal-img-side img{width:100%;height:100%;object-fit:contain;max-height:calc(92vh - 40px)}
+.modal-img-ph{font-family:var(--serif);font-size:60px;font-style:italic;color:var(--gold);opacity:.6}
+.modal-close{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:50%;background:rgba(20,17,14,0.6);border:1px solid rgba(240,234,216,0.25);color:var(--ivory);font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:10;transition:background .2s var(--ease);line-height:1}
+.modal-close:hover{background:rgba(20,17,14,0.9)}
+.modal-detail{padding:34px 30px 30px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+.modal-museum{font-size:9px;text-transform:uppercase;letter-spacing:.24em;color:var(--gold);font-weight:600}
+.modal-title{font-family:var(--serif);font-size:30px;font-weight:500;line-height:1.08}
+.modal-artist{font-size:14px;font-style:italic;color:var(--ink-soft)}
+.divider{height:1px;background:var(--line);flex-shrink:0}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.meta-item label{font-size:9px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted-solid);display:block;margin-bottom:4px}
+.meta-item span{font-size:13px;font-weight:500;color:var(--ink)}
+.modal-bio{font-size:13px;color:var(--ink-soft);line-height:1.85;font-family:var(--serif)}
+.prod-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.prod-item{background:transparent;border:1px solid var(--line);border-radius:var(--radius);padding:12px 10px;text-align:center;cursor:pointer;transition:all .2s var(--ease);color:var(--ink)}
+.prod-item:hover{background:var(--ink);color:var(--ivory);border-color:var(--ink)}
+.prod-name{font-size:12px;font-weight:500;margin-bottom:3px;font-family:var(--serif)}
+.prod-price{font-size:10px;letter-spacing:.06em;opacity:.7;font-family:var(--sans);text-transform:uppercase}
+.modal-cta{display:flex;flex-direction:column;gap:10px;margin-top:auto}
+.cta-btn{display:block;text-align:center;padding:13px;border-radius:var(--radius);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;font-family:var(--sans);transition:all .2s var(--ease);border:1px solid transparent;text-decoration:none}
+.cta-primary{background:var(--ink);color:var(--ivory)}
+.cta-primary:hover{background:var(--charcoal-2)}
+.cta-secondary{background:transparent;color:var(--ink);border-color:var(--line)}
+.cta-secondary:hover{background:rgba(26,23,20,0.04);border-color:var(--ink)}
 
 /* FOOTER */
-footer{background:#2C2318;color:#B0A898;padding:52px 32px 28px}
-.footer-inner{max-width:1280px;margin:0 auto}
-.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:48px;margin-bottom:40px}
-.footer-logo{font-family:'Cormorant Garamond',Georgia,serif;font-size:22px;color:#F3EFE8;margin-bottom:10px;font-weight:300}
-.footer-logo span{color:#B8942A}
-.footer-desc{font-size:13px;line-height:1.75;color:#6A6058}
-.footer-col-title{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#6A6058;margin-bottom:14px}
-.footer-link{display:block;font-size:13px;color:#8A8178;text-decoration:none;margin-bottom:7px;cursor:pointer;background:none;border:none;font-family:'DM Sans',sans-serif;padding:0;text-align:left;transition:color .15s}
+footer{background:var(--charcoal);color:#B0A898;padding:64px 36px 32px;border-top:1px solid var(--gold)}
+.footer-inner{max-width:1360px;margin:0 auto}
+.footer-grid{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:56px;margin-bottom:48px}
+.footer-logo{font-family:var(--serif);font-size:24px;color:#F3EFE8;margin-bottom:12px;font-weight:500}
+.footer-logo span{color:var(--gold);font-style:italic}
+.footer-desc{font-size:13px;line-height:1.85;color:#8A8178;max-width:340px}
+.footer-col-title{font-size:9px;text-transform:uppercase;letter-spacing:.2em;color:var(--gold);margin-bottom:16px;font-weight:600}
+.footer-link{display:block;font-size:13px;color:#A69C8E;text-decoration:none;margin-bottom:9px;cursor:pointer;background:none;border:none;font-family:var(--sans);padding:0;text-align:left;transition:color .2s var(--ease)}
 .footer-link:hover{color:#F3EFE8}
-.footer-bottom{border-top:0.5px solid rgba(240,234,214,0.08);padding-top:16px;font-size:12px;color:#6A6058}
+.footer-bottom{border-top:1px solid rgba(240,234,214,0.1);padding-top:20px;font-size:11px;letter-spacing:.04em;color:#6A6058}
 
 /* RESPONSIVE */
 @media(max-width:1200px){.gallery-grid{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;gap:32px}}
+@media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;gap:36px}}
 @media(max-width:800px){
-  .nav{padding:0 16px;gap:10px}
-  .hero{height:440px}
-  .hero-content{padding:32px 24px 40px}
-  .coll-bar,.museum-bar{padding-left:16px;padding-right:16px}
-  .gallery-header{padding:24px 16px 0}
-  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:14px;padding:20px 16px 48px}
+  .nav{padding:0 16px;gap:12px}
+  .hero{height:480px}
+  .hero-content{padding:32px 24px}
+  .hero-frame{inset:14px}
+  .coll-bar,.museum-bar{padding-left:16px;padding-right:16px;justify-content:flex-start}
+  .gallery-header{padding:32px 16px 0}
+  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:16px;padding:22px 16px 52px}
   .modal-layout{grid-template-columns:1fr}
-  .modal-img-side{position:relative;min-height:260px;max-height:300px}
-  .footer-grid{grid-template-columns:1fr;gap:28px}
+  .modal-img-side{position:relative;min-height:260px;max-height:320px}
+  .footer-grid{grid-template-columns:1fr;gap:32px}
 }
 @media(max-width:500px){
   .nav-count,.nav-link{display:none}
-  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:10px;padding:16px 12px 40px}
-  .order-banner{padding:12px 14px;gap:10px}
+  .gallery-grid{grid-template-columns:repeat(2,1fr);gap:12px;padding:16px 12px 44px}
+  .gallery-title{font-size:27px}
+  .order-banner{padding:12px 16px;gap:12px}
   .order-banner-actions{flex-wrap:wrap}
-  .hero-content{padding:24px 16px 32px}
+  .hero-content{padding:24px 18px}
   .hero-caption{display:none}
 }
 `;
@@ -568,7 +584,7 @@ export default function Home() {
         <div className="order-banner">
           {selected.thumb_url && <img src={selected.thumb_url} alt={selected.title} className="order-banner-img" onError={e => { e.target.style.display = 'none'; }} />}
           <div className="order-banner-info">
-            <div className="order-banner-label">Ordering as {selectedProduct.emoji} {selectedProduct.name}</div>
+            <div className="order-banner-label">Ordering as {selectedProduct.name}</div>
             <div className="order-banner-work">{selected.title || 'Selected artwork'}</div>
             <div className="order-banner-prod">
               {selectedSize && <span>{selectedSize} · </span>}
@@ -585,7 +601,7 @@ export default function Home() {
             {gate.shopUnlocked ? (
               <button className="order-confirm" onClick={() => { setOrderResult(null); setCheckoutOpen(true); }}>Confirm Order →</button>
             ) : (
-              <button className="order-confirm" onClick={gate.openPin}>{gate.authenticated ? '🔒 Upgrade to order' : '🔒 Sign in to order'}</button>
+              <button className="order-confirm" onClick={gate.openPin}>{gate.authenticated ? 'Upgrade to order' : 'Sign in to order'}</button>
             )}
           </div>
           <button className="order-dismiss" onClick={() => setActiveTab(null)} title="Dismiss">×</button>
@@ -604,77 +620,73 @@ export default function Home() {
             ))}
           </div>
           <div className="hero-gradient" />
+          <div className="hero-frame" />
           <div className="hero-content">
-            <p className="hero-eyebrow">{fmt(hero.source)}</p>
-            <h1 className="hero-title">The world's art,<br /><em>in your home</em></h1>
+            <p className="hero-eyebrow">Public Art · Collections</p>
+            <h1 className="hero-title">The World's Art,<br /><em>in Your Home</em></h1>
+            <div className="hero-ornament">
+              {total ? `${Number(total).toLocaleString()} works · est. collection` : 'est. collection'}
+            </div>
             <p className="hero-sub">
-              {total ? `${Number(total).toLocaleString()}+ museum masterpieces` : 'Museum masterpieces'} — available as fine art prints, canvas wraps, and gifts.
+              Museum masterpieces from the world's great collections — each in the public domain, available as archival fine-art prints, canvas, and gifts.
             </p>
             <div className="hero-actions">
-              <a href="#gallery" className="hero-btn hero-btn-light">Browse Collection</a>
+              <a href="#gallery" className="hero-btn hero-btn-light">Browse the Collection</a>
               <button className="hero-btn hero-btn-outline" onClick={() => setModal(hero)}>View This Work</button>
             </div>
           </div>
           {hero.title && (
             <div className="hero-caption">
-              <strong>{hero.title}</strong>{hero.artist || ''}
+              <strong>{hero.title}</strong>{[hero.artist, fmt(hero.source)].filter(Boolean).join(' · ')}
             </div>
           )}
         </div>
       )}
 
-      {/* AI SEARCH — between the hero and the genre grid */}
-      <div style={{ padding: '24px 16px 0', maxWidth: 700, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 12 }}>
-          <div style={{ fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 6 }}>✨ AI-powered search</div>
-          <p style={{ fontSize: 13, color: '#8A8178' }}>Search by mood, color, emotion, era, style or any description</p>
+      {/* SEARCH — curator's search (AI) + search by artist */}
+      <div className="search-sec">
+        <div className="search-head">
+          <span className="eyebrow">The Curator's Search</span>
+          <p>Search by mood, colour, era, or feeling</p>
         </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <div className="search-row">
           <input
+            className="search-input"
             value={aiQuery}
             onChange={e => setAiQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && doAISearch(aiQuery)}
-            placeholder="Try: blue melancholy · powerful women · Dutch golden age · war and suffering..."
-            style={{ flex: 1, background: '#2C2318', border: '0.5px solid #3A3028', borderRadius: 4, padding: '12px 16px', color: '#F0EAD8', fontSize: 13, fontFamily: 'system-ui' }}
+            placeholder="Try: blue melancholy · powerful women · Dutch golden age · war and suffering…"
           />
-          <button onClick={() => doAISearch(aiQuery)} disabled={aiSearching}
-            style={{ background: '#B8942A', color: '#1A1714', border: 'none', padding: '12px 20px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            {aiSearching ? '🤔...' : '✨ Search'}
+          <button className="search-submit search-submit--gold" onClick={() => doAISearch(aiQuery)} disabled={aiSearching}>
+            {aiSearching ? 'Searching…' : 'Search'}
           </button>
         </div>
         {/* SEARCH BY ARTIST */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+        <div className="search-row">
           <input
+            className="search-input"
             value={artistQuery}
             onChange={e => setArtistQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && doArtistSearch(artistQuery)}
-            placeholder="🎨 Search by artist — Rembrandt, Monet, Hokusai, Van Gogh…"
-            style={{ flex: 1, background: '#2C2318', border: '0.5px solid #3A3028', borderRadius: 4, padding: '12px 16px', color: '#F0EAD8', fontSize: 13, fontFamily: 'system-ui' }}
+            placeholder="Search by artist — Rembrandt, Monet, Hokusai, Van Gogh…"
           />
-          <button onClick={() => doArtistSearch(artistQuery)} disabled={aiSearching}
-            style={{ background: '#1A1714', color: '#F0EAD8', border: '0.5px solid #3A3028', padding: '12px 20px', borderRadius: 4, fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-            🎨 By Artist
+          <button className="search-submit search-submit--ink" onClick={() => doArtistSearch(artistQuery)} disabled={aiSearching}>
+            By Artist
           </button>
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center', marginBottom: 10 }}>
+        <div className="chip-row">
           {['Rembrandt', 'Monet', 'Van Gogh', 'Hokusai', 'Vermeer', 'Degas', 'Turner', 'Klimt', 'Cézanne', 'Goya'].map(a => (
-            <button key={a} onClick={() => { setArtistQuery(a); doArtistSearch(a); }}
-              style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: '0.5px solid #3A3028', background: 'transparent', color: '#8A8178', fontFamily: 'system-ui' }}>
-              🎨 {a}
-            </button>
+            <button key={a} className="taste-chip" onClick={() => { setArtistQuery(a); doArtistSearch(a); }}>{a}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+        <div className="chip-row">
           {['blue melancholy', 'powerful women', 'Dutch golden age', 'war and suffering', 'Japanese nature', 'impressionist light', 'ancient mythology', 'romantic landscapes'].map(s => (
-            <button key={s} onClick={() => { setAiQuery(s); doAISearch(s); }}
-              style={{ padding: '4px 12px', borderRadius: 20, fontSize: 11, cursor: 'pointer', border: '0.5px solid #3A3028', background: 'transparent', color: '#8A8178', fontFamily: 'system-ui' }}>
-              {s}
-            </button>
+            <button key={s} className="taste-chip" onClick={() => { setAiQuery(s); doAISearch(s); }}>{s}</button>
           ))}
         </div>
         {aiInfo?.description && (
-          <div style={{ marginTop: 12, padding: '10px 14px', background: '#F5F0E8', borderRadius: 6, border: '0.5px solid rgba(26,23,20,0.12)', fontSize: 12, color: '#4A4540', lineHeight: 1.5 }}>
-            <span style={{ color: '#B8942A', fontWeight: 600 }}>✨ AI:</span> {aiInfo.description}{aiInfo.mood ? ` · Mood: ${aiInfo.mood}` : ''}
+          <div className="ai-note">
+            <b>Curator</b>&nbsp;&nbsp;{aiInfo.description}{aiInfo.mood ? ` · Mood: ${aiInfo.mood}` : ''}
           </div>
         )}
       </div>
@@ -719,7 +731,7 @@ export default function Home() {
             className={`btn-shuffle${order === 'random' ? ' active' : ''}`}
             onClick={handleShuffle}
           >
-            ↺ {order === 'random' ? 'Shuffled' : 'Shuffle'}
+            {order === 'random' ? 'Shuffled' : 'Shuffle'}
           </button>
         </div>
       </div>
@@ -740,8 +752,8 @@ export default function Home() {
         </div>
       ) : works.length === 0 ? (
         <div className="empty-state">
-          <div className="empty-icon">🔍</div>
-          <p className="empty-text">No artworks found</p>
+          <div className="empty-icon">—</div>
+          <p className="empty-text">No works found</p>
           <button className="btn" onClick={handleClear}>Clear filters</button>
         </div>
       ) : (
@@ -759,7 +771,7 @@ export default function Home() {
                     onError={() => setImgErrors(e => ({ ...e, [w.id]: true }))}
                   />
                 ) : (
-                  <div className="card-placeholder">🖼️</div>
+                  <div className="card-placeholder">—</div>
                 )}
                 <div className="card-hover">
                   <span className="card-hover-label">View &amp; Order →</span>
@@ -851,7 +863,7 @@ export default function Home() {
                     onError={e => { if (modal.thumb_url && e.target.src !== modal.thumb_url) e.target.src = modal.thumb_url; }}
                   />
                 ) : (
-                  <div className="modal-img-ph">🖼️</div>
+                  <div className="modal-img-ph">—</div>
                 )}
               </div>
               <div className="modal-detail">
@@ -883,7 +895,6 @@ export default function Home() {
                           className="prod-item"
                           onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}&print=${encodeURIComponent(modal.print_url || modal.full_url || modal.thumb_url || '')}`}
                         >
-                          <div className="prod-emoji">{p.emoji}</div>
                           <div className="prod-name">{p.name}</div>
                           <div className="prod-price">{p.price}</div>
                         </div>
