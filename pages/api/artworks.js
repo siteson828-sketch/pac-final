@@ -77,7 +77,7 @@ export default async function handler(req, res) {
     } else if (source) {
       works = rand
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY RANDOM() LIMIT ${lim}`
-        : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+        : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(coalesce(artist,'')) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     } else {
       works = rand
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' ORDER BY RANDOM() LIMIT ${lim}`

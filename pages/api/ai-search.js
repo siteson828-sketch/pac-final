@@ -196,8 +196,9 @@ export default async function handler(req, res) {
     // STRICT pass: mandatory word-boundary gate on must_include (title/medium),
     // exclude filter applied, ranked by the weighted search-term score.
     const strict = ((mustRe || artistGated) && reqMode !== 'broad') ? await sql`
+      SELECT * FROM (
       SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
-             iiif_info, iiif_manifest, detail_url, rights_label, bio,
+             iiif_info, iiif_manifest, detail_url, rights_label, bio, synced_at,
              ( (CASE WHEN title ILIKE ${l0} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l0} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l0} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l0} THEN 1 ELSE 0 END)
              + (CASE WHEN title ILIKE ${l1} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l1} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l1} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l1} THEN 1 ELSE 0 END)
              + (CASE WHEN title ILIKE ${l2} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l2} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l2} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l2} THEN 1 ELSE 0 END)
@@ -224,7 +225,8 @@ export default async function handler(req, res) {
         AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
         AND source NOT ILIKE '%Internet Archive%'
         AND source ~* ${srcGate}
-      ORDER BY score DESC, synced_at DESC
+      ) s
+      ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(coalesce(artist,'')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
       LIMIT ${PAGE} OFFSET ${off}` : [];
 
     let works = strict;
@@ -239,8 +241,9 @@ export default async function handler(req, res) {
       broadened = true;
       mode = 'broad';
       const broad = await sql`
+        SELECT * FROM (
         SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
-               iiif_info, iiif_manifest, detail_url, rights_label, bio,
+               iiif_info, iiif_manifest, detail_url, rights_label, bio, synced_at,
                ( (CASE WHEN title ILIKE ${l0} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l0} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l0} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l0} THEN 1 ELSE 0 END)
                + (CASE WHEN title ILIKE ${l1} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l1} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l1} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l1} THEN 1 ELSE 0 END)
                + (CASE WHEN title ILIKE ${l2} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l2} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l2} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l2} THEN 1 ELSE 0 END)
@@ -273,7 +276,8 @@ export default async function handler(req, res) {
              OR title ILIKE ${l5} OR artist ILIKE ${l5} OR medium ILIKE ${l5}
              OR title ILIKE ${l6} OR artist ILIKE ${l6} OR medium ILIKE ${l6}
              OR title ILIKE ${l7} OR artist ILIKE ${l7} OR medium ILIKE ${l7} )
-        ORDER BY score DESC, synced_at DESC
+        ) s
+        ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(coalesce(artist,'')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
         LIMIT ${PAGE} OFFSET ${off}`;
       const seen = new Set(works.map(w => w.id));
       for (const w of broad) if (!seen.has(w.id)) { works.push(w); seen.add(w.id); }
