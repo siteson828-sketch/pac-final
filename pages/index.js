@@ -25,7 +25,7 @@ const COLLECTIONS = [
   { label: 'Photography',   search: 'fine art photography', source: '', ai: true,
     // Tight fit: require a photographic medium/title; drop paintings, prints, etc.
     must: 'photograph,photography,photographic,daguerreotype,ambrotype,albumen,tintype,gelatin silver,cyanotype,collodion,photogravure',
-    exclude: 'painting,oil on,watercolor,engraving,etching,lithograph,woodcut,drawing,sculpture,tapestry,porcelain,ceramic,furniture,fresco,textile' },
+    exclude: 'painting,oil on,watercolor,engraving,etching,lithograph,woodcut,drawing,sculpture,tapestry,porcelain,ceramic,furniture,fresco,textile,correspondence,typescript,holograph,manuscript,document' },
   { label: 'Portraits',     search: 'portrait',            source: '', ai: true },
   { label: 'Landscapes',    search: 'landscape painting',   source: '', ai: true },
   { label: 'American Art',  search: 'american art',         source: '', ai: true },
