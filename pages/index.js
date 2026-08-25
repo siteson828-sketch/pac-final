@@ -17,19 +17,25 @@ import LeadPopup from '../components/LeadPopup';
 const COLLECTIONS = [
   { label: 'All',           search: '',                    source: '' },
   { label: 'Impressionism', search: 'impressionism',       source: '', ai: true },
-  { label: 'Baroque',       search: 'baroque',             source: '', ai: true },
+  { label: 'Baroque',       search: 'baroque art',         source: '', ai: true,
+    artists: 'Caravaggio,Rubens,Rembrandt,Vermeer,Velázquez,Velazquez,Van Dyck,Frans Hals,Poussin,Claude Lorrain,Guido Reni,Guercino,Ribera,Zurbarán,Murillo,Gentileschi,La Tour,Carracci,Domenichino,Jan Steen' },
   { label: 'Renaissance',   search: 'renaissance art',      source: '', ai: true,
     // Tight fit: gate on genuine Renaissance masters (by artist), not loose terms.
     artists: 'Leonardo,Raphael,Michelangelo,Titian,Botticelli,Dürer,Durer,Bellini,Mantegna,Giorgione,del Sarto,Veronese,Tintoretto,Correggio,Bronzino,Ghirlandaio,Fra Angelico,Piero della Francesca,van Eyck,Memling,Holbein,Cranach,Perugino,Carpaccio,Pontormo,Parmigianino,Raffaello' },
-  { label: 'Modern Art',    search: 'modern art',          source: '', ai: true },
+  { label: 'Modern Art',    search: 'modern art',          source: '', ai: true,
+    // Post-impressionist / early-modern masters (the PD-era slice of "modern").
+    artists: 'Cézanne,Cezanne,Van Gogh,Gauguin,Seurat,Signac,Toulouse-Lautrec,Munch,Klimt,Schiele,Matisse,Picasso,Kandinsky,Modigliani,Mondrian,Paul Klee,Kirchner,Bonnard,Vuillard,Redon,Ensor' },
   { label: 'Photography',   search: 'fine art photography', source: '', ai: true,
     // Tight fit: require a photographic medium/title; drop paintings, prints, etc.
     must: 'photograph,photography,photographic,daguerreotype,ambrotype,albumen,tintype,gelatin silver,cyanotype,collodion,photogravure',
     exclude: 'painting,oil on,watercolor,engraving,etching,lithograph,woodcut,drawing,sculpture,tapestry,porcelain,ceramic,furniture,fresco,textile,correspondence,typescript,holograph,manuscript,document' },
   { label: 'Portraits',     search: 'portrait',            source: '', ai: true },
   { label: 'Landscapes',    search: 'landscape painting',   source: '', ai: true },
-  { label: 'American Art',  search: 'american art',         source: '', ai: true },
-  { label: 'Asian Art',     search: 'asian art',            source: '', ai: true },
+  { label: 'American Art',  search: 'american art',         source: '', ai: true,
+    artists: 'Winslow Homer,Sargent,Whistler,Cassatt,Eakins,Hopper,Copley,Peale,Gilbert Stuart,Bierstadt,Frederic Edwin Church,Thomas Cole,Georgia O,Remington,Hassam,William Merritt Chase,Inness,Sully' },
+  { label: 'Asian Art',     search: 'japanese woodblock ukiyo-e', source: '', ai: true,
+    // Genuine Asian art (mostly Japanese ukiyo-e masters), not Western works about Asia.
+    artists: 'Hokusai,Hiroshige,Utamaro,Kuniyoshi,Kunisada,Toyokuni,Yoshitoshi,Sharaku,Harunobu,Kiyonaga,Shunsho,Hasui,Yoshida,Sesshu,Eishi,Koryusai,Kunichika,Chikanobu' },
   { label: 'Still Life',    search: 'still life',           source: '', ai: true },
   { label: 'Mythology',     search: 'mythology',            source: '', ai: true },
 ];
