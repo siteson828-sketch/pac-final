@@ -18,9 +18,14 @@ const COLLECTIONS = [
   { label: 'All',           search: '',                    source: '' },
   { label: 'Impressionism', search: 'impressionism',       source: '', ai: true },
   { label: 'Baroque',       search: 'baroque',             source: '', ai: true },
-  { label: 'Renaissance',   search: 'renaissance',         source: '', ai: true },
+  { label: 'Renaissance',   search: 'renaissance art',      source: '', ai: true,
+    // Tight fit: gate on genuine Renaissance masters (by artist), not loose terms.
+    artists: 'Leonardo,Raphael,Michelangelo,Titian,Botticelli,Dürer,Durer,Bellini,Mantegna,Giorgione,del Sarto,Veronese,Tintoretto,Correggio,Bronzino,Ghirlandaio,Fra Angelico,Piero della Francesca,van Eyck,Memling,Holbein,Cranach,Perugino,Carpaccio,Pontormo,Parmigianino,Raffaello' },
   { label: 'Modern Art',    search: 'modern art',          source: '', ai: true },
-  { label: 'Photography',   search: 'fine art photography', source: '', ai: true },
+  { label: 'Photography',   search: 'fine art photography', source: '', ai: true,
+    // Tight fit: require a photographic medium/title; drop paintings, prints, etc.
+    must: 'photograph,photography,photographic,daguerreotype,ambrotype,albumen,tintype,gelatin silver,cyanotype,collodion,photogravure',
+    exclude: 'painting,oil on,watercolor,engraving,etching,lithograph,woodcut,drawing,sculpture,tapestry,porcelain,ceramic,furniture,fresco,textile' },
   { label: 'Portraits',     search: 'portrait',            source: '', ai: true },
   { label: 'Landscapes',    search: 'landscape painting',   source: '', ai: true },
   { label: 'American Art',  search: 'american art',         source: '', ai: true },
@@ -397,6 +402,7 @@ export default function Home() {
   const [aiMode, setAiMode]             = useState(null); // active AI query string (null when browsing normally)
   const [aiPageMode, setAiPageMode]     = useState(null); // 'strict'|'broad' — echoed to page the same set
   const [aiCurated, setAiCurated]       = useState(false); // curated (fine-art sources only) — for category buttons
+  const [aiExtra, setAiExtra]           = useState('');    // tuned gate params (&must/&exclude/&artists) preserved across load-more
   const [activeTab, setActiveTab]             = useState(null);
   const [selected, setSelected]               = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -461,17 +467,18 @@ export default function Home() {
   // populate the gallery with the results and show what the AI understood.
   // Paginated: `append` fetches the next page (offset = current count) in the same
   // result set (aiPageMode is echoed back so 'broad' movement queries keep paging).
-  const doAISearch = async (q, { append = false, curated = false } = {}) => {
+  const doAISearch = async (q, { append = false, curated = false, extra = '' } = {}) => {
     const query = ((q ?? aiQuery) || '').trim();
     if (!query) return;
     setLoading(true);
     const useCurated = append ? aiCurated : curated;
-    if (!append) { setAiSearching(true); setAiInfo(null); setAiMode(query); setAiCurated(curated); }
+    const useExtra = append ? aiExtra : extra;
+    if (!append) { setAiSearching(true); setAiInfo(null); setAiMode(query); setAiCurated(curated); setAiExtra(extra); }
     try {
       const off = append ? works.length : 0;
       const url = '/api/ai-search?query=' + encodeURIComponent(query) + '&offset=' + off +
         (append && aiPageMode ? '&mode=' + aiPageMode : '') +
-        (useCurated ? '&curated=1' : '');
+        (useCurated ? '&curated=1' : '') + useExtra;
       const d = await fetch(url).then(r => r.json());
       const w = d.works || [];
       // Dedup by id on append so a cross-page overlap never creates duplicate React keys.
@@ -578,7 +585,16 @@ export default function Home() {
     setCollection(coll); setMuseum(''); setAppliedSearch(''); setSearchInput('');
     // Themed chips (ai:true) expand via AI in curated mode (fine-art sources only,
     // so buyers see saleable art — not archival documents or record photos).
-    if (coll.ai) { doAISearch(coll.search || coll.label, { curated: true }); return; }
+    // Some chips carry tuned gate params (must/exclude/artists) for a tighter fit.
+    if (coll.ai) {
+      const extra = [
+        coll.must    ? 'must='    + encodeURIComponent(coll.must)    : '',
+        coll.exclude ? 'exclude=' + encodeURIComponent(coll.exclude) : '',
+        coll.artists ? 'artists=' + encodeURIComponent(coll.artists) : '',
+      ].filter(Boolean).map(s => '&' + s).join('');
+      doAISearch(coll.search || coll.label, { curated: true, extra });
+      return;
+    }
     setAiMode(null);
     load(true, '', '', order, coll, 0);
   };

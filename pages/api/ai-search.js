@@ -169,15 +169,33 @@ export default async function handler(req, res) {
     // Word-boundary alternation regex (Postgres \y) so "city" matches the WORD
     // "city", not "electriCITY"/"capaCITY" — this is the partial-word fix.
     const reEsc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const mustRe = mustTerms.length ? '\\y(' + mustTerms.map(reEsc).join('|') + ')\\y' : null;
-    const exclRe = excludeTerms.length ? '\\y(' + excludeTerms.map(reEsc).join('|') + ')\\y' : '~~no~exclude~~';
+
+    // Curated-category overrides (from tuned COLLECTIONS chips) for a tight fit
+    // where the generic AI expansion is too loose:
+    //   ?must=…     replaces the title/medium gate (e.g. Photography → photo media)
+    //   ?exclude=…  augments the exclude filter (e.g. Photography → drop paintings)
+    //   ?artists=…  gates on the ARTIST instead of title/medium (e.g. Renaissance
+    //               → only genuine Renaissance masters), and disables broadening.
+    const csv = s => [...new Set(String(s || '').split(',').map(t => cleanStr(t, 60).toLowerCase()).filter(t => t && t.length >= 3))].slice(0, 24);
+    const mustOverride = csv(req.query.must);
+    const exclOverride = csv(req.query.exclude);
+    const artistList   = csv(req.query.artists);
+    const hasOverride  = mustOverride.length || exclOverride.length || artistList.length;
+
+    const mustFinal = mustOverride.length ? mustOverride : mustTerms;
+    const exclFinal = exclOverride.length ? [...new Set([...excludeTerms, ...exclOverride])] : excludeTerms;
+    const mustRe = mustFinal.length ? '\\y(' + mustFinal.map(reEsc).join('|') + ')\\y' : null;
+    const exclRe = exclFinal.length ? '\\y(' + exclFinal.map(reEsc).join('|') + ')\\y' : '~~no~exclude~~';
+    const artistGated  = artistList.length > 0;
+    const artistGateRe = artistGated ? '\\y(' + artistList.map(reEsc).join('|') + ')\\y' : '~~no~artist~~';
+    const mustReSafe   = mustRe || '~~no~must~~';
 
     // Weighted relevance: title 10 · artist 8 · medium 5 · bio 1 per term, plus a
     // source bonus lifting fine-art museums and penalizing Digital Commonwealth
     // documents. Image-quality guard: renderable http thumbnails only.
     // STRICT pass: mandatory word-boundary gate on must_include (title/medium),
     // exclude filter applied, ranked by the weighted search-term score.
-    const strict = (mustRe && reqMode !== 'broad') ? await sql`
+    const strict = ((mustRe || artistGated) && reqMode !== 'broad') ? await sql`
       SELECT id, title, artist, date_text, medium, source, thumb_url, full_url,
              iiif_info, iiif_manifest, detail_url, rights_label, bio,
              ( (CASE WHEN title ILIKE ${l0} THEN 10 ELSE 0 END + CASE WHEN artist ILIKE ${l0} THEN 8 ELSE 0 END + CASE WHEN medium ILIKE ${l0} THEN 5 ELSE 0 END + CASE WHEN bio ILIKE ${l0} THEN 1 ELSE 0 END)
@@ -200,7 +218,8 @@ export default async function handler(req, res) {
       WHERE commercial_ok = true
         AND thumb_url IS NOT NULL AND thumb_url != '' AND thumb_url LIKE 'http%'
         AND thumb_url NOT LIKE ${DEAD}
-        AND (title ~* ${mustRe} OR medium ~* ${mustRe})
+        AND ( (${artistGated} AND artist ~* ${artistGateRe})
+           OR (NOT ${artistGated} AND (title ~* ${mustReSafe} OR medium ~* ${mustReSafe})) )
         AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
         AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
         AND source NOT ILIKE '%Internet Archive%'
@@ -216,7 +235,7 @@ export default async function handler(req, res) {
     // from the broad OR-match. This is also the paginated set for such queries:
     // once page 0 broadens, the client sends mode=broad so later pages page the
     // broad set directly.
-    if (reqMode === 'broad' || (off === 0 && works.length < 12)) {
+    if (!hasOverride && (reqMode === 'broad' || (off === 0 && works.length < 12))) {
       broadened = true;
       mode = 'broad';
       const broad = await sql`
