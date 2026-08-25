@@ -3,12 +3,18 @@ import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
 import AuthNav from '../components/AuthNav';
 import LeadPopup from '../components/LeadPopup';
 
+// `ai: true` routes a chip through the AI search (Claude term expansion), because
+// art-movement names ("impressionism", "baroque") almost never appear literally
+// in a work's title/artist/medium — a plain ILIKE returns ~nothing. The AI
+// expands the movement into representative artists/styles and ranks results.
+// The descriptive chips (Photography/Portraits/Landscapes) match literally and
+// stay on the fast direct search.
 const COLLECTIONS = [
   { label: 'All',           search: '',              source: '' },
-  { label: 'Impressionism', search: 'impressionism', source: '' },
-  { label: 'Baroque',       search: 'baroque',       source: '' },
-  { label: 'Renaissance',   search: 'renaissance',   source: '' },
-  { label: 'Modern Art',    search: 'modern',        source: '' },
+  { label: 'Impressionism', search: 'impressionism', source: '', ai: true },
+  { label: 'Baroque',       search: 'baroque',       source: '', ai: true },
+  { label: 'Renaissance',   search: 'renaissance',   source: '', ai: true },
+  { label: 'Modern Art',    search: 'modern art',    source: '', ai: true },
   { label: 'Photography',   search: 'photograph',    source: '' },
   { label: 'Portraits',     search: 'portrait',      source: '' },
   { label: 'Landscapes',    search: 'landscape',     source: '' },
@@ -540,6 +546,8 @@ export default function Home() {
   };
   const handleCollection = coll => {
     setCollection(coll); setMuseum(''); setAppliedSearch(''); setSearchInput('');
+    // Movement chips (ai:true) have no literal metadata to match — expand via AI.
+    if (coll.ai) { doAISearch(coll.search || coll.label); return; }
     load(true, '', '', order, coll, 0);
   };
   const handleMuseum = src => {
