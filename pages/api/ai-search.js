@@ -102,6 +102,14 @@ export default async function handler(req, res) {
   const off = Math.abs(parseInt(req.query.offset) || 0);
   const reqMode = req.query.mode === 'broad' ? 'broad' : null;
   const PAGE = 48;
+  // Curated mode (category buttons): hard-restrict to saleable FINE-ART museum
+  // collections and drop archival/documentary sources (Library of Congress,
+  // Smithsonian archives, Digital Commonwealth, Internet Archive, NYPL, DPLA,
+  // BnF Gallica, Europeana grab-bag) that flood themed searches with blank
+  // documents and obscure record photos. `source ~* '.'` = match-all (no gate)
+  // when curated is off, so free-text search keeps its full reach.
+  const CURATED_SOURCE_RE = 'Metropolitan Museum|Art Institute of Chicago|Cleveland Museum|Rijksmuseum|SMK|Getty|Walters|Minneapolis Institute|Yale University Art|Philadelphia Museum|Museum of Fine Arts|Detroit Institute|Museum of Modern Art|MoMA|Louvre|Orsay|Cluny|Uffizi|Vatican|Brera|Palazzo Pitti|Doria Pamphilj|Capodimonte|Nazionale Romano|Prado|Picasso|Kunsthistorisches|Hermitage|National Palace Museum|Tokyo National|National Gallery|National Galleries|Tate|Smithsonian American Art|Cooper Hewitt|National Museum of Asian Art|Hirshhorn|National Portrait Gallery|Harvard Art|Victoria & Albert|Van Gogh|Mauritshuis|Nelson-Atkins|LACMA|Los Angeles County|Guggenheim|Whitney|Frick|Gardner|Barnes|Norton Simon|Hammer|Ashmolean|Fitzwilliam|Courtauld|Wallace Collection|Dulwich|Nasjonalmuseet|Moderna Museet|National Gallery of Canada|Montreal Museum|Art Gallery of Ontario|Tretyakov|Pushkin|Russian Museum|Städel|Alte Pinakothek|Gemäldegalerie|Belvedere|Albertina|Reina Sof|Stedelijk|Rodin|Centre Pompidou|Boston|Toledo Museum|Kimbell|Blanton';
+  const srcGate = req.query.curated === '1' ? CURATED_SOURCE_RE : '.';
 
   const sql = neon(process.env.DATABASE_URL);
   const DEAD = '%ark.digitalcommonwealth.org%'; // dead DC thumbnail endpoint
@@ -189,6 +197,7 @@ export default async function handler(req, res) {
         AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
         AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
         AND source NOT ILIKE '%Internet Archive%'
+        AND source ~* ${srcGate}
       ORDER BY score DESC, synced_at DESC
       LIMIT ${PAGE} OFFSET ${off}` : [];
 
@@ -226,6 +235,7 @@ export default async function handler(req, res) {
           AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
           AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
           AND source NOT ILIKE '%Internet Archive%'
+          AND source ~* ${srcGate}
           AND ( title ILIKE ${l0} OR artist ILIKE ${l0} OR medium ILIKE ${l0}
              OR title ILIKE ${l1} OR artist ILIKE ${l1} OR medium ILIKE ${l1}
              OR title ILIKE ${l2} OR artist ILIKE ${l2} OR medium ILIKE ${l2}

@@ -391,6 +391,7 @@ export default function Home() {
   const [aiInfo, setAiInfo]             = useState(null); // { description, mood } from AI search
   const [aiMode, setAiMode]             = useState(null); // active AI query string (null when browsing normally)
   const [aiPageMode, setAiPageMode]     = useState(null); // 'strict'|'broad' — echoed to page the same set
+  const [aiCurated, setAiCurated]       = useState(false); // curated (fine-art sources only) — for category buttons
   const [activeTab, setActiveTab]             = useState(null);
   const [selected, setSelected]               = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -455,15 +456,17 @@ export default function Home() {
   // populate the gallery with the results and show what the AI understood.
   // Paginated: `append` fetches the next page (offset = current count) in the same
   // result set (aiPageMode is echoed back so 'broad' movement queries keep paging).
-  const doAISearch = async (q, { append = false } = {}) => {
+  const doAISearch = async (q, { append = false, curated = false } = {}) => {
     const query = ((q ?? aiQuery) || '').trim();
     if (!query) return;
     setLoading(true);
-    if (!append) { setAiSearching(true); setAiInfo(null); setAiMode(query); }
+    const useCurated = append ? aiCurated : curated;
+    if (!append) { setAiSearching(true); setAiInfo(null); setAiMode(query); setAiCurated(curated); }
     try {
       const off = append ? works.length : 0;
       const url = '/api/ai-search?query=' + encodeURIComponent(query) + '&offset=' + off +
-        (append && aiPageMode ? '&mode=' + aiPageMode : '');
+        (append && aiPageMode ? '&mode=' + aiPageMode : '') +
+        (useCurated ? '&curated=1' : '');
       const d = await fetch(url).then(r => r.json());
       const w = d.works || [];
       // Dedup by id on append so a cross-page overlap never creates duplicate React keys.
@@ -567,8 +570,9 @@ export default function Home() {
   };
   const handleCollection = coll => {
     setCollection(coll); setMuseum(''); setAppliedSearch(''); setSearchInput('');
-    // Movement chips (ai:true) have no literal metadata to match — expand via AI.
-    if (coll.ai) { doAISearch(coll.search || coll.label); return; }
+    // Themed chips (ai:true) expand via AI in curated mode (fine-art sources only,
+    // so buyers see saleable art — not archival documents or record photos).
+    if (coll.ai) { doAISearch(coll.search || coll.label, { curated: true }); return; }
     setAiMode(null);
     load(true, '', '', order, coll, 0);
   };
@@ -723,7 +727,7 @@ export default function Home() {
         </div>
         <div className="chip-row">
           {['blue melancholy', 'powerful women', 'Dutch golden age', 'war and suffering', 'Japanese nature', 'impressionist light', 'ancient mythology', 'romantic landscapes'].map(s => (
-            <button key={s} className="taste-chip" onClick={() => { setAiQuery(s); doAISearch(s); }}>{s}</button>
+            <button key={s} className="taste-chip" onClick={() => { setAiQuery(s); doAISearch(s, { curated: true }); }}>{s}</button>
           ))}
         </div>
         {aiInfo?.description && (
