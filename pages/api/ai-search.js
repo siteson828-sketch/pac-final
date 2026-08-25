@@ -198,6 +198,14 @@ export default async function handler(req, res) {
     const STRIP = '\\s*\\(.*$';
     // SQL fragment reused for gate + diversity partition (uses the ${NL}/${STRIP} params).
 
+    // Visual-appeal boost: lead each category with recognizable, colorful, dynamic
+    // works instead of monochrome prints. COLOR lifts painted/color media; MONO
+    // demotes B&W prints/drawings (NOT lithographs or woodblock — ukiyo-e are
+    // colorful); ICONIC lifts famous masterpieces by title. Passed as params.
+    const COLOR_RE  = '(oil|tempera|acrylic|gouache|watercolo|pastel|colou?r|polychrome|painting|canvas)';
+    const MONO_RE   = '(engrav|etch|drypoint|mezzotint|drawing|sketch|charcoal|graphite|pencil|pen and ink|album|photostat)';
+    const ICONIC_RE = '(water lil|starry night|sunflower|great wave|girl with a pearl|american gothic|birth of venus|night watch|las meninas|mona lisa|the kiss|the scream|nighthawks|garden of earthly|creation of adam|school of athens|liberty leading|wanderer above|luncheon of the boating|moulin de la galette|card players|the bathers|haystack|rouen cathedral|impression, sunrise|irises|the bedroom|caf. terrace|whistler|venus de|the swing|the hay wain|fighting temeraire|rain, steam)';
+
     // Weighted relevance: title 10 · artist 8 · medium 5 · bio 1 per term, plus a
     // source bonus lifting fine-art museums and penalizing Digital Commonwealth
     // documents. Image-quality guard: renderable http thumbnails only.
@@ -222,6 +230,9 @@ export default async function handler(req, res) {
              + (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END)
              + (CASE WHEN COALESCE(artist,'') = '' THEN -8 ELSE 0 END)
              + (CASE WHEN title ILIKE 'untitled%' OR title = '' THEN -6 ELSE 0 END)
+             + (CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END)
+             + (CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END)
+             + (CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END)
              ) AS score
       FROM artworks
       WHERE commercial_ok = true
@@ -267,6 +278,9 @@ export default async function handler(req, res) {
                + (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END)
                + (CASE WHEN COALESCE(artist,'') = '' THEN -8 ELSE 0 END)
                + (CASE WHEN title ILIKE 'untitled%' OR title = '' THEN -6 ELSE 0 END)
+               + (CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END)
+               + (CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END)
+               + (CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END)
                ) AS score
         FROM artworks
         WHERE commercial_ok = true

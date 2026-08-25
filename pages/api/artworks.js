@@ -44,6 +44,10 @@ export default async function handler(req, res) {
     // passed as params to avoid SQL-in-template backslash escaping.
     const NL = '\n';
     const STRIP = '\\s*\\(.*$';
+    // Visual-appeal ranking (kept in sync with pages/api/ai-search.js).
+    const COLOR_RE  = '(oil|tempera|acrylic|gouache|watercolo|pastel|colou?r|polychrome|painting|canvas)';
+    const MONO_RE   = '(engrav|etch|drypoint|mezzotint|drawing|sketch|charcoal|graphite|pencil|pen and ink|album|photostat)';
+    const ICONIC_RE = '(water lil|starry night|sunflower|great wave|girl with a pearl|american gothic|birth of venus|night watch|las meninas|mona lisa|the kiss|the scream|nighthawks|liberty leading|luncheon of the boating|moulin de la galette|card players|the bathers|haystack|rouen cathedral|impression, sunrise|irises|the bedroom|whistler|venus de|the swing|the hay wain|fighting temeraire|rain, steam)';
 
     if (count === 'true') {
       const rows = await sql`SELECT COUNT(*) as total FROM artworks WHERE commercial_ok = true`;
@@ -81,7 +85,7 @@ export default async function handler(req, res) {
     } else if (source) {
       works = rand
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY RANDOM() LIMIT ${lim}`
-        : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(trim(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, ''))) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 1 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+        : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(trim(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, ''))) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     } else {
       works = rand
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' ORDER BY RANDOM() LIMIT ${lim}`
