@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react';
 
+const leadInput = {
+  width: '100%', padding: '11px 14px',
+  border: '1px solid var(--line)',
+  borderRadius: 'var(--radius)', fontSize: 14, marginBottom: 10,
+  fontFamily: 'var(--sans)', background: 'var(--paper)', color: 'var(--ink)',
+  outline: 'none',
+};
+
 export default function LeadPopup() {
   const [show, setShow] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -61,7 +69,7 @@ export default function LeadPopup() {
     <div style={{
       position: 'fixed',
       inset: 0,
-      background: 'rgba(0,0,0,0.7)',
+      background: 'rgba(20,17,14,0.78)',
       zIndex: 1000,
       display: 'flex',
       alignItems: 'center',
@@ -69,27 +77,29 @@ export default function LeadPopup() {
       padding: 16,
     }}>
       <div style={{
-        background: '#FAF8F4',
-        borderRadius: 12,
+        background: 'var(--ivory)',
+        borderRadius: 'var(--radius)',
+        border: '1px solid var(--line)',
+        borderTop: '2px solid var(--gold)',
         padding: 32,
         maxWidth: 420,
         width: '100%',
         position: 'relative',
-        boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+        boxShadow: '0 30px 80px rgba(20,17,14,0.4)',
       }}>
         <button onClick={() => setShow(false)} style={{
           position: 'absolute', top: 12, right: 16,
           background: 'none', border: 'none', fontSize: 24,
-          cursor: 'pointer', color: '#8A8178', lineHeight: 1
+          cursor: 'pointer', color: 'var(--muted-solid)', lineHeight: 1
         }}>×</button>
 
         {submitted ? (
-          <div style={{ textAlign: 'center', padding: '20px 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>🎨</div>
-            <div style={{ fontFamily: 'Georgia,serif', fontSize: 24, fontWeight: 300, color: '#1A1714', marginBottom: 8 }}>
-              Welcome!
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            <div style={{ fontFamily: 'var(--serif)', fontStyle: 'italic', fontSize: 40, color: 'var(--gold)', marginBottom: 10, lineHeight: 1 }}>—</div>
+            <div style={{ fontFamily: 'var(--serif)', fontSize: 28, fontWeight: 500, color: 'var(--ink)', marginBottom: 8 }}>
+              Welcome
             </div>
-            <p style={{ fontSize: 14, color: '#8A8178', lineHeight: 1.6 }}>
+            <p style={{ fontSize: 14, color: 'var(--muted-solid)', lineHeight: 1.6 }}>
               Thank you! We will be in touch with exclusive collections and offers.
             </p>
           </div>
@@ -97,13 +107,13 @@ export default function LeadPopup() {
           <>
             {/* HEADER */}
             <div style={{ textAlign: 'center', marginBottom: 24 }}>
-              <div style={{ fontSize: 11, letterSpacing: '.12em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 8 }}>
-                Exclusive access
+              <div style={{ fontSize: 10, letterSpacing: '.2em', textTransform: 'uppercase', color: 'var(--gold)', marginBottom: 10, fontWeight: 600 }}>
+                Exclusive Access
               </div>
-              <div style={{ fontFamily: 'Georgia,serif', fontSize: 26, fontWeight: 300, color: '#1A1714', marginBottom: 8, lineHeight: 1.2 }}>
-                Get the world's art<br/>delivered to you
+              <div style={{ fontFamily: 'var(--serif)', fontSize: 28, fontWeight: 500, color: 'var(--ink)', marginBottom: 10, lineHeight: 1.15 }}>
+                Get the World's Art<br/>Delivered to You
               </div>
-              <p style={{ fontSize: 13, color: '#8A8178', lineHeight: 1.6 }}>
+              <p style={{ fontSize: 13, color: 'var(--muted-solid)', lineHeight: 1.6 }}>
                 Join thousands of collectors who receive curated masterpieces, exclusive print offers, and new museum arrivals.
               </p>
             </div>
@@ -115,13 +125,7 @@ export default function LeadPopup() {
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder="Your name"
                 required
-                style={{
-                  width: '100%', padding: '11px 14px',
-                  border: '0.5px solid rgba(26,23,20,0.2)',
-                  borderRadius: 4, fontSize: 14, marginBottom: 10,
-                  fontFamily: 'system-ui', background: '#FAF8F4', color: '#1A1714',
-                  outline: 'none'
-                }}
+                style={leadInput}
               />
               <input
                 value={form.email}
@@ -129,37 +133,27 @@ export default function LeadPopup() {
                 placeholder="Email address"
                 type="email"
                 required
-                style={{
-                  width: '100%', padding: '11px 14px',
-                  border: '0.5px solid rgba(26,23,20,0.2)',
-                  borderRadius: 4, fontSize: 14, marginBottom: 10,
-                  fontFamily: 'system-ui', background: '#FAF8F4', color: '#1A1714',
-                  outline: 'none'
-                }}
+                style={leadInput}
               />
               <input
                 value={form.phone}
                 onChange={e => setForm({ ...form, phone: e.target.value })}
                 placeholder="Mobile number (for exclusive SMS offers)"
                 type="tel"
-                style={{
-                  width: '100%', padding: '11px 14px',
-                  border: '0.5px solid rgba(26,23,20,0.2)',
-                  borderRadius: 4, fontSize: 14, marginBottom: 16,
-                  fontFamily: 'system-ui', background: '#FAF8F4', color: '#1A1714',
-                  outline: 'none'
-                }}
+                style={{ ...leadInput, marginBottom: 16 }}
               />
 
               {/* BENEFITS */}
               <div style={{ marginBottom: 16 }}>
                 {[
-                  '✓ Free screen quality downloads',
-                  '✓ New museum collections first',
-                  '✓ Exclusive print offers',
-                  '✓ No spam ever — unsubscribe anytime',
+                  'Free screen-quality downloads',
+                  'New museum collections first',
+                  'Exclusive print offers',
+                  'No spam ever — unsubscribe anytime',
                 ].map(b => (
-                  <div key={b} style={{ fontSize: 12, color: '#4A4540', marginBottom: 4 }}>{b}</div>
+                  <div key={b} style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 5, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+                    <span style={{ color: 'var(--gold)', flexShrink: 0 }}>—</span>{b}
+                  </div>
                 ))}
               </div>
 
@@ -171,21 +165,23 @@ export default function LeadPopup() {
 
               <button type="submit" disabled={loading} style={{
                 width: '100%',
-                background: '#B8942A',
-                color: '#1A1714',
+                background: 'var(--gold)',
+                color: 'var(--ivory)',
                 border: 'none',
                 padding: '13px',
-                borderRadius: 4,
-                fontSize: 14,
+                borderRadius: 'var(--radius)',
+                fontSize: 11,
                 fontWeight: 600,
+                letterSpacing: '.14em',
+                textTransform: 'uppercase',
                 cursor: 'pointer',
-                fontFamily: 'system-ui',
-                marginBottom: 8
+                fontFamily: 'var(--sans)',
+                marginBottom: 10
               }}>
-                {loading ? 'Joining...' : 'Get exclusive access →'}
+                {loading ? 'Joining…' : 'Get Exclusive Access →'}
               </button>
 
-              <div style={{ textAlign: 'center', fontSize: 11, color: '#8A8178' }}>
+              <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--muted-solid)' }}>
                 Free forever · No credit card required
               </div>
             </form>

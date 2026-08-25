@@ -5,12 +5,13 @@ import { useSession, signOut } from 'next-auth/react';
 // sign-in / account flow is discoverable everywhere. Dark text on the light
 // nav background used across the site.
 const link = {
-  display: 'inline-flex', alignItems: 'center', height: 30, padding: '0 10px',
-  fontSize: 12, color: '#8A8178', textDecoration: 'none', whiteSpace: 'nowrap',
-  border: '0.5px solid rgba(26,23,20,0.15)', borderRadius: 6, background: 'none',
-  cursor: 'pointer', fontFamily: 'inherit', lineHeight: 1,
+  display: 'inline-flex', alignItems: 'center', height: 30, padding: '0 12px',
+  fontSize: 11, letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: 600,
+  color: 'var(--ink-soft)', textDecoration: 'none', whiteSpace: 'nowrap',
+  border: '1px solid var(--line)', borderRadius: 'var(--radius)', background: 'none',
+  cursor: 'pointer', fontFamily: 'var(--sans)', lineHeight: 1,
 };
-const primary = { ...link, color: '#1A1714', borderColor: 'rgba(184,148,42,0.6)', background: 'rgba(184,148,42,0.08)' };
+const primary = { ...link, color: 'var(--ink)', borderColor: 'rgba(156,124,56,0.6)', background: 'rgba(156,124,56,0.08)' };
 
 export default function AuthNav() {
   const { data: session, status } = useSession();
@@ -57,7 +58,7 @@ export default function AuthNav() {
       {paid
         ? <button onClick={manageSubscription} style={link}>Manage subscription</button>
         : <a href="/pricing" style={link}>Pricing</a>}
-      <span style={{ ...link, cursor: 'default', color: '#1A1714' }} title={email}>{label || 'Account'}</span>
+      <span style={{ ...link, cursor: 'default', color: 'var(--ink)' }} title={email}>{label || 'Account'}</span>
       <button onClick={() => signOut({ callbackUrl: '/' })} style={link}>Sign out</button>
     </span>
   );

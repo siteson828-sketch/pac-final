@@ -5,12 +5,12 @@ import { useShopGate, PinModal, TradeAccessPanel } from '../../lib/useShopGate';
 import AuthNav from '../../components/AuthNav';
 
 const PRODUCTS = [
-  { icon: '🖼️', name: 'Fine Art Print', price: 'from $18' },
-  { icon: '🎨', name: 'Canvas Wrap', price: 'from $45' },
-  { icon: '👕', name: 'T-Shirt', price: 'from $24' },
-  { icon: '☕', name: 'Mug', price: 'from $14' },
-  { icon: '📱', name: 'Phone Case', price: 'from $19' },
-  { icon: '🛍️', name: 'Tote Bag', price: 'from $16' },
+  { name: 'Fine Art Print', price: 'from $18' },
+  { name: 'Canvas Wrap', price: 'from $45' },
+  { name: 'T-Shirt', price: 'from $24' },
+  { name: 'Mug', price: 'from $14' },
+  { name: 'Phone Case', price: 'from $19' },
+  { name: 'Tote Bag', price: 'from $16' },
 ];
 
 function fmt(s) {
@@ -46,109 +46,107 @@ export async function getServerSideProps({ params }) {
 }
 
 const CSS = `
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{font-family:system-ui,-apple-system,sans-serif;background:#FAF8F4;color:#1A1714}
+/* Fonts + palette tokens live in styles/globals.css (shared system).
+   This block styles the artwork detail page in the Neoclassical Museum aesthetic. */
 
 /* NAV */
-.nav{position:sticky;top:0;z-index:100;background:rgba(250,248,244,0.97);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:0.5px solid rgba(26,23,20,0.12);height:62px;display:flex;align-items:center;gap:20px;padding:0 32px}
-.nav-logo{font-family:Georgia,serif;font-size:18px;font-weight:400;text-decoration:none;color:#1A1714;white-space:nowrap}
-.nav-logo span{color:#B8942A}
-.nav-back{font-size:13px;color:#8A8178;text-decoration:none;transition:color .15s;white-space:nowrap}
-.nav-back:hover{color:#1A1714}
+.nav{position:sticky;top:0;z-index:100;background:rgba(250,248,244,0.94);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line);height:68px;display:flex;align-items:center;gap:20px;padding:0 36px}
+.nav-logo{font-family:var(--serif);font-size:23px;font-weight:500;text-decoration:none;color:var(--ink);white-space:nowrap;letter-spacing:.02em}
+.nav-logo span{color:var(--gold);font-style:italic}
+.nav-back{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none;transition:color .2s var(--ease);white-space:nowrap}
+.nav-back:hover{color:var(--gold)}
 .nav-spacer{flex:1}
-.nav-api{font-size:12px;color:#8A8178;text-decoration:none;padding:6px 12px;border:0.5px solid rgba(26,23,20,0.18);border-radius:4px;transition:all .15s}
-.nav-api:hover{color:#1A1714;border-color:rgba(26,23,20,0.4)}
+.nav-api{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none;padding:9px 14px;border:1px solid var(--line);border-radius:var(--radius);transition:all .2s var(--ease)}
+.nav-api:hover{color:var(--ink);border-color:var(--ink)}
 
 /* BREADCRUMB */
-.breadcrumb{padding:14px 32px;font-size:12px;color:#8A8178;border-bottom:0.5px solid rgba(26,23,20,0.07);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.breadcrumb a{color:#8A8178;text-decoration:none;transition:color .15s}
-.breadcrumb a:hover{color:#1A1714}
-.breadcrumb-sep{color:#C8C0B8}
-.breadcrumb-current{color:#1A1714;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:320px}
+.breadcrumb{padding:16px 36px;font-size:11px;letter-spacing:.04em;color:var(--muted-solid);border-bottom:1px solid var(--line-soft);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.breadcrumb a{color:var(--muted-solid);text-decoration:none;transition:color .2s var(--ease)}
+.breadcrumb a:hover{color:var(--gold)}
+.breadcrumb-sep{color:var(--line-gold)}
+.breadcrumb-current{color:var(--ink);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:320px}
 
 /* MAIN LAYOUT — sticky image left, scrollable info right */
-.detail-main{display:grid;grid-template-columns:55% 45%;align-items:start;min-height:calc(100vh - 62px)}
+.detail-main{display:grid;grid-template-columns:55% 45%;align-items:start;min-height:calc(100vh - 68px)}
 
-.detail-img-panel{position:sticky;top:62px;height:calc(100vh - 62px);background:#1C1814;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.detail-img{width:100%;height:100%;object-fit:contain;padding:40px;display:block}
-.detail-img-placeholder{font-size:96px;color:#B8942A;opacity:0.5}
+.detail-img-panel{position:sticky;top:68px;height:calc(100vh - 68px);background:var(--charcoal);display:flex;align-items:center;justify-content:center;overflow:hidden}
+.detail-img{width:100%;height:100%;object-fit:contain;padding:48px;display:block}
+.detail-img-placeholder{font-family:var(--serif);font-size:80px;font-style:italic;color:var(--gold-bright);opacity:.6}
 
-.detail-info{padding:48px 44px 72px;overflow-y:auto}
+.detail-info{padding:56px 48px 80px;overflow-y:auto}
 
 /* ARTWORK INFO */
-.detail-museum{font-size:10px;text-transform:uppercase;letter-spacing:.18em;color:#B8942A;margin-bottom:12px;font-weight:500}
-.detail-title{font-family:Georgia,serif;font-size:clamp(24px,2.8vw,40px);font-weight:300;line-height:1.1;margin-bottom:10px}
-.detail-artist{font-size:14px;color:#4A4540;margin-bottom:0;line-height:1.6}
+.detail-museum{font-size:10px;text-transform:uppercase;letter-spacing:.22em;color:var(--gold);margin-bottom:14px;font-weight:600}
+.detail-title{font-family:var(--serif);font-size:clamp(26px,3vw,44px);font-weight:500;line-height:1.08;margin-bottom:12px}
+.detail-artist{font-size:15px;font-style:italic;color:var(--ink-soft);margin-bottom:0;line-height:1.6}
 
-.divider{height:0.5px;background:rgba(26,23,20,0.1);margin:24px 0}
+.divider{height:1px;background:var(--line);margin:26px 0}
 
 /* METADATA */
-.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-.meta-item label{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#8A8178;display:block;margin-bottom:4px}
-.meta-item span{font-size:13px;font-weight:500;color:#1A1714;line-height:1.4;display:block}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.meta-item label{font-size:9px;text-transform:uppercase;letter-spacing:.16em;color:var(--muted-solid);display:block;margin-bottom:5px}
+.meta-item span{font-size:13px;font-weight:500;color:var(--ink);line-height:1.4;display:block}
 
-.detail-bio{font-size:13px;color:#4A4540;line-height:1.85}
+.detail-bio{font-size:14px;color:var(--ink-soft);line-height:1.9;font-family:var(--serif)}
 
 /* PRODUCTS */
-.products-label{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#8A8178;margin-bottom:12px;font-weight:500}
-.products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px}
-.prod{background:#EDE8DF;border:none;border-radius:6px;padding:12px 6px;text-align:center;cursor:pointer;font-size:11px;color:#4A4540;transition:all .15s;font-family:inherit;line-height:1.45}
-.prod:hover{background:#1A1714;color:#FAF8F4}
-.prod-icon{font-size:20px;display:block;margin-bottom:3px}
-.prod-price{opacity:.65;font-size:10px}
+.products-label{font-size:9px;text-transform:uppercase;letter-spacing:.2em;color:var(--gold);margin-bottom:14px;font-weight:600}
+.products-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:24px}
+.prod{background:transparent;border:1px solid var(--line);border-radius:var(--radius);padding:14px 8px;text-align:center;cursor:pointer;font-size:12px;color:var(--ink);transition:all .2s var(--ease);font-family:var(--serif);line-height:1.4}
+.prod:hover{background:var(--ink);color:var(--ivory);border-color:var(--ink)}
+.prod-price{display:block;margin-top:3px;opacity:.7;font-size:10px;letter-spacing:.06em;text-transform:uppercase;font-family:var(--sans)}
 
 /* CTA BUTTONS */
-.detail-cta{display:flex;flex-direction:column;gap:8px}
-.cta-btn{display:block;text-align:center;padding:13px 20px;border-radius:5px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;transition:all .15s;border:none;text-decoration:none}
-.cta-primary{background:#1A1714;color:#FAF8F4}
-.cta-primary:hover{background:#2C2318}
-.cta-secondary{background:transparent;color:#1A1714;border:0.5px solid rgba(26,23,20,0.22)}
-.cta-secondary:hover{background:rgba(26,23,20,0.05)}
+.detail-cta{display:flex;flex-direction:column;gap:10px}
+.cta-btn{display:block;text-align:center;padding:14px 20px;border-radius:var(--radius);font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;font-family:var(--sans);transition:all .2s var(--ease);border:1px solid transparent;text-decoration:none}
+.cta-primary{background:var(--ink);color:var(--ivory)}
+.cta-primary:hover{background:var(--charcoal-2)}
+.cta-secondary{background:transparent;color:var(--ink);border-color:var(--line)}
+.cta-secondary:hover{background:rgba(26,23,20,0.04);border-color:var(--ink)}
 
 /* RELATED */
-.related{padding:52px 32px 72px;border-top:0.5px solid rgba(26,23,20,0.08);background:#FAF8F4}
-.related-heading{font-family:Georgia,serif;font-size:26px;font-weight:300;margin-bottom:28px}
-.related-heading span{color:#B8942A}
-.related-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}
-.related-card{text-decoration:none;color:inherit;border-radius:8px;overflow:hidden;background:#EDE8DF;display:flex;flex-direction:column;box-shadow:0 1px 4px rgba(26,23,20,0.08);transition:transform .22s,box-shadow .22s}
-.related-card:hover{transform:translateY(-3px);box-shadow:0 10px 32px rgba(26,23,20,0.16)}
-.related-img{aspect-ratio:3/4;overflow:hidden;background:#D4CEC3}
-.related-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .3s}
-.related-card:hover .related-img img{transform:scale(1.05)}
-.related-body{padding:12px 14px 14px;background:#FAF8F4;flex:1}
-.card-museum{font-size:9px;text-transform:uppercase;letter-spacing:.12em;color:#B8942A;margin-bottom:4px;font-weight:500}
-.card-title{font-family:Georgia,serif;font-size:14px;font-weight:400;line-height:1.3;margin-bottom:3px;color:#1A1714;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.card-artist{font-size:11px;color:#8A8178;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.related{padding:60px 36px 80px;border-top:1px solid var(--line);background:var(--ivory)}
+.related-heading{font-family:var(--serif);font-size:30px;font-weight:400;margin-bottom:32px;max-width:1360px;margin-left:auto;margin-right:auto}
+.related-heading span{color:var(--gold);font-style:italic}
+.related-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:28px;max-width:1360px;margin:0 auto}
+.related-card{text-decoration:none;color:inherit;border-radius:0;overflow:hidden;background:var(--paper);border:1px solid var(--line);display:flex;flex-direction:column;box-shadow:0 1px 2px rgba(26,23,20,0.04);transition:transform .3s var(--ease),box-shadow .3s var(--ease),border-color .3s var(--ease)}
+.related-card:hover{transform:translateY(-4px);box-shadow:0 16px 44px rgba(26,23,20,0.16);border-color:var(--line-gold)}
+.related-img{aspect-ratio:3/4;overflow:hidden;background:var(--cream-dk);border-bottom:1px solid var(--line)}
+.related-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s var(--ease)}
+.related-card:hover .related-img img{transform:scale(1.045)}
+.related-body{padding:15px 16px 16px;background:var(--paper);flex:1}
+.card-museum{font-size:8.5px;text-transform:uppercase;letter-spacing:.2em;color:var(--gold);margin-bottom:6px;font-weight:600}
+.card-title{font-family:var(--serif);font-size:16px;font-weight:500;line-height:1.25;margin-bottom:4px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card-artist{font-size:11px;font-style:italic;color:var(--muted-solid);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* FOOTER */
-footer{background:#2C2318;color:#B0A898;padding:48px 32px 28px}
-.footer-inner{max-width:1280px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:48px}
-.footer-logo{font-family:Georgia,serif;font-size:20px;color:#F3EFE8;margin-bottom:10px}
-.footer-logo span{color:#B8942A}
-.footer-desc{font-size:13px;line-height:1.75;color:#6A6058}
-.footer-col-title{font-size:9px;text-transform:uppercase;letter-spacing:.14em;color:#6A6058;margin-bottom:14px}
-.footer-link{display:block;font-size:13px;color:#8A8178;text-decoration:none;margin-bottom:7px;transition:color .15s}
+footer{background:var(--charcoal);color:#B0A898;padding:60px 36px 32px;border-top:1px solid var(--gold)}
+.footer-inner{max-width:1360px;margin:0 auto;display:grid;grid-template-columns:2fr 1fr 1fr;gap:56px}
+.footer-logo{font-family:var(--serif);font-size:24px;color:#F3EFE8;margin-bottom:12px;font-weight:500}
+.footer-logo span{color:var(--gold);font-style:italic}
+.footer-desc{font-size:13px;line-height:1.85;color:#8A8178}
+.footer-col-title{font-size:9px;text-transform:uppercase;letter-spacing:.2em;color:var(--gold);margin-bottom:16px;font-weight:600}
+.footer-link{display:block;font-size:13px;color:#A69C8E;text-decoration:none;margin-bottom:9px;transition:color .2s var(--ease)}
 .footer-link:hover{color:#F3EFE8}
-.footer-bottom{max-width:1280px;margin:28px auto 0;border-top:0.5px solid rgba(240,234,214,0.08);padding-top:20px;font-size:12px;color:#4A4540}
+.footer-bottom{max-width:1360px;margin:32px auto 0;border-top:1px solid rgba(240,234,214,0.1);padding-top:20px;font-size:11px;letter-spacing:.04em;color:#6A6058}
 
 /* RESPONSIVE */
 @media(max-width:960px){
   .detail-main{grid-template-columns:1fr}
   .detail-img-panel{position:relative;top:0;height:50vw;min-height:300px;max-height:520px}
-  .detail-info{padding:36px 28px 56px}
+  .detail-info{padding:40px 28px 60px}
   .related-grid{grid-template-columns:repeat(2,1fr)}
-  .footer-inner{grid-template-columns:1fr;gap:32px}
+  .footer-inner{grid-template-columns:1fr;gap:36px}
 }
 @media(max-width:600px){
   .nav{padding:0 16px}
-  .breadcrumb{padding:12px 16px}
+  .breadcrumb{padding:14px 16px}
   .detail-img-panel{height:72vw}
-  .detail-info{padding:28px 20px 48px}
-  .detail-title{font-size:24px}
+  .detail-info{padding:32px 20px 52px}
+  .detail-title{font-size:26px}
   .meta-grid{grid-template-columns:1fr}
-  .related-grid{gap:12px}
-  .related{padding:36px 16px 56px}
+  .related-grid{gap:14px}
+  .related{padding:40px 16px 60px}
 }
 `;
 
@@ -206,7 +204,7 @@ export default function ArtworkPage({ work, related }) {
               }}
             />
           ) : (
-            <div className="detail-img-placeholder">🖼️</div>
+            <div className="detail-img-placeholder">—</div>
           )}
         </div>
 
@@ -240,7 +238,7 @@ export default function ArtworkPage({ work, related }) {
             )}
             <div className="meta-item">
               <label>Rights</label>
-              <span style={{ color: '#16a34a' }}>{work.rights_label || 'CC0 — Public Domain'}</span>
+              <span style={{ color: 'var(--gold)' }}>{work.rights_label || 'CC0 — Public Domain'}</span>
             </div>
             <div className="meta-item">
               <label>Collection</label>
@@ -263,8 +261,7 @@ export default function ArtworkPage({ work, related }) {
               <div className="products-grid">
                 {PRODUCTS.map(p => (
                   <button key={p.name} className="prod">
-                    <span className="prod-icon">{p.icon}</span>
-                    {p.name}<br />
+                    {p.name}
                     <span className="prod-price">{p.price}</span>
                   </button>
                 ))}

@@ -40,11 +40,11 @@ export default function SignUpPage() {
 
   return (
     <div style={wrap}>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet" />
       <div style={card}>
         <a href="/" style={{ ...brand, textDecoration: 'none', display: 'block', textAlign: 'center' }}>
-          Public Art <span style={{ color: '#B8942A' }}>Collections</span>
+          Public Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Collections</span>
         </a>
+        <div style={eyebrow}>Join</div>
         <h1 style={title}>Create your account</h1>
 
         <form onSubmit={onSubmit}>
@@ -68,16 +68,14 @@ export default function SignUpPage() {
   );
 }
 
-const wrap = { minHeight: '100vh', background: '#1A1714', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'system-ui,sans-serif' };
-const card = { width: '100%', maxWidth: 380, background: 'rgba(44,35,24,0.5)', border: '0.5px solid rgba(240,234,214,0.12)', borderRadius: 12, padding: 36 };
-const brand = { fontFamily: 'Georgia,serif', fontSize: 18, color: '#F0EAD8', marginBottom: 8 };
-const title = { fontFamily: 'Georgia,serif', fontWeight: 300, fontSize: 26, color: '#F0EAD8', textAlign: 'center', margin: '4px 0 28px' };
-const label = { display: 'block', fontSize: 12, color: '#8A8178', margin: '14px 0 6px', letterSpacing: '.03em' };
-const input = { width: '100%', boxSizing: 'border-box', background: '#1A1714', border: '0.5px solid rgba(240,234,214,0.2)', borderRadius: 6, padding: '11px 12px', color: '#F0EAD8', fontSize: 14, outline: 'none' };
-const primaryBtn = { width: '100%', marginTop: 22, background: '#B8942A', color: '#1A1714', border: 'none', borderRadius: 6, padding: '12px', fontSize: 14, fontWeight: 600, cursor: 'pointer' };
-const googleBtn = { width: '100%', background: '#F0EAD8', color: '#1A1714', border: 'none', borderRadius: 6, padding: '11px', fontSize: 14, fontWeight: 500, cursor: 'pointer' };
-const divider = { display: 'flex', alignItems: 'center', textAlign: 'center', margin: '20px 0 4px', borderTop: '0.5px solid rgba(240,234,214,0.12)' };
-const dividerText = { position: 'relative', top: -10, margin: '0 auto', background: 'rgba(44,35,24,1)', padding: '0 12px', color: '#6A6058', fontSize: 12 };
-const errBox = { marginTop: 14, background: 'rgba(180,60,40,0.12)', border: '0.5px solid rgba(200,80,60,0.4)', color: '#E0A090', borderRadius: 6, padding: '9px 12px', fontSize: 13 };
-const foot = { marginTop: 22, textAlign: 'center', fontSize: 13, color: '#8A8178' };
-const link = { color: '#B8942A', textDecoration: 'none' };
+const wrap = { minHeight: '100vh', background: 'var(--charcoal)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, fontFamily: 'var(--sans)' };
+const card = { width: '100%', maxWidth: 380, background: 'var(--charcoal-2)', border: '1px solid rgba(240,234,214,0.14)', boxShadow: 'inset 0 0 0 1px rgba(156,124,56,0.22)', borderRadius: 'var(--radius)', padding: '40px 38px' };
+const brand = { fontFamily: 'var(--serif)', fontSize: 20, fontWeight: 500, color: '#F5F1E8', marginBottom: 22, letterSpacing: '.02em' };
+const eyebrow = { textAlign: 'center', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.24em', color: 'var(--gold-bright)', marginBottom: 10 };
+const title = { fontFamily: 'var(--serif)', fontWeight: 500, fontSize: 30, color: '#F5F1E8', textAlign: 'center', margin: '0 0 28px' };
+const label = { display: 'block', fontSize: 10, fontWeight: 600, textTransform: 'uppercase', color: 'var(--gold-bright)', margin: '16px 0 7px', letterSpacing: '.18em' };
+const input = { width: '100%', boxSizing: 'border-box', background: '#1A1714', border: '1px solid rgba(240,234,214,0.2)', borderRadius: 'var(--radius)', padding: '12px 13px', color: '#F5F1E8', fontSize: 14, outline: 'none', fontFamily: 'var(--sans)' };
+const primaryBtn = { width: '100%', marginTop: 26, background: 'var(--gold-bright)', color: 'var(--charcoal)', border: 'none', borderRadius: 'var(--radius)', padding: '13px', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', cursor: 'pointer', fontFamily: 'var(--sans)' };
+const errBox = { marginTop: 16, background: 'rgba(180,60,40,0.14)', border: '1px solid rgba(200,80,60,0.4)', color: '#E0A090', borderRadius: 'var(--radius)', padding: '10px 12px', fontSize: 13 };
+const foot = { marginTop: 24, textAlign: 'center', fontSize: 13, color: 'var(--muted-solid)' };
+const link = { color: 'var(--gold-bright)', textDecoration: 'none' };

@@ -41,7 +41,7 @@ export default function Pricing() {
       name: 'Free',
       price: '$0',
       period: 'forever',
-      color: '#8A8178',
+      color: 'var(--muted-solid)',
       features: [
         '370,000+ artworks from 120+ museums',
         'AI-powered natural language search',
@@ -57,7 +57,7 @@ export default function Pricing() {
       name: 'Collector',
       price: '$9.99',
       period: 'per month',
-      color: '#B8942A',
+      color: 'var(--gold-bright)',
       features: [
         'Everything in Free',
         'Order museum-quality fine art prints, canvas, mugs, apparel & more',
@@ -73,7 +73,7 @@ export default function Pricing() {
       name: 'Trade',
       price: '$29.99',
       period: 'per month',
-      color: '#F0EAD8',
+      color: '#F5F1E8',
       features: [
         'Everything in Collector',
         '20% discount on every print order',
@@ -87,32 +87,31 @@ export default function Pricing() {
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#1A1714', color: '#F0EAD8', fontFamily: 'system-ui,sans-serif' }}>
-      <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+    <div style={{ minHeight: '100vh', background: 'var(--charcoal)', color: '#F5F1E8', fontFamily: 'var(--sans)' }}>
 
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 48px', borderBottom: '0.5px solid rgba(240,234,214,0.1)' }}>
-        <a href="/" style={{ fontFamily: 'Georgia,serif', fontSize: 20, color: '#F0EAD8', textDecoration: 'none' }}>
-          Public Art <span style={{ color: '#B8942A' }}>Collections</span>
+      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '22px 48px', borderBottom: '1px solid rgba(240,234,214,0.12)' }}>
+        <a href="/" style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 500, color: '#F5F1E8', textDecoration: 'none', letterSpacing: '.02em' }}>
+          Public Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Collections</span>
         </a>
-        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          <a href="/sign-in" style={{ color: '#8A8178', fontSize: 13, textDecoration: 'none' }}>Sign in</a>
-          <a href="/viewer" style={{ background: 'transparent', color: '#F0EAD8', border: '0.5px solid rgba(240,234,214,0.25)', padding: '8px 20px', borderRadius: 4, fontSize: 13, textDecoration: 'none' }}>
+        <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
+          <a href="/sign-in" style={{ color: 'var(--muted-solid)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>Sign in</a>
+          <a href="/viewer" style={{ background: 'transparent', color: '#F5F1E8', border: '1px solid rgba(240,234,214,0.3)', padding: '9px 20px', borderRadius: 'var(--radius)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>
             Browse gallery
           </a>
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '64px 32px' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '72px 32px' }}>
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
-          <div style={{ fontSize: 11, letterSpacing: '.15em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 16 }}>Simple pricing</div>
-          <h1 style={{ fontFamily: 'Georgia,serif', fontSize: 'clamp(36px,5vw,60px)', fontWeight: 300, marginBottom: 16, lineHeight: 1.1 }}>
-            Access the world&apos;s art
+          <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.24em', textTransform: 'uppercase', color: 'var(--gold-bright)', marginBottom: 18 }}>Simple Pricing</div>
+          <h1 style={{ fontFamily: 'var(--serif)', fontSize: 'clamp(38px,5vw,64px)', fontWeight: 400, marginBottom: 18, lineHeight: 1.06 }}>
+            Access the World&apos;s Art
           </h1>
-          <p style={{ fontSize: 16, color: '#8A8178', maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
+          <p style={{ fontSize: 16, color: 'var(--muted-solid)', maxWidth: 520, margin: '0 auto', lineHeight: 1.8 }}>
             Browsing, AI search, gigapixel zoom, and full-resolution downloads are free for everyone. Upgrade to order museum-quality prints with a member discount.
           </p>
           {error && (
-            <div style={{ marginTop: 20, display: 'inline-block', background: 'rgba(180,60,40,0.12)', border: '0.5px solid rgba(200,80,60,0.4)', color: '#E0A090', borderRadius: 6, padding: '9px 16px', fontSize: 13 }}>
+            <div style={{ marginTop: 22, display: 'inline-block', background: 'rgba(180,60,40,0.14)', border: '1px solid rgba(200,80,60,0.4)', color: '#E0A090', borderRadius: 'var(--radius)', padding: '10px 16px', fontSize: 13 }}>
               {error}
             </div>
           )}
@@ -121,36 +120,37 @@ export default function Pricing() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24, alignItems: 'start' }}>
           {tiers.map(tier => (
             <div key={tier.name} style={{
-              background: tier.highlighted ? 'rgba(184,148,42,0.08)' : 'rgba(44,35,24,0.5)',
-              border: '0.5px solid ' + (tier.highlighted ? '#B8942A' : 'rgba(240,234,214,0.1)'),
-              borderRadius: 12, padding: 32, position: 'relative',
+              background: tier.highlighted ? 'rgba(184,148,42,0.08)' : 'var(--charcoal-2)',
+              border: '1px solid ' + (tier.highlighted ? 'var(--gold-bright)' : 'rgba(240,234,214,0.12)'),
+              boxShadow: tier.highlighted ? 'inset 0 0 0 1px rgba(156,124,56,0.3)' : 'inset 0 0 0 1px rgba(156,124,56,0.12)',
+              borderRadius: 'var(--radius)', padding: 34, position: 'relative',
             }}>
               {tier.highlighted && (
-                <div style={{ position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)', background: '#B8942A', color: '#1A1714', padding: '4px 16px', borderRadius: 20, fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  Most popular
+                <div style={{ position: 'absolute', top: -11, left: '50%', transform: 'translateX(-50%)', background: 'var(--gold-bright)', color: 'var(--charcoal)', padding: '5px 16px', borderRadius: 'var(--radius)', fontSize: 9, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.16em', whiteSpace: 'nowrap' }}>
+                  Most Popular
                 </div>
               )}
-              <div style={{ fontFamily: 'Georgia,serif', fontSize: 24, fontWeight: 300, color: tier.color, marginBottom: 8 }}>{tier.name}</div>
+              <div style={{ fontFamily: 'var(--serif)', fontSize: 26, fontWeight: 500, color: tier.color, marginBottom: 10 }}>{tier.name}</div>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 4 }}>
-                <span style={{ fontFamily: 'Georgia,serif', fontSize: 40, fontWeight: 300, color: '#F0EAD8' }}>{tier.price}</span>
-                <span style={{ fontSize: 13, color: '#8A8178' }}>{tier.period}</span>
+                <span style={{ fontFamily: 'var(--serif)', fontSize: 44, fontWeight: 400, color: '#F5F1E8' }}>{tier.price}</span>
+                <span style={{ fontSize: 12, color: 'var(--muted-solid)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{tier.period}</span>
               </div>
-              <div style={{ height: '0.5px', background: 'rgba(240,234,214,0.1)', margin: '20px 0' }} />
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+              <div style={{ height: '1px', background: 'rgba(240,234,214,0.12)', margin: '22px 0' }} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 30 }}>
                 {tier.features.map(f => (
-                  <div key={f} style={{ display: 'flex', gap: 10, alignItems: 'flex-start', fontSize: 13, color: '#B0A898', lineHeight: 1.4 }}>
-                    <span style={{ color: '#B8942A', flexShrink: 0, marginTop: 1 }}>✓</span>
+                  <div key={f} style={{ display: 'flex', gap: 12, alignItems: 'flex-start', fontSize: 13, color: '#B0A898', lineHeight: 1.5 }}>
+                    <span style={{ color: 'var(--gold-bright)', flexShrink: 0, lineHeight: 1.5 }}>—</span>
                     {f}
                   </div>
                 ))}
               </div>
               {(() => {
                 const ctaStyle = {
-                  display: 'block', width: '100%', textAlign: 'center', padding: '12px', borderRadius: 4,
-                  fontSize: 14, fontWeight: 600, textDecoration: 'none', fontFamily: 'inherit', cursor: 'pointer',
-                  background: tier.highlighted ? '#B8942A' : 'transparent',
-                  color: tier.highlighted ? '#1A1714' : '#F0EAD8',
-                  border: tier.highlighted ? 'none' : '0.5px solid rgba(240,234,214,0.25)',
+                  display: 'block', width: '100%', textAlign: 'center', padding: '13px', borderRadius: 'var(--radius)',
+                  fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.14em', textDecoration: 'none', fontFamily: 'var(--sans)', cursor: 'pointer',
+                  background: tier.highlighted ? 'var(--gold-bright)' : 'transparent',
+                  color: tier.highlighted ? 'var(--charcoal)' : '#F5F1E8',
+                  border: tier.highlighted ? '1px solid var(--gold-bright)' : '1px solid rgba(240,234,214,0.3)',
                 };
                 return tier.paid ? (
                   <button onClick={() => startCheckout(tier.key)} disabled={busy === tier.key} style={{ ...ctaStyle, opacity: busy === tier.key ? 0.6 : 1 }}>
@@ -164,7 +164,7 @@ export default function Pricing() {
           ))}
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: 48, fontSize: 13, color: '#6A6058' }}>
+        <div style={{ textAlign: 'center', marginTop: 52, fontSize: 11, letterSpacing: '.08em', color: '#6A6058' }}>
           All artwork is CC0 public domain · Prints fulfilled by Printful · Cancel anytime
         </div>
       </div>
