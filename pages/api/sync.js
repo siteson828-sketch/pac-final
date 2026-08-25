@@ -486,7 +486,6 @@ const SI_UNITS = [
   { code: 'SIA',    name: 'Smithsonian Institution Archives' },
   { code: 'NMAA',   name: 'National Museum of Asian Art' },
   { code: 'NMAI',   name: 'National Museum of the American Indian' },
-  { code: 'NASM',   name: 'National Air and Space Museum' },
   { code: 'HMSG',   name: 'Hirshhorn Museum and Sculpture Garden' },
   { code: 'HAC',    name: 'Smithsonian Gardens' },
   { code: 'ACM',    name: 'Anacostia Community Museum' },
