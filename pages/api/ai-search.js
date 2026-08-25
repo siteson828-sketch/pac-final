@@ -226,7 +226,7 @@ export default async function handler(req, res) {
         AND source NOT ILIKE '%Internet Archive%'
         AND source ~* ${srcGate}
       ) s
-      ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(coalesce(artist,'')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
+      ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(regexp_replace(coalesce(artist,''), '\\s*\\(.*$', '')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
       LIMIT ${PAGE} OFFSET ${off}` : [];
 
     let works = strict;
@@ -277,7 +277,7 @@ export default async function handler(req, res) {
              OR title ILIKE ${l6} OR artist ILIKE ${l6} OR medium ILIKE ${l6}
              OR title ILIKE ${l7} OR artist ILIKE ${l7} OR medium ILIKE ${l7} )
         ) s
-        ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(coalesce(artist,'')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
+        ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(regexp_replace(coalesce(artist,''), '\\s*\\(.*$', '')) ORDER BY score DESC, synced_at DESC), score DESC, synced_at DESC
         LIMIT ${PAGE} OFFSET ${off}`;
       const seen = new Set(works.map(w => w.id));
       for (const w of broad) if (!seen.has(w.id)) { works.push(w); seen.add(w.id); }
