@@ -23,9 +23,27 @@ function rightsOk(url) {
   return RIGHTS_OK.some(s => r.includes(s));
 }
 
+// Reject a work whose thumbnail is a broken/unusable link BEFORE it's stored, so
+// no sync cron ever adds a blank tile. Structural checks only (no network): must
+// be a real http(s) URL and not a known-dead endpoint. Extend DEAD_THUMB_HOSTS as
+// broken sources are confirmed. This is the single ingestion choke point — every
+// cron (direct or via sync-fast/parallel/museums/heavy, which reuse /api/sync)
+// passes through here.
+const DEAD_THUMB_HOSTS = [
+  'ark.digitalcommonwealth.org', // dead Digital Commonwealth thumbnail endpoint (404)
+];
+function isBrokenThumb(url) {
+  if (!url || typeof url !== 'string') return true;
+  if (!/^https?:\/\//i.test(url)) return true;                 // not an http(s) link
+  const u = url.toLowerCase();
+  return DEAD_THUMB_HOSTS.some(h => u.includes(h));
+}
+
 async function upsert(sql, works) {
   let saved = 0;
   for (const w of works) {
+    // Skip broken links as they come in — never store an unrenderable thumbnail.
+    if (isBrokenThumb(w.thumb_url)) continue;
     try {
       // print_url = the museum's own highest-resolution URL (we never store the image itself).
       const printUrl = w.print_url || w.full_url || w.thumb_url || '';
