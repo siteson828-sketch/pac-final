@@ -269,33 +269,11 @@ export default function ArtworkPage({ work, related }) {
 
               <div className="detail-cta">
                 <button className="cta-btn cta-primary">Order a Print →</button>
-                {work.detail_url && (
-                  <a
-                    href={work.detail_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="cta-btn cta-secondary"
-                  >
-                    View on museum website ↗
-                  </a>
-                )}
               </div>
             </>
           ) : (
             <>
               <TradeAccessPanel gate={gate} />
-              {work.detail_url && (
-                <div className="detail-cta" style={{ marginTop: 16 }}>
-                  <a
-                    href={work.detail_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="cta-btn cta-secondary"
-                  >
-                    View on museum website ↗
-                  </a>
-                </div>
-              )}
             </>
           )}
         </div>

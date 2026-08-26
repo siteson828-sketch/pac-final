@@ -1154,13 +1154,6 @@ export default function Viewer() {
                             <div className="card-source">{w.live_source}</div>
                             <div className="card-title">{w.title}</div>
                             <div className="card-artist">{w.artist || 'Unknown'}</div>
-                            {w.detail_url && (
-                              <a href={w.detail_url} target="_blank" rel="noopener noreferrer"
-                                 onClick={e => e.stopPropagation()}
-                                 style={{ fontSize: 11, color: '#8A8178', textDecoration: 'none' }}>
-                                View on museum ↗
-                              </a>
-                            )}
                           </div>
                         </div>
                       ))}
@@ -1253,11 +1246,6 @@ export default function Viewer() {
               <div className="divider" />
               <div className="modal-links">
                 <a href={`/artwork/${modal.id}`} className="mlink mlink-primary">View full page →</a>
-                {modal.detail_url && (
-                  <a href={modal.detail_url} target="_blank" rel="noopener noreferrer" className="mlink mlink-sec">
-                    View on museum website ↗
-                  </a>
-                )}
               </div>
             </div>
           </div>

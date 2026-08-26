@@ -982,11 +982,6 @@ export default function Home() {
                 <div className="divider" />
                 <div className="modal-cta">
                   <a href={`/artwork/${modal.id}`} className="cta-btn cta-primary">View full page →</a>
-                  {modal.detail_url && (
-                    <a href={modal.detail_url} target="_blank" rel="noopener noreferrer" className="cta-btn cta-secondary">
-                      View on museum website ↗
-                    </a>
-                  )}
                 </div>
               </div>
             </div>
