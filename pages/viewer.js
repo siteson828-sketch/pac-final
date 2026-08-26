@@ -446,6 +446,7 @@ export default function Viewer() {
   const [imgErrors, setImgErrors]   = useState({});
   const [searchInput, setSearch]    = useState('');
   const [totalDb, setTotalDb]       = useState(null);
+  const [museumCounts, setMuseumCounts] = useState(null); // {source: n} — hide empty museum buttons
   const [collCount, setCollCount]   = useState(null);
   const [navOpen, setNavOpen]       = useState(false); // mobile museum drawer
   const [searchOpen, setSearchOpen] = useState(false); // mobile search field toggle
@@ -646,6 +647,7 @@ export default function Viewer() {
   useEffect(() => {
     document.title = 'World Museum Viewer — Public Art Collections';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotalDb(d.total));
+    fetch('/api/artworks?sourceCounts=1').then(r => r.json()).then(d => setMuseumCounts(d.counts || {})).catch(() => {});
   }, []);
 
   // AudienceLab pixel — load once, only when a pixel id is configured.
@@ -902,21 +904,27 @@ export default function Viewer() {
             </div>
           </div>
           <div className="sidebar-scroll">
-            {REGIONS.map(r => (
-              <div key={r.region}>
-                <div className="region-label">{r.region}</div>
-                {r.museums.map(m => (
-                  <button
-                    key={m.source}
-                    className={`museum-btn${selected?.source === m.source ? ' active' : ''}`}
-                    onClick={() => handleSelect(m)}
-                    title={m.source}
-                  >
-                    {m.label}
-                  </button>
-                ))}
-              </div>
-            ))}
+            {REGIONS.map(r => {
+              // Hide museums with no works yet (searchMode/live sources always shown);
+              // drop a whole region if nothing in it is populated. Self-heals as syncs land.
+              const ms = r.museums.filter(m => m.searchMode || !museumCounts || (museumCounts[m.source] || 0) > 0);
+              if (!ms.length) return null;
+              return (
+                <div key={r.region}>
+                  <div className="region-label">{r.region}</div>
+                  {ms.map(m => (
+                    <button
+                      key={m.source}
+                      className={`museum-btn${selected?.source === m.source ? ' active' : ''}`}
+                      onClick={() => handleSelect(m)}
+                      title={m.source}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </aside>
         {navOpen && <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} />}
