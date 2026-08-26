@@ -7,6 +7,19 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 
+// Responsive layout lives in classes (inline styles can't do media queries): the
+// 3-tier grid stacks to a single column on phones and padding tightens up.
+const CSS = `
+.pricing-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:22px 48px;border-bottom:1px solid rgba(240,234,214,0.12)}
+.pricing-wrap{max-width:1100px;margin:0 auto;padding:72px 32px}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-items:start}
+@media(max-width:860px){.pricing-grid{grid-template-columns:1fr;gap:20px;max-width:440px;margin:0 auto}}
+@media(max-width:600px){
+  .pricing-nav{padding:16px 18px}
+  .pricing-wrap{padding:40px 18px 56px}
+}
+`;
+
 export default function Pricing() {
   const { status } = useSession();
   const router = useRouter();
@@ -88,8 +101,9 @@ export default function Pricing() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--charcoal)', color: '#F5F1E8', fontFamily: 'var(--sans)' }}>
+      <style>{CSS}</style>
 
-      <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '22px 48px', borderBottom: '1px solid rgba(240,234,214,0.12)' }}>
+      <nav className="pricing-nav">
         <a href="/" style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 500, color: '#F5F1E8', textDecoration: 'none', letterSpacing: '.02em' }}>
           Public Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Collections</span>
         </a>
@@ -101,7 +115,7 @@ export default function Pricing() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '72px 32px' }}>
+      <div className="pricing-wrap">
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.24em', textTransform: 'uppercase', color: 'var(--gold-bright)', marginBottom: 18 }}>Simple Pricing</div>
           <h1 style={{ fontFamily: 'var(--serif)', fontSize: 'clamp(38px,5vw,64px)', fontWeight: 400, marginBottom: 18, lineHeight: 1.06 }}>
@@ -117,7 +131,7 @@ export default function Pricing() {
           )}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 24, alignItems: 'start' }}>
+        <div className="pricing-grid">
           {tiers.map(tier => (
             <div key={tier.name} style={{
               background: tier.highlighted ? 'rgba(184,148,42,0.08)' : 'var(--charcoal-2)',
