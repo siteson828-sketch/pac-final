@@ -1265,7 +1265,7 @@ export default async function handler(req, res) {
   if (src==='bnf'        ||src==='all') await run('BnF Gallica',        () => syncBnF(sql, offset));
   if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql));
   if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));
-  if (src==='dpla'       ||src==='all') await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY, offset));
+  if (src==='dpla')                     await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY, offset)); // excluded from 'all': ~40% of DPLA aggregator thumbnails are broken
   if (src==='tepapa'     ||src==='all') await run('Te Papa',            () => syncTePapa(sql));
   if (src==='louvre'     ||src==='all') await run('Louvre',             () => syncWikidataMuseum(sql, 'Q19675',   'Louvre'));
   if (src==='british'    ||src==='all') await run('British Museum',     () => syncWikidataMuseum(sql, 'Q6373',    'British Museum'));

@@ -40,7 +40,6 @@ const REGIONS = [
       { label: 'Detroit Institute',        source: 'Detroit Institute of Arts' },
       { label: 'Library of Congress',      source: 'Library of Congress' },
       { label: 'NYPL',                     source: 'NYPL' },
-      { label: 'DPLA',                     source: 'DPLA' },
       { label: 'MoMA',                     source: 'MoMA' },
     ],
   },
