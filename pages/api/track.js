@@ -1,4 +1,3 @@
-import { hasBloo, hasBlooSms, upsertContact, sendSms, ownerNumber } from '../../lib/bloo';
 import { hasGhl, upsertContact as ghlUpsert } from '../../lib/ghl';
 import { crmDb, bumpDaily, logEvent, upsertVisitor } from '../../lib/crm';
 import { leadsDb, upsertLead, markWelcomeSent } from '../../lib/leads';
@@ -9,15 +8,15 @@ import { cleanStr, isEmail, isPhone, sameOrigin } from '../../lib/sanitize';
 export const dynamic = 'force-dynamic';
 
 // Visitor tracking beacon. Called fire-and-forget from _app.js on every page
-// view. On a visitor's FIRST visit (no pac_seen cookie) — and only when the
-// beacon carries a phone — it texts the visitor a marketing SMS via Bloo.io.
-// On every visit it pushes the visitor to Bloo.io when an identifier
-// (email/phone) is available. It never throws to the client and no-ops cleanly
-// when integrations aren't configured.
+// view. On every visit it pushes the visitor to GoHighLevel when an identifier
+// (email/phone) is available; GHL automations handle all SMS delivery natively
+// via Signal House. It never throws to the client and no-ops cleanly when GHL
+// isn't configured.
 //
-// COMPLIANCE: the outbound SMS is promotional. Only send to numbers for which
-// you have lawful marketing consent, and ensure STOP/opt-out handling — see
-// TCPA/CTIA. A phone captured at checkout is not, by itself, marketing consent.
+// COMPLIANCE: any promotional SMS is triggered inside GHL. Only message numbers
+// for which you have lawful marketing consent, and keep STOP/opt-out handling on
+// — see TCPA/CTIA. A phone captured at checkout is not, by itself, marketing
+// consent.
 const SEEN_COOKIE = 'pac_seen';
 const ONE_YEAR = 60 * 60 * 24 * 365;
 
@@ -34,33 +33,6 @@ function clientIp(req) {
   const fwd = req.headers['x-forwarded-for'];
   if (fwd) return String(fwd).split(',')[0].trim();
   return req.socket?.remoteAddress || '';
-}
-
-// Sends the visitor a marketing SMS via Bloo.io. No-ops without BLOO_API_KEY.
-// Fire-and-forget: never throws (the beacon must not fail the client).
-async function sendSMS(phone, name, artworkTitle, museum) {
-  if (!process.env.BLOO_API_KEY) return;
-
-  const message = artworkTitle
-    ? `Hi ${name||'there'}! Thanks for visiting Public Art Collections. We noticed you're interested in "${artworkTitle}" from ${museum}. Browse and order museum-quality prints at publicartcollections.net`
-    : `Hi ${name||'there'}! Thanks for visiting Public Art Collections — your gateway to every museum in the world. Browse and order prints at publicartcollections.net`;
-
-  try {
-    await fetch('https://api.bloo.io/v1/sms/send', {
-      method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + process.env.BLOO_API_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        to: phone,
-        from: process.env.BLOO_PHONE_NUMBER,
-        message: message
-      })
-    });
-  } catch (e) {
-    console.error('Bloo SMS error:', e.message);
-  }
 }
 
 export default async function handler(req, res) {
@@ -142,59 +114,34 @@ export default async function handler(req, res) {
     });
   }
 
-  const notified = { sms: null, bloo: null };
+  const notified = { ghl: null };
 
-  // First-visit marketing SMS to the visitor (Bloo.io) — only when the beacon
-  // carries a phone, and only once per visitor (first-visit cookie) so we never
-  // re-text on later page views. Gated behind ENABLE_VISITOR_SMS so that simply
-  // configuring BLOO_API_KEY (which enables owner order alerts) does NOT start
-  // texting visitors — that requires the explicit opt-in flag. Requires lawful
-  // marketing consent + STOP handling before enabling.
-  if (firstVisit && body.phone && process.env.ENABLE_VISITOR_SMS === 'true') {
-    await sendSMS(body.phone, body.name, body.artwork_title, body.museum);
-    notified.sms = 'attempted';
-  }
-
-  // CRM push on every visit — Bloo needs an identifier, so this only lands when
-  // the beacon carries a known email/phone (e.g. an identified/returning lead).
-  // Anonymous visits are acknowledged but produce a clean skip.
-  if (hasBloo() && (body.email || body.phone)) {
-    notified.bloo = await upsertContact({
-      email: body.email,
-      phone: body.phone,
-      name: body.name,
-      source: 'Public Art Collections',
-      tags: ['art-collector', 'pac-visitor', body.museum],
-      custom: {
-        last_artwork: body.artwork_title,
-        last_museum: body.museum,
-        audiencelab_id: body.audiencelab_id,
-        ip,
-      },
-    });
-  }
-
-  // Mirror the visit into GoHighLevel when configured (parallel to Bloo).
+  // Push every identified visit into GoHighLevel. GHL is the single CRM +
+  // messaging system of record: it stores the contact and its journey data, and
+  // GHL automations fire any SMS natively via Signal House. GHL matches on
+  // email/phone, so this only lands when the beacon carries a known identifier;
+  // anonymous visits are acknowledged but produce a clean skip.
   if (hasGhl() && (body.email || body.phone)) {
     notified.ghl = await ghlUpsert({
       email: body.email,
       phone: body.phone,
       name: body.name,
-      tags: ['pac-visitor', body.museum, body.source],
+      tags: ['art-collector', 'pac-visitor', body.museum, body.source],
       custom: {
+        journey_stage: 'visitor',
         last_artwork: body.artwork_title,
         last_museum: body.museum,
         audiencelab_id: body.audiencelab_id,
         visitor_ip: ip,
-        journey_stage: 'visitor',
       },
     });
   }
 
   // ─── Explicit lead-popup opt-in → consented welcome ────────────────────────
   // This is the ONLY entry point into the consented `leads` table. It records
-  // the opt-in and sends a ONE-TIME welcome (email via Resend; SMS via Bloo,
-  // gated behind ENABLE_VISITOR_SMS like all visitor SMS). Dedup via
+  // the opt-in, sends a ONE-TIME welcome email via Resend, and pushes the lead
+  // into GoHighLevel with an explicit `lead` journey stage + sms-consent flag so
+  // GHL automations can fire the welcome SMS natively via Signal House. Dedup via
   // welcome_sent_at. Fire-and-forget — never fails the beacon. All drip
   // follow-ups later target ONLY this table (never `visitors`).
   if (isLead && (body.email || body.phone)) {
@@ -213,11 +160,18 @@ export default async function handler(req, res) {
             <a href="https://www.publicartcollections.net/viewer" style="display:inline-block;background:#B8942A;color:#1A1714;padding:14px 24px;border-radius:4px;font-size:15px;font-weight:600;text-decoration:none;">Browse the collection →</a>`;
           await sendEmail({ to: body.email, subject: 'Welcome to Public Art Collections 🎨', html: emailShell(inner, body.email) });
         }
-        if (body.phone && hasBlooSms() && process.env.ENABLE_VISITOR_SMS === 'true') {
-          await sendSms({ to: body.phone, message: `Hi ${first || 'there'}! Welcome to Public Art Collections 🎨 Browse 1M+ museum masterpieces at publicartcollections.net/viewer — Reply STOP to opt out` });
-        }
-        if (ownerNumber() && hasBlooSms()) {
-          await sendSms({ to: ownerNumber(), message: `New PAC lead: ${body.name || 'Anonymous'} · ${body.email || 'no email'} · ${body.phone || 'no phone'}` });
+        // Hand the lead to GHL with a `lead` stage; GHL automations own the SMS.
+        if (hasGhl()) {
+          await ghlUpsert({
+            email: body.email, phone: body.phone, name: body.name,
+            tags: ['pac-visitor', 'pac-lead', body.museum, body.source],
+            custom: {
+              journey_stage: 'lead',
+              sms_consent: body.phone ? 'true' : 'false',
+              last_artwork: body.artwork_title,
+              last_museum: body.museum,
+            },
+          });
         }
         await markWelcomeSent(ldb, lead.lead_key);
       }

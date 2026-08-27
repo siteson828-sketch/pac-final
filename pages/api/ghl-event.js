@@ -53,12 +53,19 @@ export default async function handler(req, res) {
   if (!hasGhl()) return res.status(200).json({ ok: true, stage: s.stage, local: true });
 
   try {
+    const name = cleanStr(body.name, 120);
     let contact = email ? await findContactByEmail(email) : null;
     if (!contact) {
       const up = await upsertContact({
-        email, phone,
+        email, phone, name,
         tags: ['pac-visitor', s.tag],
-        custom: { journey_stage: s.stage, last_artwork: artwork, last_museum: museum },
+        custom: {
+          journey_stage: s.stage,
+          last_artwork: artwork,
+          last_museum: museum,
+          ...(orderTotal ? { last_order_total: orderTotal } : {}),
+          ...(tier ? { subscription_tier: tier } : {}),
+        },
       });
       contact = up.contact;
     } else {
