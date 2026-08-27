@@ -9,7 +9,7 @@ import { loadIdentity } from '../lib/identity';
 // every client-side route change). The /api/track endpoint handles first-visit
 // SMS alerts and CRM sync; failures here are swallowed so they never affect UX.
 // Once a visitor has identified themselves (e.g. at checkout), their stored
-// email/phone rides along so the Bloo CRM push can match/upsert the contact.
+// email/phone rides along so the GHL CRM push can match/upsert the contact.
 function track(path) {
   try {
     const { email, phone, name } = loadIdentity();

@@ -5,7 +5,7 @@ import { db, getTierForUser, tierDiscount, PAID_TIERS } from '../../lib/authdb';
 import { printfulFetch, resolveCatalogVariant, hasPrintfulKey } from '../../lib/printful';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
-import { hasBloo, hasBlooSms, upsertContact, sendSms, ownerNumber } from '../../lib/bloo';
+import { hasGhl, upsertContact as ghlUpsert } from '../../lib/ghl';
 import { verifyToken } from '../../lib/order-token';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { sanitizeRecipient, sameOrigin } from '../../lib/sanitize';
@@ -36,30 +36,25 @@ async function ensureTable(sql) {
   await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS payment_status TEXT`;
 }
 
-// Owner SMS + CRM push after an order is recorded. Fire-and-forget: all no-op
-// without keys, and failures here must never fail the order response.
+// CRM push after an order is recorded. Fire-and-forget: no-ops without GHL
+// config, and failures here must never fail the order response. GHL is the sole
+// CRM + messaging system of record — any owner alert or customer receipt SMS is
+// fired by a GHL automation (triggered off the tag/journey stage below) natively
+// via Signal House.
 async function notifyOrder({ orderId, productName, size, qty, price, recipient, paid }) {
   try {
-    if (hasBlooSms() && ownerNumber()) {
-      await sendSms({
-        to: ownerNumber(),
-        message: `New order #${orderId} on Public Art Collections\n` +
-              `${productName}${size ? ` · ${size}` : ''} × ${qty}` +
-              (price ? ` · ${price}` : '') +
-              `\nPayment: ${paid ? 'PAID' : 'draft/unpaid'}` +
-              `\nShip to: ${recipient?.name || ''} (${recipient?.city || ''}, ${recipient?.country_code || ''})`,
-      });
-    }
-  } catch (e) {}
-  try {
-    if (hasBloo() && (recipient?.email || recipient?.phone)) {
-      await upsertContact({
+    if (hasGhl() && (recipient?.email || recipient?.phone)) {
+      await ghlUpsert({
         email: recipient.email,
         phone: recipient.phone,
         name: recipient.name,
-        source: 'Public Art Collections — order',
-        tags: ['customer', paid ? 'paid-order' : 'draft-order'],
-        custom: { last_order_id: String(orderId) },
+        tags: ['pac-visitor', 'customer', paid ? 'paid-order' : 'draft-order'],
+        custom: {
+          journey_stage: paid ? 'buyer' : 'order_started',
+          last_order_id: String(orderId),
+          last_product: productName,
+          ...(price ? { last_order_total: String(price) } : {}),
+        },
       });
     }
   } catch (e) {}
