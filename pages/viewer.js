@@ -517,9 +517,8 @@ export default function Viewer() {
   const draftRedirect = (product, art) => {
     const img = art?.full_url || art?.thumb_url || '';
     const print = art?.print_url || img;
-    window.location.href =
-      `/?order=1&product=${encodeURIComponent(product.name)}&work=${encodeURIComponent(art?.title || '')}` +
-      `&img=${encodeURIComponent(img)}&print=${encodeURIComponent(print)}`;
+    setCoError('Payment system is being configured. Please try again shortly.');
+    setCoBusy(false);
   };
 
   // Step 1 → 2: validate shipping, create a PaymentIntent, advance to card entry.
