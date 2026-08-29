@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
 import AuthNav from '../components/AuthNav';
 import LeadPopup from '../components/LeadPopup';
+import CheckoutSheet, { PRODUCTS } from '../components/CheckoutSheet';
 
 // `ai: true` routes a chip through the AI search (Claude term expansion + quality
 // gating). Two reasons a chip needs it:
@@ -38,73 +39,6 @@ const COLLECTIONS = [
     artists: 'Hokusai,Hiroshige,Utamaro,Kuniyoshi,Kunisada,Toyokuni,Yoshitoshi,Sharaku,Harunobu,Kiyonaga,Shunsho,Hasui,Yoshida,Sesshu,Eishi,Koryusai,Kunichika,Chikanobu' },
   { label: 'Still Life',    search: 'still life',           source: '', ai: true },
   { label: 'Mythology',     search: 'mythology',            source: '', ai: true },
-];
-
-const PRODUCTS = [
-  { emoji: '🖼️', name: 'Fine Art Print', price: 'from $18',
-    sizes: ['8×10"', '11×14"', '16×20"', '24×36"'],
-    materials: ['Archival Matte', 'Photo Gloss', 'Fine Art Cotton'],
-    frames: [null, 'Black', 'White', 'Natural Wood'] },
-  { emoji: '🎨', name: 'Canvas Wrap', price: 'from $45',
-    sizes: ['12×16"', '16×20"', '20×24"', '24×30"'],
-    materials: ['Gallery Canvas', 'Premium Canvas'],
-    frames: null },
-  { emoji: '👕', name: 'T-Shirt', price: 'from $24',
-    sizes: ['S', 'M', 'L', 'XL', '2XL'],
-    materials: ['100% Cotton', 'Tri-blend'],
-    frames: null },
-  { emoji: '☕', name: 'Mug', price: 'from $14',
-    sizes: ['11oz', '15oz'],
-    materials: ['Ceramic'],
-    frames: null },
-  { emoji: '📱', name: 'Phone Case', price: 'from $22',
-    sizes: ['iPhone 15', 'iPhone 14'],
-    materials: ['Tough', 'Slim'],
-    frames: null },
-  { emoji: '🛍️', name: 'Tote Bag', price: 'from $29',
-    sizes: ['Standard'],
-    materials: ['Natural Canvas', 'Black Canvas'],
-    frames: null },
-  { emoji: '🏛️', name: 'Framed Poster', price: 'from $45',
-    sizes: ['8×10"', '11×14"', '16×20"', '24×36"'],
-    materials: ['Matte Paper'],
-    frames: ['Black', 'White', 'Natural Wood'] },
-  { emoji: '🪞', name: 'Metal Print', price: 'from $79',
-    sizes: ['8×10"', '11×14"', '16×20"'],
-    materials: ['Glossy Metal'],
-    frames: null },
-  { emoji: '🏷️', name: 'Sticker', price: 'from $8',
-    sizes: ['3×3"', '4×4"', '5×5"'],
-    materials: ['Die-Cut Vinyl'],
-    frames: null },
-  { emoji: '🛋️', name: 'Throw Pillow', price: 'from $29',
-    sizes: ['14×14"', '16×16"', '18×18"', '22×22"'],
-    materials: ['All-Over Print'],
-    frames: null },
-  { emoji: '🛌', name: 'Throw Blanket', price: 'from $49',
-    sizes: ['30×40"', '50×60"', '60×80"'],
-    materials: ['Sublimated Fleece'],
-    frames: null },
-  { emoji: '🧥', name: 'Hoodie', price: 'from $44',
-    sizes: ['S', 'M', 'L', 'XL', '2XL'],
-    materials: ['Cotton Blend'],
-    frames: null },
-  { emoji: '🥤', name: 'Tumbler', price: 'from $24',
-    sizes: ['16oz'],
-    materials: ['Clear Plastic'],
-    frames: null },
-  { emoji: '📓', name: 'Notebook', price: 'from $18',
-    sizes: ['One Size'],
-    materials: ['Spiral-Bound'],
-    frames: null },
-  { emoji: '💌', name: 'Greeting Card', price: 'from $5',
-    sizes: ['4×6"', '5×7"'],
-    materials: ['Cardstock'],
-    frames: null },
-  { emoji: '🧩', name: 'Jigsaw Puzzle', price: 'from $29',
-    sizes: ['252 pieces', '520 pieces'],
-    materials: ['Cardboard'],
-    frames: null },
 ];
 
 const MUSEUMS = [
@@ -409,48 +343,8 @@ export default function Home() {
   const [aiPageMode, setAiPageMode]     = useState(null); // 'strict'|'broad' — echoed to page the same set
   const [aiCurated, setAiCurated]       = useState(false); // curated (fine-art sources only) — for category buttons
   const [aiExtra, setAiExtra]           = useState('');    // tuned gate params (&must/&exclude/&artists) preserved across load-more
-  const [activeTab, setActiveTab]             = useState(null);
-  const [selected, setSelected]               = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [selectedSize, setSelectedSize]       = useState(null);
-  const [selectedMaterial, setSelectedMaterial] = useState(null);
-  const [selectedFrame, setSelectedFrame]     = useState(null);
-  const [quantity, setQuantity]               = useState(1);
+  const [checkout, setCheckout] = useState(null);  // { product, art } when the shared checkout sheet is open
   const gate = useShopGate();
-  const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [placing, setPlacing]           = useState(false);
-  const [orderResult, setOrderResult]   = useState(null);
-  const [ship, setShip] = useState({ name: '', email: '', address1: '', city: '', state_code: '', zip: '', country_code: 'US' });
-
-  async function placeOrder() {
-    setPlacing(true);
-    setOrderResult(null);
-    try {
-      let sessionToken = null;
-      try { sessionToken = (await fetch('/api/order-token').then(r => r.json())).token; } catch (e) {}
-      const resp = await fetch('/api/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: selectedProduct?.name,
-          size: selectedSize,
-          material: selectedMaterial,
-          frame: selectedFrame,
-          quantity,
-          print_url: selected?.print_url || selected?.full_url || selected?.thumb_url,
-          work: selected?.title,
-          recipient: ship,
-          session_token: sessionToken,
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) setOrderResult({ ok: false, msg: data.error || 'Order failed' });
-      else setOrderResult({ ok: true, msg: data.message || 'Order placed', data });
-    } catch (e) {
-      setOrderResult({ ok: false, msg: e.message });
-    }
-    setPlacing(false);
-  }
 
   const load = useCallback(async (reset, q, src, ord, coll, currentOffset = 0) => {
     const off = reset ? 0 : currentOffset;
@@ -563,13 +457,8 @@ export default function Home() {
           artist: '',
           rights_label: 'CC0'
         };
-        setSelected(fakeWork);
-        setSelectedProduct(found);
-        setSelectedSize(found.sizes[1] || found.sizes[0]);
-        setSelectedMaterial(found.materials[0]);
-        setSelectedFrame(found.frames?.[0] || null);
-        setQuantity(1);
-        setActiveTab('order');
+        // Legacy inbound links: open the shared checkout sheet directly.
+        setCheckout({ product: found, art: fakeWork });
         window.history.replaceState({}, '', '/');
       }
     }
@@ -653,34 +542,6 @@ export default function Home() {
         <AuthNav />
       </nav>
 
-      {/* ORDER BANNER */}
-      {activeTab === 'order' && selectedProduct && selected && (
-        <div className="order-banner">
-          {selected.thumb_url && <img src={selected.thumb_url} alt={selected.title} className="order-banner-img" onError={e => { e.target.style.display = 'none'; }} />}
-          <div className="order-banner-info">
-            <div className="order-banner-label">Ordering as {selectedProduct.name}</div>
-            <div className="order-banner-work">{selected.title || 'Selected artwork'}</div>
-            <div className="order-banner-prod">
-              {selectedSize && <span>{selectedSize} · </span>}
-              {selectedMaterial && <span>{selectedMaterial} · </span>}
-              {selectedProduct.price} · Public domain · Ships worldwide
-            </div>
-          </div>
-          <div className="order-banner-actions">
-            <div className="order-qty">
-              <button onClick={() => setQuantity(q => Math.max(1, q - 1))}>−</button>
-              <span>{quantity}</span>
-              <button onClick={() => setQuantity(q => q + 1)}>+</button>
-            </div>
-            {gate.shopUnlocked ? (
-              <button className="order-confirm" onClick={() => { setOrderResult(null); setCheckoutOpen(true); }}>Confirm Order →</button>
-            ) : (
-              <button className="order-confirm" onClick={gate.openPin}>{gate.authenticated ? 'Upgrade to order' : 'Sign in to order'}</button>
-            )}
-          </div>
-          <button className="order-dismiss" onClick={() => setActiveTab(null)} title="Dismiss">×</button>
-        </div>
-      )}
 
       {/* HERO */}
       {hero && (
@@ -968,23 +829,9 @@ export default function Home() {
                         <div
                           key={p.name}
                           className="prod-item"
-                          onClick={() => {
-                            // Open the order/checkout panel in place, ON TOP of the
-                            // open artwork modal — no navigation, and the modal stays
-                            // put so the buyer keeps their place. (Was a redirect to
-                            // /?order=1, which reloaded to the home page; then briefly
-                            // a version that closed the modal + scrolled to a thin top
-                            // banner, which felt like being bounced home.)
-                            setSelected(modal);
-                            setSelectedProduct(p);
-                            setSelectedSize(p.sizes[1] || p.sizes[0]);
-                            setSelectedMaterial(p.materials[0]);
-                            setSelectedFrame(p.frames?.[0] || null);
-                            setQuantity(1);
-                            setActiveTab('order');   // sets the banner too, for when the modal is closed
-                            setOrderResult(null);
-                            setCheckoutOpen(true);   // checkout dialog (z-index 600) layers over the modal (200)
-                          }}
+                          // Open the shared checkout sheet in place, on top of the
+                          // artwork modal — no navigation. (Was a /?order=1 redirect.)
+                          onClick={() => setCheckout({ product: p, art: modal })}
                         >
                           <div className="prod-name">{p.name}</div>
                           <div className="prod-price">{p.price}</div>
@@ -1005,46 +852,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* CHECKOUT — shipping details → draft Printful order */}
-      {checkoutOpen && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div style={{ background: '#FAF8F4', borderRadius: 12, padding: 32, maxWidth: 440, width: '100%', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 48px rgba(0,0,0,0.3)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <div style={{ fontFamily: 'Georgia,serif', fontSize: 22, fontWeight: 300, color: '#1A1714' }}>Shipping details</div>
-              <button onClick={() => setCheckoutOpen(false)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#8A8178', lineHeight: 1 }}>×</button>
-            </div>
-            <p style={{ fontSize: 12, color: '#8A8178', marginBottom: 16 }}>
-              {selectedProduct?.name}{selectedSize ? ` · ${selectedSize}` : ''} · Qty {quantity} · Draft order (no charge)
-            </p>
-            {orderResult ? (
-              <div style={{ textAlign: 'center', padding: '12px 0' }}>
-                <div style={{ fontSize: 40, marginBottom: 10 }}>{orderResult.ok ? '✅' : '⚠️'}</div>
-                <p style={{ fontSize: 14, color: orderResult.ok ? '#166534' : '#dc2626', marginBottom: 8, lineHeight: 1.5 }}>{orderResult.msg}</p>
-                {orderResult.ok && orderResult.data?.orderId && (
-                  <p style={{ fontSize: 12, color: '#8A8178' }}>
-                    Order #{orderResult.data.orderId}{orderResult.data.printful_order_id ? ` · Printful ${orderResult.data.printful_order_id}` : ''}
-                  </p>
-                )}
-                <button onClick={() => { setCheckoutOpen(false); setOrderResult(null); }}
-                  style={{ marginTop: 16, background: '#1A1714', color: '#FAF8F4', border: 'none', padding: '10px 24px', borderRadius: 4, fontSize: 13, cursor: 'pointer', fontFamily: 'system-ui' }}>Close</button>
-              </div>
-            ) : (
-              <>
-                {[['name', 'Full name'], ['email', 'Email'], ['address1', 'Address'], ['city', 'City'], ['state_code', 'State/Province code'], ['zip', 'ZIP / Postal code'], ['country_code', 'Country code (e.g. US)']].map(([k, label]) => (
-                  <input key={k} value={ship[k]} placeholder={label}
-                    onChange={e => setShip(s => ({ ...s, [k]: e.target.value }))}
-                    style={{ width: '100%', padding: '10px 12px', border: '0.5px solid rgba(26,23,20,0.25)', borderRadius: 4, fontSize: 14, marginBottom: 8, fontFamily: 'system-ui', background: '#fff', color: '#1A1714' }} />
-                ))}
-                <button disabled={placing} onClick={placeOrder}
-                  style={{ width: '100%', marginTop: 8, background: placing ? '#8A8178' : '#B8942A', color: '#1A1714', border: 'none', padding: '12px', borderRadius: 4, fontSize: 14, fontWeight: 600, cursor: placing ? 'default' : 'pointer', fontFamily: 'system-ui' }}>
-                  {placing ? 'Placing…' : 'Place draft order →'}
-                </button>
-                <p style={{ fontSize: 11, color: '#8A8178', marginTop: 12, textAlign: 'center' }}>Creates an unconfirmed Printful order. No payment is taken.</p>
-              </>
-            )}
-          </div>
-        </div>
-      )}
+      {/* CHECKOUT — shared in-place sheet (Stripe or no-charge draft) */}
+      <CheckoutSheet checkout={checkout} onClose={() => setCheckout(null)} />
 
       {/* PIN MODAL — trade access */}
       <PinModal gate={gate} />
