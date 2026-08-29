@@ -969,18 +969,21 @@ export default function Home() {
                           key={p.name}
                           className="prod-item"
                           onClick={() => {
-                            // Open the order panel in place — no navigation. (Was a
-                            // window.location redirect to /?order=1, which bounced the
-                            // buyer to the home page and reloaded the whole app.)
+                            // Open the order/checkout panel in place, ON TOP of the
+                            // open artwork modal — no navigation, and the modal stays
+                            // put so the buyer keeps their place. (Was a redirect to
+                            // /?order=1, which reloaded to the home page; then briefly
+                            // a version that closed the modal + scrolled to a thin top
+                            // banner, which felt like being bounced home.)
                             setSelected(modal);
                             setSelectedProduct(p);
                             setSelectedSize(p.sizes[1] || p.sizes[0]);
                             setSelectedMaterial(p.materials[0]);
                             setSelectedFrame(p.frames?.[0] || null);
                             setQuantity(1);
-                            setActiveTab('order');
-                            setModal(null);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                            setActiveTab('order');   // sets the banner too, for when the modal is closed
+                            setOrderResult(null);
+                            setCheckoutOpen(true);   // checkout dialog (z-index 600) layers over the modal (200)
                           }}
                         >
                           <div className="prod-name">{p.name}</div>
