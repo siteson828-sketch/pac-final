@@ -31,6 +31,7 @@ function rightsOk(url) {
 // passes through here.
 const DEAD_THUMB_HOSTS = [
   'ark.digitalcommonwealth.org', // dead Digital Commonwealth thumbnail endpoint (404)
+  'artic.edu',                   // Art Institute of Chicago — IIIF now behind a Cloudflare bot challenge (403s all <img>/proxy fetches)
 ];
 function isBrokenThumb(url) {
   if (!url || typeof url !== 'string') return true;

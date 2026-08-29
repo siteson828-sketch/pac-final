@@ -59,7 +59,7 @@ export default async function handler(req, res) {
     if (req.query.sourceCounts) {
       const rows = await sql`
         SELECT source, COUNT(*)::int AS n FROM artworks
-        WHERE commercial_ok = true AND thumb_url LIKE 'http%' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%'
+        WHERE commercial_ok = true AND thumb_url LIKE 'http%' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%'
         GROUP BY source`;
       const counts = {};
       for (const r of rows) counts[r.source] = r.n;
@@ -69,27 +69,27 @@ export default async function handler(req, res) {
     let works;
     if (search && source) {
       works = rand
-        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
-        : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source} AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
+        : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source} AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     } else if (search) {
       const syn = synonymRegex(search); // multilingual word-boundary regex, or null
       if (syn) {
         works = rand
-          ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ~* ${syn} OR medium ~* ${syn} OR artist ~* ${syn}) ORDER BY RANDOM() LIMIT ${lim}`
-          : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ~* ${syn} OR medium ~* ${syn} OR artist ~* ${syn}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+          ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND (title ~* ${syn} OR medium ~* ${syn} OR artist ~* ${syn}) ORDER BY RANDOM() LIMIT ${lim}`
+          : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND (title ~* ${syn} OR medium ~* ${syn} OR artist ~* ${syn}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
       } else {
         works = rand
-          ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
-          : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+          ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
+          : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
       }
     } else if (source) {
       works = rand
-        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY RANDOM() LIMIT ${lim}`
-        : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(trim(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, ''))) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY RANDOM() LIMIT ${lim}`
+        : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(trim(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, ''))) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     } else {
       works = rand
-        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' ORDER BY RANDOM() LIMIT ${lim}`
-        : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url LIKE 'http%' ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' ORDER BY RANDOM() LIMIT ${lim}`
+        : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     }
     // Return each record as a lightweight pointer (URLs point at the museum's own
     // servers). shapeArtwork applies a public field allowlist — internal columns

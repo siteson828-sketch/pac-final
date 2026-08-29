@@ -117,6 +117,7 @@ export default async function handler(req, res) {
 
   const sql = neon(process.env.DATABASE_URL);
   const DEAD = '%ark.digitalcommonwealth.org%'; // dead DC thumbnail endpoint
+  const DEAD2 = '%artic.edu%'; // AIC IIIF now Cloudflare-challenged (403s all <img>/proxy fetches)
 
   try {
     const cacheKey = 'v2:' + query.toLowerCase(); // v2 = must_include/exclude shape
@@ -237,7 +238,7 @@ export default async function handler(req, res) {
       FROM artworks
       WHERE commercial_ok = true
         AND thumb_url IS NOT NULL AND thumb_url != '' AND thumb_url LIKE 'http%'
-        AND thumb_url NOT LIKE ${DEAD}
+        AND thumb_url NOT LIKE ${DEAD} AND thumb_url NOT LIKE ${DEAD2}
         AND ( (${artistGated} AND regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, '') ~* ${artistGateRe})
            OR (NOT ${artistGated} AND (title ~* ${mustReSafe} OR medium ~* ${mustReSafe})) )
         AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
@@ -285,7 +286,7 @@ export default async function handler(req, res) {
         FROM artworks
         WHERE commercial_ok = true
           AND thumb_url IS NOT NULL AND thumb_url != '' AND thumb_url LIKE 'http%'
-          AND thumb_url NOT LIKE ${DEAD}
+          AND thumb_url NOT LIKE ${DEAD} AND thumb_url NOT LIKE ${DEAD2}
           AND NOT (title ~* ${exclRe} OR medium ~* ${exclRe})
           AND title NOT LIKE '%©%' AND artist NOT LIKE '%©%'
           AND source NOT ILIKE '%Internet Archive%'
@@ -339,7 +340,7 @@ export default async function handler(req, res) {
              iiif_info, iiif_manifest, detail_url, rights_label, bio
       FROM artworks
       WHERE commercial_ok = true AND thumb_url IS NOT NULL AND thumb_url != '' AND thumb_url LIKE 'http%'
-        AND thumb_url NOT LIKE ${DEAD}
+        AND thumb_url NOT LIKE ${DEAD} AND thumb_url NOT LIKE ${DEAD2}
         AND (title ILIKE ${like} OR artist ILIKE ${like})
       LIMIT 48`;
     return res.status(200).json({ works, total: works.length, original_query: query, ai: false });

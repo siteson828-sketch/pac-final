@@ -27,6 +27,7 @@ export async function getServerSideProps({ params }) {
       SELECT id, title, artist, date_text, thumb_url, source, rights_label
       FROM artworks
       WHERE commercial_ok = true AND thumb_url IS NOT NULL AND thumb_url != ''
+        AND thumb_url NOT LIKE '%artic.edu%'
         AND source = ${work.source} AND id != ${work.id}
       ORDER BY RANDOM() LIMIT 4
     `;
