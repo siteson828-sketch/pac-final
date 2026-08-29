@@ -137,22 +137,6 @@ const CSS = `
 .nav-link{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);text-decoration:none;white-space:nowrap;flex-shrink:0;transition:color .2s var(--ease)}
 .nav-link:hover{color:var(--gold)}
 
-/* ORDER BANNER */
-.order-banner{background:var(--charcoal);color:#EDE7DA;padding:16px 36px;display:flex;align-items:center;gap:18px;flex-wrap:wrap;border-bottom:1px solid var(--gold)}
-.order-banner-img{width:54px;height:54px;object-fit:cover;border-radius:var(--radius);flex-shrink:0;background:#3A3028;border:1px solid rgba(237,231,218,0.18)}
-.order-banner-info{flex:1;min-width:0}
-.order-banner-label{font-size:9px;text-transform:uppercase;letter-spacing:.2em;color:var(--gold);margin-bottom:4px;font-weight:600}
-.order-banner-work{font-family:var(--serif);font-size:18px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.order-banner-prod{font-size:11px;color:#B0A898;margin-top:3px;letter-spacing:.02em}
-.order-banner-actions{display:flex;align-items:center;gap:12px;flex-shrink:0}
-.order-qty{display:flex;align-items:center;gap:8px;font-size:13px}
-.order-qty button{width:28px;height:28px;border-radius:50%;border:1px solid rgba(237,231,218,0.3);background:transparent;color:#EDE7DA;cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;transition:background .2s var(--ease)}
-.order-qty button:hover{background:rgba(237,231,218,0.1)}
-.order-confirm{padding:10px 22px;background:var(--gold);color:var(--ivory);border:none;border-radius:var(--radius);font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;font-family:var(--sans);white-space:nowrap;transition:background .2s var(--ease)}
-.order-confirm:hover{background:var(--gold-bright)}
-.order-dismiss{background:none;border:none;color:#6A6058;font-size:22px;cursor:pointer;line-height:1;padding:4px;transition:color .2s var(--ease);flex-shrink:0}
-.order-dismiss:hover{color:#EDE7DA}
-
 /* HERO */
 .hero{position:relative;height:560px;overflow:hidden;background:var(--charcoal)}
 .hero-mosaic{position:absolute;inset:0;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:50%}
@@ -313,8 +297,6 @@ footer{background:var(--charcoal);color:#B0A898;padding:64px 36px 32px;border-to
   .nav-count,.nav-link{display:none}
   .gallery-grid{grid-template-columns:repeat(2,1fr);gap:12px;padding:16px 12px 44px}
   .gallery-title{font-size:27px}
-  .order-banner{padding:12px 16px;gap:12px}
-  .order-banner-actions{flex-wrap:wrap}
   .hero-content{padding:24px 18px}
   .hero-caption{display:none}
 }
