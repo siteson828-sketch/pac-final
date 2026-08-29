@@ -513,13 +513,41 @@ export default function Viewer() {
 
   const closeCheckout = () => { setCheckout(null); setCoBusy(false); };
 
-  // Redirect fallback to the legacy no-charge draft-order flow on the home page.
-  const draftRedirect = (product, art) => {
-    const img = art?.full_url || art?.thumb_url || '';
-    const print = art?.print_url || img;
-    window.location.href =
-      `/?order=1&product=${encodeURIComponent(product.name)}&work=${encodeURIComponent(art?.title || '')}` +
-      `&img=${encodeURIComponent(img)}&print=${encodeURIComponent(print)}`;
+  // No Stripe configured → place a no-charge draft order in place, staying on
+  // this page and showing the result in the open checkout sheet. (Was a
+  // window.location redirect to the home page's legacy /?order=1 flow, which
+  // bounced the buyer off the viewer.)
+  const placeDraftOrder = async () => {
+    setCoBusy(true);
+    setCoError(null);
+    try {
+      const art = checkout.art;
+      let sessionToken = null;
+      try { sessionToken = (await fetch('/api/order-token').then(r => r.json())).token; } catch (e) {}
+      const resp = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: checkout.product.name,
+          size: coSize,
+          quantity: coQty,
+          print_url: art?.print_url || art?.full_url || art?.thumb_url,
+          work: art?.title,
+          recipient: ship,
+          session_token: sessionToken,
+        }),
+      });
+      const data = await resp.json();
+      setCoResult(resp.ok
+        ? { ok: true, msg: data.message || 'Order placed', data }
+        : { ok: false, msg: data.error || 'Order failed' });
+      setCoStep('result');
+      if (resp.ok) trackGHL('order_completed', { artwork: art?.title, museum: art?.source });
+    } catch (e) {
+      setCoError(e.message);
+    } finally {
+      setCoBusy(false);
+    }
   };
 
   // Step 1 → 2: validate shipping, create a PaymentIntent, advance to card entry.
@@ -533,7 +561,7 @@ export default function Viewer() {
     // later page views and the CRM push has an email to match on.
     saveIdentity({ email: ship.email, phone: ship.phone, name: ship.name });
 
-    if (!STRIPE_PK) { draftRedirect(checkout.product, checkout.art); return; }
+    if (!STRIPE_PK) { await placeDraftOrder(); return; }
 
     setCoBusy(true);
     try {
@@ -548,7 +576,7 @@ export default function Viewer() {
           email: ship.email, // -> Stripe receipt_email for the confirmation receipt
         }),
       });
-      if (resp.status === 501) { draftRedirect(checkout.product, checkout.art); return; }
+      if (resp.status === 501) { await placeDraftOrder(); return; }
       const data = await resp.json();
       if (!resp.ok) { setCoError(data.error || 'Could not start checkout'); return; }
       setClientSecret(data.client_secret);

@@ -968,7 +968,20 @@ export default function Home() {
                         <div
                           key={p.name}
                           className="prod-item"
-                          onClick={() => window.location.href = `/?order=1&product=${encodeURIComponent(p.name)}&work=${encodeURIComponent(modal.title)}&img=${encodeURIComponent(modal.full_url || modal.thumb_url || '')}&print=${encodeURIComponent(modal.print_url || modal.full_url || modal.thumb_url || '')}`}
+                          onClick={() => {
+                            // Open the order panel in place — no navigation. (Was a
+                            // window.location redirect to /?order=1, which bounced the
+                            // buyer to the home page and reloaded the whole app.)
+                            setSelected(modal);
+                            setSelectedProduct(p);
+                            setSelectedSize(p.sizes[1] || p.sizes[0]);
+                            setSelectedMaterial(p.materials[0]);
+                            setSelectedFrame(p.frames?.[0] || null);
+                            setQuantity(1);
+                            setActiveTab('order');
+                            setModal(null);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
                         >
                           <div className="prod-name">{p.name}</div>
                           <div className="prod-price">{p.price}</div>
