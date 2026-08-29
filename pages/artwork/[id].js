@@ -3,15 +3,7 @@ import Head from 'next/head';
 import { neon } from '@neondatabase/serverless';
 import { useShopGate, PinModal, TradeAccessPanel } from '../../lib/useShopGate';
 import AuthNav from '../../components/AuthNav';
-
-const PRODUCTS = [
-  { name: 'Fine Art Print', price: 'from $18' },
-  { name: 'Canvas Wrap', price: 'from $45' },
-  { name: 'T-Shirt', price: 'from $24' },
-  { name: 'Mug', price: 'from $14' },
-  { name: 'Phone Case', price: 'from $19' },
-  { name: 'Tote Bag', price: 'from $16' },
-];
+import CheckoutSheet, { PRODUCTS } from '../../components/CheckoutSheet';
 
 function fmt(s) {
   return (s || '')
@@ -152,7 +144,11 @@ footer{background:var(--charcoal);color:#B0A898;padding:60px 36px 32px;border-to
 
 export default function ArtworkPage({ work, related }) {
   const [imgErr, setImgErr] = useState(false);
+  const [checkout, setCheckout] = useState(null);  // { product, art } when the checkout sheet is open
   const gate = useShopGate();
+
+  // Open the shared checkout sheet in place — never navigates off this page.
+  const openCheckout = product => setCheckout({ product, art: work });
 
   const metaTitle = `${work.title}${work.artist ? ` by ${work.artist}` : ''} — Public Art Collections`;
   const metaDesc = [work.title, work.artist, work.medium, work.date_text].filter(Boolean).join(' · ')
@@ -260,7 +256,7 @@ export default function ArtworkPage({ work, related }) {
               <div className="products-label">Order as</div>
               <div className="products-grid">
                 {PRODUCTS.map(p => (
-                  <button key={p.name} className="prod">
+                  <button key={p.name} className="prod" onClick={() => openCheckout(p)}>
                     {p.name}
                     <span className="prod-price">{p.price}</span>
                   </button>
@@ -268,7 +264,7 @@ export default function ArtworkPage({ work, related }) {
               </div>
 
               <div className="detail-cta">
-                <button className="cta-btn cta-primary">Order a Print →</button>
+                <button className="cta-btn cta-primary" onClick={() => openCheckout(PRODUCTS[0])}>Order a Print →</button>
               </div>
             </>
           ) : (
@@ -325,6 +321,9 @@ export default function ArtworkPage({ work, related }) {
           © 2025 publicartcollections.net · All artwork public domain · Prints fulfilled by Printful
         </div>
       </footer>
+
+      {/* CHECKOUT — shared in-place sheet (Stripe or no-charge draft) */}
+      <CheckoutSheet checkout={checkout} onClose={() => setCheckout(null)} />
 
       {/* PIN MODAL — trade access */}
       <PinModal gate={gate} />
