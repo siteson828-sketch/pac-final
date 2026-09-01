@@ -44,7 +44,7 @@ export default async function handler(req, res) {
   if (!session?.user?.id) return res.status(401).json({ error: 'Please sign in and subscribe to order prints.' });
   let tier = 'free';
   try { tier = await getTierForUser(db(), session.user.id); } catch (e) {}
-  if (!PAID_TIERS.has(tier)) return res.status(403).json({ error: 'Ordering requires a Collector or Trade plan.' });
+  if (!PAID_TIERS.has(tier)) return res.status(403).json({ error: 'Ordering requires a Collector or Patron plan.' });
 
   const discount = tierDiscount(tier);
   const amountCents = Math.round(unitCents * qty * (1 - discount));

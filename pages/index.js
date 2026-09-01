@@ -720,6 +720,62 @@ export default function Home() {
         </div>
       )}
 
+      {/* MISSION */}
+      <div style={{
+        background: '#0D0B09',
+        borderTop: '0.5px solid #3A3028',
+        borderBottom: '0.5px solid #3A3028',
+        padding: '64px 32px',
+        textAlign: 'center',
+      }}>
+        <div style={{maxWidth: 700, margin: '0 auto'}}>
+          <div style={{fontSize: 11, letterSpacing: '.15em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 16}}>
+            Our mission
+          </div>
+          <h2 style={{
+            fontFamily: 'Georgia,serif',
+            fontSize: 'clamp(28px,5vw,48px)',
+            fontWeight: 300,
+            color: '#F0EAD8',
+            marginBottom: 16,
+            lineHeight: 1.1,
+          }}>
+            Every membership supports<br/>
+            <em style={{color: '#B8942A', fontStyle: 'italic'}}>Asheville&apos;s children</em>
+          </h2>
+          <p style={{fontSize: 15, color: '#8A8178', lineHeight: 1.8, marginBottom: 32}}>
+            35% of every membership fee is set aside to support arts education for children
+            in Asheville and Buncombe County. We are actively building partnerships with local
+            schools and arts organizations to deliver these funds directly to kids who need them most.
+          </p>
+          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 32}}>
+            {[
+              { num: '35%', label: 'set aside for kids' },
+              { num: '120+', label: 'museums worldwide' },
+              { num: '1.9M+', label: 'artworks available' },
+              { num: '∞', label: 'kids who benefit' },
+            ].map(s => (
+              <div key={s.label} style={{background: '#2C2318', borderRadius: 8, padding: 20, border: '0.5px solid #3A3028'}}>
+                <div style={{fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 300, color: '#B8942A', marginBottom: 4}}>{s.num}</div>
+                <div style={{fontSize: 11, color: '#8A8178', textTransform: 'uppercase', letterSpacing: '.08em'}}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+          <a href="/pricing" style={{
+            background: '#B8942A',
+            color: '#1A1714',
+            padding: '14px 32px',
+            borderRadius: 4,
+            fontSize: 14,
+            fontWeight: 600,
+            textDecoration: 'none',
+            display: 'inline-block',
+          }}>
+            Support Asheville kids →
+          </a>
+        </div>
+      </div>
+
       {/* FOOTER */}
       <footer>
         <div className="footer-inner">
@@ -763,6 +819,9 @@ export default function Home() {
           </div>
           <div className="footer-bottom">
             © 2025 publicartcollections.net · All artwork public domain · Prints fulfilled by Printful · Ships worldwide
+            <div style={{fontSize: 12, color: '#6A6058', marginTop: 8}}>
+              🎨 35% of every membership is set aside for arts education in Asheville &amp; Buncombe County
+            </div>
           </div>
         </div>
       </footer>

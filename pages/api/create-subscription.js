@@ -13,8 +13,8 @@ export default async function handler(req, res) {
   let body = req.body;
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   const tier = (body?.tier || '').toLowerCase();
-  if (tier !== 'collector' && tier !== 'trade') {
-    return res.status(400).json({ error: 'tier must be "collector" or "trade"' });
+  if (tier !== 'explorer' && tier !== 'collector' && tier !== 'patron') {
+    return res.status(400).json({ error: 'tier must be "explorer", "collector", or "patron"' });
   }
 
   if (!hasStripe() || !hasSubscriptionPrices()) {
