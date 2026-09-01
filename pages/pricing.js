@@ -1,8 +1,7 @@
-// Honest pricing page — advertises ONLY features that exist and are delivered:
-// free browsing/AI/zoom/downloads for everyone, and paid tiers that unlock
-// ordering real Printful prints with a real checkout discount. No fabricated
-// dpi-download tiers, API access, white-label, bulk, "commercial license" (the
-// works are CC0 — already free for commercial use), or account-manager perks.
+// Mission-driven pricing page. Three membership tiers (Explorer / Collector /
+// Patron); 35% of every membership fee funds arts education for kids in
+// Asheville and the surrounding WNC counties (funds delivered directly to the
+// schools and programs). Ordering unlocks at Collector; Explorer is browse-only.
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
@@ -51,49 +50,62 @@ export default function Pricing() {
 
   const tiers = [
     {
-      name: 'Free',
-      price: '$0',
-      period: 'forever',
-      color: 'var(--muted-solid)',
+      name: 'Explorer',
+      price: '$9.99',
+      period: 'per month',
+      color: '#8A8178',
+      gives: '$3.50/month set aside for local kids',
       features: [
-        '370,000+ artworks from 120+ museums',
+        'Browse 1.9 million+ museum artworks',
         'AI-powered natural language search',
         'Gigapixel IIIF zoom viewer',
-        'Free full-resolution downloads (each museum’s maximum size, CC0 public domain)',
-        'Browse by museum, genre, and era',
+        'Free screen quality downloads',
+        'Browse 120+ world museums',
       ],
-      cta: 'Start browsing',
-      href: '/viewer',
+      cta: 'Start exploring',
+      key: 'explorer',
+      paid: true,
       highlighted: false,
     },
     {
       name: 'Collector',
-      price: '$9.99',
+      price: '$19.99',
       period: 'per month',
-      color: 'var(--gold-bright)',
+      color: '#B8942A',
+      gives: '$7.00/month set aside for local kids',
       features: [
-        'Everything in Free',
-        'Order museum-quality fine art prints, canvas, mugs, apparel & more',
-        '10% discount on every print order',
-        'Fulfilled by Printful, ships to 180+ countries',
+        'Everything in Explorer',
+        'Order fine art prints from $12',
+        'Order canvas, metal, acrylic prints',
+        'Order apparel and gifts',
+        'Download print-ready 300dpi files',
+        '10% discount on all orders',
+        'Frame options including aluminum',
+        'Ships to 180+ countries',
       ],
-      cta: 'Become a Collector',
+      cta: 'Start collecting',
       key: 'collector',
       paid: true,
       highlighted: true,
     },
     {
-      name: 'Trade',
-      price: '$29.99',
+      name: 'Patron',
+      price: '$49.99',
       period: 'per month',
-      color: '#F5F1E8',
+      color: '#F0EAD8',
+      gives: '$17.50/month set aside for local kids',
       features: [
         'Everything in Collector',
-        '20% discount on every print order',
-        'Priority order handling',
+        'Download fine art 600dpi files',
+        'Download archival master 1200dpi',
+        '20% discount on all orders',
+        'Commercial use license',
+        'API access to full database',
+        'White label print options',
+        'Priority support',
       ],
-      cta: 'Start a Trade account',
-      key: 'trade',
+      cta: 'Become a patron',
+      key: 'patron',
       paid: true,
       highlighted: false,
     },
@@ -116,6 +128,60 @@ export default function Pricing() {
       </nav>
 
       <div className="pricing-wrap">
+        <div style={{
+          background: 'linear-gradient(135deg, #1A1714 0%, #2C2318 100%)',
+          border: '0.5px solid #B8942A',
+          borderRadius: 12,
+          padding: '32px 40px',
+          marginBottom: 48,
+          textAlign: 'center',
+          position: 'relative',
+          overflow: 'hidden',
+        }}>
+          <div style={{fontSize: 40, marginBottom: 12}}>🎨</div>
+          <h2 style={{
+            fontFamily: 'Georgia,serif',
+            fontSize: 'clamp(24px,4vw,36px)',
+            fontWeight: 300,
+            color: '#F0EAD8',
+            marginBottom: 12,
+            lineHeight: 1.2,
+          }}>
+            Art for everyone. Education for every child.
+          </h2>
+          <p style={{
+            fontSize: 16,
+            color: '#B0A898',
+            lineHeight: 1.7,
+            maxWidth: 600,
+            margin: '0 auto 16px',
+          }}>
+            <strong style={{color: '#B8942A'}}>35% of every membership fee</strong> is set aside
+            to support arts education for children in Asheville and Buncombe County. We are actively
+            building partnerships with local schools and arts organizations to deliver these funds
+            directly to kids who need them most.
+          </p>
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 32,
+            flexWrap: 'wrap',
+            marginTop: 20,
+          }}>
+            {[
+              { emoji: '🏫', text: 'Local schools & arts orgs' },
+              { emoji: '🎨', text: 'Arts education programs' },
+              { emoji: '👧', text: 'Buncombe County kids' },
+              { emoji: '🖼️', text: 'Museum field trips' },
+            ].map(item => (
+              <div key={item.text} style={{textAlign: 'center'}}>
+                <div style={{fontSize: 24, marginBottom: 4}}>{item.emoji}</div>
+                <div style={{fontSize: 12, color: '#8A8178'}}>{item.text}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div style={{ textAlign: 'center', marginBottom: 64 }}>
           <div style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.24em', textTransform: 'uppercase', color: 'var(--gold-bright)', marginBottom: 18 }}>Simple Pricing</div>
           <h1 style={{ fontFamily: 'var(--serif)', fontSize: 'clamp(38px,5vw,64px)', fontWeight: 400, marginBottom: 18, lineHeight: 1.06 }}>
@@ -149,6 +215,20 @@ export default function Pricing() {
                 <span style={{ fontFamily: 'var(--serif)', fontSize: 44, fontWeight: 400, color: '#F5F1E8' }}>{tier.price}</span>
                 <span style={{ fontSize: 12, color: 'var(--muted-solid)', textTransform: 'uppercase', letterSpacing: '.08em' }}>{tier.period}</span>
               </div>
+              {tier.gives && (
+                <div style={{
+                  background: 'rgba(22,163,74,0.1)',
+                  border: '0.5px solid rgba(22,163,74,0.3)',
+                  borderRadius: 6,
+                  padding: '8px 12px',
+                  margin: '16px 0 0',
+                  textAlign: 'center',
+                  fontSize: 13,
+                  color: '#16a34a',
+                }}>
+                  🎨 {tier.gives} to support arts education
+                </div>
+              )}
               <div style={{ height: '1px', background: 'rgba(240,234,214,0.12)', margin: '22px 0' }} />
               <div style={{ display: 'flex', flexDirection: 'column', gap: 11, marginBottom: 30 }}>
                 {tier.features.map(f => (
@@ -180,6 +260,9 @@ export default function Pricing() {
 
         <div style={{ textAlign: 'center', marginTop: 52, fontSize: 11, letterSpacing: '.08em', color: '#6A6058' }}>
           All artwork is CC0 public domain · Prints fulfilled by Printful · Cancel anytime
+          <div style={{fontSize: 12, color: '#6A6058', marginTop: 8}}>
+            🎨 35% of every membership is set aside for arts education in Asheville &amp; Buncombe County
+          </div>
         </div>
       </div>
     </div>

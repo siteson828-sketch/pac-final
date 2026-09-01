@@ -320,6 +320,9 @@ export default function ArtworkPage({ work, related }) {
         </div>
         <div className="footer-bottom">
           © 2025 publicartcollections.net · All artwork public domain · Prints fulfilled by Printful
+          <div style={{fontSize: 12, color: '#6A6058', marginTop: 8}}>
+            🎨 35% of every membership is set aside for arts education in Asheville &amp; Buncombe County
+          </div>
         </div>
       </footer>
 

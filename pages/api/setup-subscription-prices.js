@@ -17,9 +17,13 @@ const WEBHOOK_EVENTS = [
   'customer.subscription.deleted',
 ];
 
+// 35% of every membership is set aside to support arts education for children in
+// Asheville and Buncombe County; partnerships to deliver the funds are in progress.
+const GIVES = ' 35% of your membership is set aside to support arts education for children in Asheville and Buncombe County.';
 const TIERS = [
-  { key: 'collector', name: 'Collector', amount: 999, description: 'Order museum-quality prints with a 10% member discount.' },
-  { key: 'trade', name: 'Trade', amount: 2999, description: 'Everything in Collector with a 20% member discount and priority handling.' },
+  { key: 'explorer', name: 'Explorer', amount: 999, description: 'Browse 1.9M+ museum artworks, AI search, gigapixel zoom, and free screen-quality downloads.' + GIVES },
+  { key: 'collector', name: 'Collector', amount: 1999, description: 'Everything in Explorer plus order museum-quality prints with a 10% member discount.' + GIVES },
+  { key: 'patron', name: 'Patron', amount: 4999, description: 'Everything in Collector with a 20% member discount, higher-res downloads, and priority handling.' + GIVES },
 ];
 
 export default async function handler(req, res) {
@@ -44,8 +48,9 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       note: 'Set these as Vercel env vars, then redeploy.',
+      STRIPE_PRICE_EXPLORER: prices.explorer.priceId,
       STRIPE_PRICE_COLLECTOR: prices.collector.priceId,
-      STRIPE_PRICE_TRADE: prices.trade.priceId,
+      STRIPE_PRICE_PATRON: prices.patron.priceId,
       STRIPE_WEBHOOK_SECRET: webhook.secret,
       webhookId: webhook.id,
       webhookUrl: webhook.url,
