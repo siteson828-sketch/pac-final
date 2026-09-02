@@ -11,6 +11,15 @@ const OSD_PREFIX = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_V
 
 const REGIONS = [
   {
+    // Themed keyword search across the whole collection (searchMode → &search=),
+    // not a specific institution's holdings. Honest label; no per-museum tiles or
+    // counts (the named military museums have no CC0-imaged works in our sources).
+    region: '⚔️ War & Military Art',
+    museums: [
+      { label: 'Military & War Art', source: 'battle military war soldier', searchMode: true },
+    ],
+  },
+  {
     region: 'United States',
     museums: [
       { label: 'Metropolitan Museum',       source: 'Metropolitan Museum of Art' },
@@ -269,6 +278,36 @@ html,body{height:100%;-webkit-text-size-adjust:100%}
 .art-card:hover .card-img img{transform:scale(1.045)}
 .card-hover-overlay{position:absolute;inset:0;background:linear-gradient(transparent 50%,rgba(20,17,14,0.72));opacity:0;transition:opacity .3s var(--ease);display:flex;align-items:flex-end;padding:10px}
 .art-card:hover .card-hover-overlay{opacity:1}
+.card-quick-order{position:absolute;left:10px;right:10px;bottom:10px;z-index:2;min-height:38px;padding:8px 10px;border:none;border-radius:var(--radius);background:var(--gold-bright,#B8942A);color:#1A1714;font-size:11px;font-weight:700;letter-spacing:.03em;cursor:pointer;font-family:var(--sans);opacity:0;transform:translateY(6px);transition:opacity .25s var(--ease),transform .25s var(--ease)}
+.art-card:hover .card-quick-order{opacity:1;transform:translateY(0)}
+@media(hover:none){.card-quick-order{opacity:1;transform:none}}
+.scroll-sentinel{height:1px;width:100%}
+.load-spinner{display:flex;align-items:center;justify-content:center;gap:10px;padding:24px 0 36px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-solid)}
+.load-spinner .spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--gold-bright,#B8942A);border-radius:50%;animation:pac-spin .7s linear infinite;display:inline-block}
+@keyframes pac-spin{to{transform:rotate(360deg)}}
+.card-add-cart{position:absolute;top:8px;right:8px;z-index:3;width:32px;height:32px;border-radius:50%;border:none;background:rgba(20,17,14,0.62);color:#F0EAD8;font-size:18px;line-height:1;cursor:pointer;opacity:0;transition:opacity .25s var(--ease),background .2s}
+.art-card:hover .card-add-cart{opacity:1}
+@media(hover:none){.card-add-cart{opacity:1}}
+.card-add-cart:hover{background:var(--gold-bright,#B8942A);color:#1A1714}
+.cart-fab{position:fixed;right:20px;bottom:20px;z-index:1200;min-width:56px;height:56px;border-radius:28px;border:none;background:var(--gold-bright,#B8942A);color:#1A1714;font-size:22px;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center}
+.cart-fab-count{position:absolute;top:-4px;right:-4px;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#B33;color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--sans)}
+.cart-drawer{position:fixed;top:0;right:0;bottom:0;width:min(360px,90vw);z-index:1300;background:var(--ivory,#F5F1E8);border-left:1px solid var(--line);box-shadow:-8px 0 30px rgba(0,0,0,0.18);display:flex;flex-direction:column;font-family:var(--sans)}
+.cart-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);font-family:var(--serif);font-size:18px;color:var(--ink)}
+.cart-drawer-head button{background:none;border:none;font-size:22px;cursor:pointer;color:var(--ink);line-height:1}
+.cart-drawer-body{flex:1;overflow-y:auto;padding:10px 14px}
+.cart-empty{color:var(--muted-solid);font-size:13px;padding:24px 6px;line-height:1.6;text-align:center}
+.cart-line{display:flex;gap:10px;align-items:center;padding:10px 4px;border-bottom:1px solid var(--line)}
+.cart-line img{width:48px;height:60px;object-fit:cover;flex-shrink:0;background:var(--cream-dk)}
+.cart-line-info{flex:1;min-width:0}
+.cart-line-title{font-size:13px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cart-line-sub{font-size:11px;color:var(--muted-solid);margin-top:2px}
+.cart-line-actions{display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.cart-order-btn{background:var(--gold-bright,#B8942A);color:#1A1714;border:none;border-radius:var(--radius);font-size:11px;font-weight:700;padding:6px 10px;cursor:pointer}
+.cart-remove-btn{background:none;border:none;color:var(--muted-solid);font-size:16px;cursor:pointer;line-height:1}
+.cart-drawer-foot{padding:12px 18px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.cart-clear{background:none;border:1px solid var(--line);border-radius:var(--radius);padding:9px;font-size:11px;text-transform:uppercase;letter-spacing:.12em;cursor:pointer;color:var(--ink)}
+.cart-note{font-size:10px;color:var(--muted-solid);text-align:center;line-height:1.5}
+.cart-backdrop{position:fixed;inset:0;z-index:1250;background:rgba(20,17,14,0.35)}
 .live-section{margin-top:36px;padding-top:18px;border-top:1px solid var(--line)}
 .live-head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-solid);margin-bottom:14px}
 .live-badge{position:absolute;top:8px;left:8px;background:var(--gold-bright);color:var(--ivory);font-size:9px;font-weight:600;padding:3px 9px;border-radius:var(--radius);z-index:2;letter-spacing:.1em;text-transform:uppercase}
@@ -394,6 +433,19 @@ export default function Viewer() {
 
   // --- checkout (shared CheckoutSheet) ---
   const [checkout, setCheckout] = useState(null);  // { product, art } when the sheet is open
+
+  // Local cart (UI only, localStorage-persisted). Items check out one at a time
+  // via the existing single-item CheckoutSheet — no multi-item payment backend.
+  const [cart, setCart] = useState([]);
+  const [cartOpen, setCartOpen] = useState(false);
+  useEffect(() => { try { const s = JSON.parse(localStorage.getItem('pac_cart') || '[]'); if (Array.isArray(s)) setCart(s); } catch (e) {} }, []);
+  useEffect(() => { try { localStorage.setItem('pac_cart', JSON.stringify(cart)); } catch (e) {} }, [cart]);
+  const cartKey = (art, product) => `${art?.id}::${product?.name}`;
+  const addToCart = (art, product = PRODUCTS[0]) => {
+    setCart(prev => prev.some(it => cartKey(it.art, it.product) === cartKey(art, product)) ? prev : [...prev, { art, product }]);
+    setCartOpen(true);
+  };
+  const removeFromCart = key => setCart(prev => prev.filter(it => cartKey(it.art, it.product) !== key));
 
   // Fire a journey event (fire-and-forget) to /api/ghl-event for artwork views.
   // Identity comes from a stored identity captured at a prior checkout; events
@@ -545,6 +597,21 @@ export default function Viewer() {
     } catch (e) { console.error(e); }
     setLoading(false);
   }, []);
+
+  // Infinite scroll: when the bottom sentinel nears the viewport, auto-append the
+  // next page (browse/search-tile mode only; AI results are a fixed set).
+  const infiniteRef = useRef(null);
+  useEffect(() => {
+    const el = infiniteRef.current;
+    if (!el || aiActive || !selected || !hasMore) return;
+    const io = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !loading) {
+        loadWorks(selected, genre, sortOrder, works.length, true);
+      }
+    }, { rootMargin: '600px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [aiActive, selected, hasMore, loading, works.length, genre, sortOrder, loadWorks]);
 
   const handleSelect = museum => {
     setSelected(museum);
@@ -702,9 +769,15 @@ export default function Viewer() {
         {/* MAIN */}
         <div className="main">
 
-          {/* GIVING BANNER */}
-          <a href="/pricing" style={{ display: 'block', textDecoration: 'none', background: 'linear-gradient(90deg,#1A1714,#2C2318)', color: '#F0EAD8', textAlign: 'center', padding: '9px 14px', fontSize: 12.5, lineHeight: 1.5, borderBottom: '1px solid #B8942A', flexShrink: 0 }}>
-            🎨 <strong style={{ color: '#B8942A' }}>35% of every membership</strong> supports arts education for children in Asheville &amp; Buncombe County, NC
+          {/* GIVING BANNER — prominent */}
+          <a href="/pricing" style={{ display: 'block', textDecoration: 'none', background: 'linear-gradient(90deg,#1A1714 0%,#2C2318 100%)', color: '#F0EAD8', textAlign: 'center', padding: '18px 20px', borderBottom: '2px solid #B8942A', flexShrink: 0 }}>
+            <div style={{ fontSize: 24, marginBottom: 4 }}>🎨</div>
+            <div style={{ fontFamily: 'Georgia,serif', fontSize: 'clamp(16px,2.4vw,23px)', fontWeight: 400, lineHeight: 1.25, maxWidth: 760, margin: '0 auto' }}>
+              <strong style={{ color: '#B8942A' }}>35% of every membership</strong> supports arts education for children in Asheville &amp; Buncombe County, NC
+            </div>
+            <div style={{ fontSize: 11, color: '#B0A898', marginTop: 8, textTransform: 'uppercase', letterSpacing: '.16em' }}>
+              Become a member → every plan gives back
+            </div>
           </a>
 
           {/* TOPBAR */}
@@ -883,6 +956,18 @@ export default function Viewer() {
                         <div className="card-hover-overlay">
                           <span className="card-hover-label">View &amp; Order →</span>
                         </div>
+                        <button
+                          className="card-quick-order"
+                          title="Order a print of this work"
+                          onClick={e => { e.stopPropagation(); setCheckout({ product: PRODUCTS[0], art: w }); }}
+                        >
+                          Order print — {PRODUCTS[0].price}
+                        </button>
+                        <button
+                          className="card-add-cart"
+                          title="Add to cart"
+                          onClick={e => { e.stopPropagation(); addToCart(w); }}
+                        >＋</button>
                       </div>
                       <div className="card-info">
                         <div className="card-source">{fmt(w.source)}</div>
@@ -937,6 +1022,10 @@ export default function Viewer() {
                   </div>
                 )}
 
+                {loading && works.length > 0 && (
+                  <div className="load-spinner"><span className="spinner" />Loading more works…</div>
+                )}
+                {hasMore && !aiActive && <div ref={infiniteRef} className="scroll-sentinel" aria-hidden="true" />}
                 {hasMore && (
                   <div className="load-more-wrap">
                     <button
@@ -1029,6 +1118,49 @@ export default function Viewer() {
       )}
 
       {/* CHECKOUT — shared in-place sheet (Stripe or no-charge draft) */}
+      {/* FLOATING CART */}
+      <button className="cart-fab" onClick={() => setCartOpen(o => !o)} aria-label={`Cart (${cart.length})`}>
+        🛒{cart.length > 0 && <span className="cart-fab-count">{cart.length}</span>}
+      </button>
+      {cartOpen && (
+        <>
+          <div className="cart-backdrop" onClick={() => setCartOpen(false)} />
+          <div className="cart-drawer" role="dialog" aria-label="Cart">
+            <div className="cart-drawer-head">
+              <span>Your Cart ({cart.length})</span>
+              <button onClick={() => setCartOpen(false)} aria-label="Close cart">×</button>
+            </div>
+            <div className="cart-drawer-body">
+              {cart.length === 0 && (
+                <div className="cart-empty">Your cart is empty.<br />Hover any artwork and press ＋ to add it.</div>
+              )}
+              {cart.map(it => {
+                const k = cartKey(it.art, it.product);
+                return (
+                  <div key={k} className="cart-line">
+                    {it.art?.thumb_url && <img src={getThumbUrl(it.art.thumb_url)} alt="" />}
+                    <div className="cart-line-info">
+                      <div className="cart-line-title">{it.art?.title || 'Artwork'}</div>
+                      <div className="cart-line-sub">{it.product?.name} · {it.product?.price}</div>
+                    </div>
+                    <div className="cart-line-actions">
+                      <button className="cart-order-btn" onClick={() => { setCheckout({ product: it.product, art: it.art }); setCartOpen(false); }}>Order</button>
+                      <button className="cart-remove-btn" title="Remove" onClick={() => removeFromCart(k)}>×</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {cart.length > 0 && (
+              <div className="cart-drawer-foot">
+                <button className="cart-clear" onClick={() => setCart([])}>Clear cart</button>
+                <div className="cart-note">Items check out individually — click Order on each.</div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       <CheckoutSheet checkout={checkout} onClose={() => setCheckout(null)} />
 
       {/* PIN MODAL — trade access */}
