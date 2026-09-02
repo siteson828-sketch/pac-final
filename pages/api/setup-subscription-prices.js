@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 // subscription Products + monthly recurring Prices and the Stripe webhook
 // endpoint, so no dashboard clicking is needed. Returns the price IDs and the
 // webhook signing secret — set these as env vars afterward:
-//   STRIPE_PRICE_COLLECTOR, STRIPE_PRICE_TRADE, STRIPE_WEBHOOK_SECRET
+//   STRIPE_PRICE_EXPLORER, STRIPE_PRICE_COLLECTOR, STRIPE_PRICE_PATRON, STRIPE_WEBHOOK_SECRET
 //
 // GET /api/setup-subscription-prices?secret=<SYNC_SECRET>
 // Refuses to run if prices already exist unless &force=1 (avoids duplicates).

@@ -12,8 +12,10 @@ async function readRawBody(req) {
 }
 
 function tierForPrice(priceId) {
-  if (priceId && priceId === process.env.STRIPE_PRICE_COLLECTOR) return 'collector';
-  if (priceId && priceId === process.env.STRIPE_PRICE_TRADE) return 'trade';
+  if (!priceId) return null;
+  if (priceId === process.env.STRIPE_PRICE_EXPLORER) return 'explorer';
+  if (priceId === process.env.STRIPE_PRICE_COLLECTOR) return 'collector';
+  if (priceId === process.env.STRIPE_PRICE_PATRON) return 'patron';
   return null;
 }
 

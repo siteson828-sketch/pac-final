@@ -101,7 +101,7 @@ export default async function handler(req, res) {
     try { callerTier = await getTierForUser(db(), authSession.user.id); } catch (e) { callerTier = 'free'; }
   }
   if (!PAID_TIERS.has(callerTier)) {
-    return bad(res, 403, 'Ordering requires a Collector or Trade plan. Visit /pricing to subscribe.');
+    return bad(res, 403, 'Ordering requires a Collector or Patron plan. Visit /pricing to subscribe.');
   }
 
   // --- validation ---
