@@ -1161,7 +1161,11 @@ export default function Viewer() {
         </>
       )}
 
-      <CheckoutSheet checkout={checkout} onClose={() => setCheckout(null)} />
+      <CheckoutSheet
+        checkout={checkout}
+        onClose={() => setCheckout(null)}
+        onOrdered={(art, product) => removeFromCart(cartKey(art, product))}
+      />
 
       {/* PIN MODAL — trade access */}
       <PinModal gate={gate} />

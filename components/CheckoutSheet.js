@@ -86,7 +86,7 @@ const CO_CSS = `
 }
 `;
 
-export default function CheckoutSheet({ checkout, onClose }) {
+export default function CheckoutSheet({ checkout, onClose, onOrdered }) {
   const [coStep, setCoStep]     = useState('details');  // details | payment | result
   const [coSize, setCoSize]     = useState(null);
   const [coQty, setCoQty]       = useState(1);
@@ -96,6 +96,9 @@ export default function CheckoutSheet({ checkout, onClose }) {
   const [coResult, setCoResult] = useState(null);
   const [clientSecret, setClientSecret] = useState(null);
   const [amountCents, setAmountCents]   = useState(null);
+  const [personalMessage, setPersonalMessage]   = useState('');
+  const [personalName, setPersonalName]         = useState('');
+  const [personalOccasion, setPersonalOccasion] = useState('');
   const stripeRef   = useRef(null);
   const elementsRef = useRef(null);
   const payElRef    = useRef(null);
@@ -128,6 +131,7 @@ export default function CheckoutSheet({ checkout, onClose }) {
     setCoResult(null);
     setClientSecret(null);
     setAmountCents(null);
+    setPersonalMessage(''); setPersonalName(''); setPersonalOccasion('');
     stripeRef.current = null;
     elementsRef.current = null;
     trackGHL('order_started', { artwork: checkout.art?.title, museum: checkout.art?.source });
@@ -193,6 +197,9 @@ export default function CheckoutSheet({ checkout, onClose }) {
           quantity: coQty,
           work: checkout.art?.title || '',
           email: ship.email,
+          gift_message: personalMessage,
+          gift_recipient: personalName,
+          gift_occasion: personalOccasion,
         }),
       });
       if (resp.status === 501) { await placeDraftOrder(); return; }
@@ -239,6 +246,9 @@ export default function CheckoutSheet({ checkout, onClose }) {
           recipient: ship,
           payment_intent_id: paymentIntent.id,
           session_token: sessionToken,
+          gift_message: personalMessage,
+          gift_recipient: personalName,
+          gift_occasion: personalOccasion,
         }),
       });
       const data = await resp.json();
@@ -246,7 +256,11 @@ export default function CheckoutSheet({ checkout, onClose }) {
         ? { ok: true, msg: data.message || 'Order placed', data }
         : { ok: false, msg: data.error || 'Payment succeeded but the order could not be created — contact support.' });
       setCoStep('result');
-      if (resp.ok) trackGHL('order_completed', { artwork: art?.title, museum: art?.source, orderTotal: amountCents ? (amountCents / 100).toFixed(2) : undefined });
+      if (resp.ok) {
+        trackGHL('order_completed', { artwork: art?.title, museum: art?.source, orderTotal: amountCents ? (amountCents / 100).toFixed(2) : undefined });
+        // Let the host (e.g. viewer cart) remove the purchased item after payment.
+        if (onOrdered) { try { onOrdered(checkout.art, checkout.product); } catch (e) {} }
+      }
     } catch (e) {
       setCoError(e.message);
     } finally {
@@ -336,6 +350,47 @@ export default function CheckoutSheet({ checkout, onClose }) {
                   />
                 </div>
               ))}
+              <div style={{marginBottom:16,padding:14,background:'#F5F0E8',borderRadius:8}}>
+                <div style={{fontSize:11,textTransform:'uppercase',letterSpacing:'.1em',color:'#8A8178',marginBottom:10}}>
+                  🎁 Personalize this order (optional)
+                </div>
+                <input
+                  value={personalName}
+                  onChange={e=>setPersonalName(e.target.value)}
+                  placeholder="Recipient name (e.g. Sarah Johnson)"
+                  maxLength={50}
+                  style={{width:'100%',padding:'8px 12px',border:'0.5px solid rgba(26,23,20,0.15)',borderRadius:4,fontSize:13,marginBottom:8,fontFamily:'system-ui',background:'#FAF8F4',color:'#1A1714',boxSizing:'border-box'}}
+                />
+                <textarea
+                  value={personalMessage}
+                  onChange={e=>setPersonalMessage(e.target.value)}
+                  placeholder="Personal message (e.g. Happy Birthday! Thinking of you always...)"
+                  maxLength={200}
+                  rows={3}
+                  style={{width:'100%',padding:'8px 12px',border:'0.5px solid rgba(26,23,20,0.15)',borderRadius:4,fontSize:13,marginBottom:8,fontFamily:'system-ui',background:'#FAF8F4',color:'#1A1714',resize:'none',boxSizing:'border-box'}}
+                />
+                <select
+                  value={personalOccasion}
+                  onChange={e=>setPersonalOccasion(e.target.value)}
+                  style={{width:'100%',padding:'8px 12px',border:'0.5px solid rgba(26,23,20,0.15)',borderRadius:4,fontSize:13,fontFamily:'system-ui',background:'#FAF8F4',color:'#1A1714'}}>
+                  <option value="">Select occasion (optional)</option>
+                  <option value="birthday">🎂 Birthday</option>
+                  <option value="anniversary">💑 Anniversary</option>
+                  <option value="wedding">💍 Wedding</option>
+                  <option value="christmas">🎄 Christmas</option>
+                  <option value="graduation">🎓 Graduation</option>
+                  <option value="mothers_day">💐 Mother's Day</option>
+                  <option value="fathers_day">👔 Father's Day</option>
+                  <option value="valentines">❤️ Valentine's Day</option>
+                  <option value="housewarming">🏠 Housewarming</option>
+                  <option value="memorial">🕊️ Memorial</option>
+                </select>
+                {(personalMessage || personalName) && (
+                  <div style={{marginTop:8,fontSize:11,color:'#16a34a'}}>
+                    ✓ Gift message will be included with your order
+                  </div>
+                )}
+              </div>
               {coError && <div className="co-error">{coError}</div>}
               <button className="co-btn" disabled={coBusy} onClick={goToPayment}>
                 {coBusy ? 'Starting…' : (STRIPE_PK ? 'Continue to payment →' : 'Continue →')}

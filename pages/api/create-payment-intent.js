@@ -30,6 +30,9 @@ export default async function handler(req, res) {
   const work = cleanStr(body.work, 200);
   const emailRaw = cleanStr(body.email, 254);
   const receiptEmail = isEmail(emailRaw) ? emailRaw : undefined; // for the Stripe receipt
+  const giftMessage = cleanStr(body.gift_message, 200);
+  const giftRecipient = cleanStr(body.gift_recipient, 50);
+  const giftOccasion = cleanStr(body.gift_occasion, 40);
   if (!productName || !CATALOG[productName]) return res.status(400).json({ error: 'Unknown or missing product' });
 
   const qty = Math.max(1, Math.min(parseInt(body.quantity) || 1, 25));
@@ -53,7 +56,8 @@ export default async function handler(req, res) {
       amountCents,
       currency: 'usd',
       receiptEmail,
-      metadata: { product: productName, size: size || '', quantity: String(qty), work: work || '', tier, discount: String(discount) },
+      metadata: { product: productName, size: size || '', quantity: String(qty), work: work || '', tier, discount: String(discount),
+        gift_message: giftMessage || '', gift_recipient: giftRecipient || '', gift_occasion: giftOccasion || '' },
     });
     return res.status(200).json({
       configured: true,

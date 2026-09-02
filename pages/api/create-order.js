@@ -67,6 +67,11 @@ export default async function handler(req, res) {
   if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
   body = body || {};
   const { productName, size, material, frame, quantity, print_url, recipient, work, payment_intent_id } = body;
+  // Optional gift/personalization (strip control chars but keep newlines in the message).
+  const cleanGift = (v, n) => String(v || "").replace(/[\x00-\x1F\x7F]/g, " ").trim().slice(0, n);
+  const giftMessage = cleanGift(body.gift_message, 200);
+  const giftRecipient = cleanGift(body.gift_recipient, 50);
+  const giftOccasion = cleanGift(body.gift_occasion, 40);
   const ip = clientIp(req);
 
   // --- anti-abuse gate ---
@@ -191,6 +196,13 @@ export default async function handler(req, res) {
     // Auto-confirm the Printful order only when payment already succeeded;
     // otherwise leave it as an unconfirmed draft for manual review.
     confirmed: paid,
+    // Optional gift message — printed on the Printful packing slip. `gift` is a
+    // real Printful order field; we do NOT send a `notes` field (not supported,
+    // would risk the order being rejected).
+    gift: giftMessage ? {
+      subject: giftOccasion ? giftOccasion.replace(/_/g, ' ') : 'A gift for you',
+      message: giftMessage + (giftRecipient ? '\n\nFor: ' + giftRecipient : ''),
+    } : undefined,
   };
 
   let pfOrder = null, errMsg = null;
