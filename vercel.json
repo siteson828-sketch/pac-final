@@ -56,6 +56,7 @@
     { "path": "/api/send-followup?type=weekly",                "schedule": "0 9 * * 1" },
     { "path": "/api/sync?source=metcomplete",                  "schedule": "0 */3 * * *" },
     { "path": "/api/sync?source=clevelandcomplete",            "schedule": "0 */6 * * *" },
-    { "path": "/api/sync?source=miacomplete",                  "schedule": "0 5 * * *" }
+    { "path": "/api/sync?source=miacomplete",                  "schedule": "0 5 * * *" },
+    { "path": "/api/sync?source=militarymuseums",              "schedule": "0 8 * * *" }
   ]
 }
