@@ -7,6 +7,7 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [secret, setSecret] = useState('');
+  const [giving, setGiving] = useState(null);
 
   useEffect(() => {
     const s = router.query.secret || (typeof window !== 'undefined' && localStorage.getItem('admin_secret'));
@@ -24,6 +25,28 @@ export default function Admin() {
       setData(d);
     } catch (e) {}
     setLoading(false);
+  }
+
+  useEffect(() => {
+    if (activeTab === 'giving' && secret && !giving) loadGiving(secret);
+  }, [activeTab, secret]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadGiving(s) {
+    try {
+      const d = await fetch('/api/giving-report?secret=' + encodeURIComponent(s)).then(r => r.json());
+      if (!d.error) setGiving(d);
+    } catch (e) {}
+  }
+
+  async function markTransferred() {
+    if (!confirm('Mark all pending giving as transferred? Do this only AFTER you have actually sent the funds.')) return;
+    try {
+      const d = await fetch('/api/giving-report?secret=' + encodeURIComponent(secret), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ secret, action: 'mark_transferred' }),
+      }).then(r => r.json());
+      if (d && d.ok) setGiving(d);
+    } catch (e) { alert('Could not update transfers.'); }
   }
 
   async function sendFollowUpSMS(visitor) {
@@ -80,7 +103,7 @@ export default function Admin() {
           <span style={{ fontSize: 11, color: '#6A6058', padding: '3px 8px', background: '#2C2318', borderRadius: 4 }}>Admin</span>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          {['overview', 'visitors', 'orders', 'content', 'database'].map(tab => (
+          {['overview', 'visitors', 'orders', 'content', 'giving', 'database'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               style={{ padding: '6px 14px', borderRadius: 4, fontSize: 12, fontWeight: 500, cursor: 'pointer', border: 'none', background: activeTab === tab ? '#B8942A' : 'transparent', color: activeTab === tab ? '#1A1714' : '#8A8178', fontFamily: 'system-ui', textTransform: 'capitalize' }}>
               {tab}
@@ -348,6 +371,79 @@ export default function Admin() {
                 ))}
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'giving' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 300 }}>🎨 Asheville Giving Fund</h2>
+              <button onClick={markTransferred}
+                style={{ background: '#27AE60', color: '#0D1F12', border: 'none', padding: '8px 18px', borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                Mark pending as transferred
+              </button>
+            </div>
+            <div style={{ fontSize: 12, color: '#6A6058', marginBottom: 24 }}>
+              35% of every membership is set aside for arts education in Asheville &amp; Buncombe County. Amounts below are funds reserved (partnerships being built); mark transferred once you send them.
+            </div>
+            {!giving && <div style={{ color: '#6A6058', fontSize: 13 }}>Loading giving report…</div>}
+            {giving && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 16, marginBottom: 32 }}>
+                  {[
+                    { label: 'This Month', value: '$' + (giving.this_month || 0).toFixed(2), color: '#27AE60', sub: 'set aside for Asheville schools' },
+                    { label: 'All Time', value: '$' + (giving.all_time || 0).toFixed(2), color: '#B8942A', sub: 'raised for kids' },
+                    { label: 'Pending Transfer', value: '$' + (giving.pending_total || 0).toFixed(2), color: '#F5A623', sub: 'ready to send' },
+                    { label: 'Contributing Members', value: (giving.subscribers || 0).toLocaleString(), color: '#4A90D9', sub: 'active supporters' },
+                  ].map(s => (
+                    <div key={s.label} style={{ background: '#2C2318', borderRadius: 8, padding: 20, border: '0.5px solid #3A3028' }}>
+                      <div style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '.1em', color: '#6A6058', marginBottom: 8 }}>{s.label}</div>
+                      <div style={{ fontFamily: 'Georgia,serif', fontSize: 28, fontWeight: 300, color: s.color }}>{s.value}</div>
+                      <div style={{ fontSize: 10, color: '#6A6058', marginTop: 4 }}>{s.sub}</div>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24, marginBottom: 32 }}>
+                  <div style={{ background: '#2C2318', borderRadius: 8, padding: 24, border: '0.5px solid #3A3028' }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 16 }}>By Tier</div>
+                    {(giving.by_tier || []).length === 0 && <div style={{ fontSize: 12, color: '#6A6058' }}>No contributions yet.</div>}
+                    {(giving.by_tier || []).map(t => (
+                      <div key={t.tier} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid #3A3028', fontSize: 13 }}>
+                        <span style={{ color: '#B0A898', textTransform: 'capitalize' }}>{t.tier || '—'} <span style={{ color: '#6A6058' }}>×{t.count}</span></span>
+                        <span style={{ color: '#B8942A' }}>${t.giving.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ background: '#2C2318', borderRadius: 8, padding: 24, border: '0.5px solid #3A3028' }}>
+                    <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 16 }}>Where Members Are From</div>
+                    {(giving.by_state || []).length === 0 && <div style={{ fontSize: 12, color: '#6A6058' }}>No location data yet.</div>}
+                    {(giving.by_state || []).slice(0, 12).map((r, i) => (
+                      <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '0.5px solid #3A3028', fontSize: 13 }}>
+                        <span style={{ color: '#B0A898' }}>{r.state}{r.country && r.country !== '—' ? `, ${r.country}` : ''} <span style={{ color: '#6A6058' }}>×{r.count}</span></span>
+                        <span style={{ color: '#B8942A' }}>${r.giving.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ background: '#2C2318', borderRadius: 8, padding: 24, border: '0.5px solid #3A3028' }}>
+                  <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 16 }}>Pending Transfers ({(giving.pending || []).length})</div>
+                  {(giving.pending || []).length === 0 && <div style={{ fontSize: 12, color: '#6A6058' }}>Nothing pending — all recorded giving has been marked transferred.</div>}
+                  {(giving.pending || []).slice(0, 50).map(p => (
+                    <div key={p.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 90px', gap: 12, padding: '10px 0', borderBottom: '0.5px solid #3A3028', fontSize: 12, alignItems: 'center' }}>
+                      <div>
+                        <div style={{ color: '#F0EAD8' }}>{p.subscriber_name || p.subscriber_email || 'Member'}</div>
+                        <div style={{ color: '#6A6058' }}>{p.subscriber_email}</div>
+                      </div>
+                      <div style={{ color: '#8A8178', textTransform: 'capitalize' }}>{p.tier}</div>
+                      <div style={{ color: '#8A8178' }}>{[p.subscriber_state, p.subscriber_country].filter(Boolean).join(', ') || '—'}</div>
+                      <div style={{ fontFamily: 'Georgia,serif', fontSize: 15, color: '#27AE60', textAlign: 'right' }}>${Number(p.giving_amount).toFixed(2)}</div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         )}
 

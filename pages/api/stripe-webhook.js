@@ -1,5 +1,6 @@
 import { db, ensureAuthTables } from '../../lib/authdb';
 import { constructWebhookEvent, retrieveSubscription } from '../../lib/stripe';
+import { ensureGivingTable, recordGiving } from '../../lib/giving';
 
 // Stripe webhook: keeps users.tier in sync with subscription lifecycle.
 // Requires the RAW body for signature verification, so Next's body parser is off.
@@ -36,7 +37,15 @@ export default async function handler(req, res) {
   try {
     const sql = db();
     await ensureAuthTables(sql);
+    await ensureGivingTable(sql);
     const obj = event.data.object;
+
+    // Record 35% into the giving fund, isolated so a giving failure can NEVER
+    // block the tier update below (which is the webhook's primary job).
+    const logGiving = async (args) => {
+      try { await recordGiving(sql, args); }
+      catch (e) { console.error('giving record error:', e.message); }
+    };
 
     switch (event.type) {
       case 'checkout.session.completed': {
@@ -52,6 +61,40 @@ export default async function handler(req, res) {
         if (Number.isFinite(userId) && tier) {
           await sql`UPDATE users SET tier=${tier}, stripe_customer_id=${customerId},
                     stripe_subscription_id=${subId}, subscription_end=${subEnd} WHERE id=${userId}`;
+        }
+        // First (signup) payment → giving fund. Dedup by subscription id so a
+        // retried delivery of this event can't double-record.
+        if (tier) {
+          const addr = obj.customer_details?.address || {};
+          await logGiving({
+            tier,
+            subscriberEmail: obj.customer_details?.email || obj.metadata?.email,
+            subscriberName: obj.customer_details?.name,
+            city: addr.city, state: addr.state, country: addr.country,
+            stripeSubscriptionId: subId,
+            dedupeKey: subId ? `sub:${subId}:signup` : `sess:${obj.id}`,
+          });
+        }
+        break;
+      }
+      // Recurring monthly renewals. Only delivered if 'invoice.payment_succeeded'
+      // is enabled on the Stripe webhook endpoint; harmless no-op until then.
+      // Skipped for the very first invoice (billing_reason 'subscription_create'),
+      // which checkout.session.completed already recorded.
+      case 'invoice.payment_succeeded': {
+        if (obj.billing_reason === 'subscription_create') break;
+        const priceId = obj.lines?.data?.[0]?.price?.id;
+        const tier = tierForPrice(priceId);
+        if (tier) {
+          const addr = obj.customer_address || {};
+          await logGiving({
+            tier,
+            subscriberEmail: obj.customer_email,
+            subscriberName: obj.customer_name,
+            city: addr.city, state: addr.state, country: addr.country,
+            stripeSubscriptionId: obj.subscription || null,
+            dedupeKey: `inv:${obj.id}`,
+          });
         }
         break;
       }

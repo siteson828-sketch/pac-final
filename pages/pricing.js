@@ -2,7 +2,7 @@
 // Patron); 35% of every membership fee funds arts education for kids in
 // Asheville and the surrounding WNC counties (funds delivered directly to the
 // schools and programs). Ordering unlocks at Collector; Explorer is browse-only.
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 
@@ -24,6 +24,11 @@ export default function Pricing() {
   const router = useRouter();
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [givingTotal, setGivingTotal] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/giving-total').then(r => r.json()).then(setGivingTotal).catch(() => {});
+  }, []);
 
   async function startCheckout(tier) {
     setError('');
@@ -155,6 +160,11 @@ export default function Pricing() {
             building partnerships with local schools and arts organizations to deliver these funds
             directly to kids who need them most.
           </p>
+          {givingTotal && givingTotal.members > 0 && (
+            <div style={{ fontSize: 14, color: '#16a34a', fontWeight: 600, marginBottom: 4 }}>
+              {givingTotal.members.toLocaleString()} {givingTotal.members === 1 ? 'member has' : 'members have'} set aside ${givingTotal.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} for Asheville arts education
+            </div>
+          )}
           <div style={{
             display: 'flex',
             justifyContent: 'center',

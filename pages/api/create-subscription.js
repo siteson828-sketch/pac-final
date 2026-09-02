@@ -40,7 +40,7 @@ export default async function handler(req, res) {
       priceId,
       customerEmail: session.user.email,
       clientReferenceId: user?.id || session.user.id,
-      successUrl: `${origin}/viewer?subscribed=${tier}`,
+      successUrl: `${origin}/order-success?tier=${tier}`,
       cancelUrl: `${origin}/pricing?canceled=1`,
       metadata: { tier, userId: String(user?.id || session.user.id || ''), email: session.user.email },
     });
