@@ -278,6 +278,13 @@ html,body{height:100%;-webkit-text-size-adjust:100%}
 .art-card:hover .card-img img{transform:scale(1.045)}
 .card-hover-overlay{position:absolute;inset:0;background:linear-gradient(transparent 50%,rgba(20,17,14,0.72));opacity:0;transition:opacity .3s var(--ease);display:flex;align-items:flex-end;padding:10px}
 .art-card:hover .card-hover-overlay{opacity:1}
+.card-quick-order{position:absolute;left:10px;right:10px;bottom:10px;z-index:2;min-height:38px;padding:8px 10px;border:none;border-radius:var(--radius);background:var(--gold-bright,#B8942A);color:#1A1714;font-size:11px;font-weight:700;letter-spacing:.03em;cursor:pointer;font-family:var(--sans);opacity:0;transform:translateY(6px);transition:opacity .25s var(--ease),transform .25s var(--ease)}
+.art-card:hover .card-quick-order{opacity:1;transform:translateY(0)}
+@media(hover:none){.card-quick-order{opacity:1;transform:none}}
+.scroll-sentinel{height:1px;width:100%}
+.load-spinner{display:flex;align-items:center;justify-content:center;gap:10px;padding:24px 0 36px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-solid)}
+.load-spinner .spinner{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--gold-bright,#B8942A);border-radius:50%;animation:pac-spin .7s linear infinite;display:inline-block}
+@keyframes pac-spin{to{transform:rotate(360deg)}}
 .live-section{margin-top:36px;padding-top:18px;border-top:1px solid var(--line)}
 .live-head{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted-solid);margin-bottom:14px}
 .live-badge{position:absolute;top:8px;left:8px;background:var(--gold-bright);color:var(--ivory);font-size:9px;font-weight:600;padding:3px 9px;border-radius:var(--radius);z-index:2;letter-spacing:.1em;text-transform:uppercase}
@@ -554,6 +561,21 @@ export default function Viewer() {
     } catch (e) { console.error(e); }
     setLoading(false);
   }, []);
+
+  // Infinite scroll: when the bottom sentinel nears the viewport, auto-append the
+  // next page (browse/search-tile mode only; AI results are a fixed set).
+  const infiniteRef = useRef(null);
+  useEffect(() => {
+    const el = infiniteRef.current;
+    if (!el || aiActive || !selected || !hasMore) return;
+    const io = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !loading) {
+        loadWorks(selected, genre, sortOrder, works.length, true);
+      }
+    }, { rootMargin: '600px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [aiActive, selected, hasMore, loading, works.length, genre, sortOrder, loadWorks]);
 
   const handleSelect = museum => {
     setSelected(museum);
@@ -898,6 +920,13 @@ export default function Viewer() {
                         <div className="card-hover-overlay">
                           <span className="card-hover-label">View &amp; Order →</span>
                         </div>
+                        <button
+                          className="card-quick-order"
+                          title="Order a print of this work"
+                          onClick={e => { e.stopPropagation(); setCheckout({ product: PRODUCTS[0], art: w }); }}
+                        >
+                          Order print — {PRODUCTS[0].price}
+                        </button>
                       </div>
                       <div className="card-info">
                         <div className="card-source">{fmt(w.source)}</div>
@@ -952,6 +981,10 @@ export default function Viewer() {
                   </div>
                 )}
 
+                {loading && works.length > 0 && (
+                  <div className="load-spinner"><span className="spinner" />Loading more works…</div>
+                )}
+                {hasMore && !aiActive && <div ref={infiniteRef} className="scroll-sentinel" aria-hidden="true" />}
                 {hasMore && (
                   <div className="load-more-wrap">
                     <button
