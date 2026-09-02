@@ -1282,26 +1282,6 @@ export default async function handler(req, res) {
   if (src==='yale'       ||src==='all') await run('Yale Art Gallery',   () => syncWikidataMuseum(sql, 'Q1568434', 'Yale University Art Gallery', offset));
   if (src==='loc'        ||src==='all') await run('Library of Congress',() => syncLOC(sql, offset));
   if (src==='bnf'        ||src==='all') await run('BnF Gallica',        () => syncBnF(sql, offset));
-  // Military & war museums (Wikidata P195 collection / P276 location; CC0 images
-  // via Wikimedia Commons). Many hold few artworks-with-images in Wikidata, so
-  // individual counts may be small or zero — that's data sparsity, not an error.
-  if (src==='militarymuseums'||src==='all') {
-    await run('National WWII Museum',           () => syncWikidataMuseum(sql, 'Q1569021', 'National WWII Museum'));
-    await run('Marine Corps Museum',            () => syncWikidataMuseum(sql, 'Q6973662', 'National Museum of the Marine Corps'));
-    await run('Air Force Museum',               () => syncWikidataMuseum(sql, 'Q1192805', 'National Museum USAF'));
-    await run('Army Military History',          () => syncWikidataMuseum(sql, 'Q4795987', 'Army Center of Military History'));
-    await run('Navy Museum',                    () => syncWikidataMuseum(sql, 'Q6973649', 'National Museum of the Navy'));
-    await run('West Point Museum',              () => syncWikidataMuseum(sql, 'Q7988067', 'West Point Museum'));
-    await run('Infantry Museum',                () => syncWikidataMuseum(sql, 'Q6973645', 'National Infantry Museum'));
-    await run('Intrepid Museum',                () => syncWikidataMuseum(sql, 'Q1143302', 'Intrepid Sea Air Space Museum'));
-    await run('Imperial War Museum',            () => syncWikidataMuseum(sql, 'Q244031',  'Imperial War Museum London'));
-    await run('Australian War Memorial',        () => syncWikidataMuseum(sql, 'Q1066916', 'Australian War Memorial'));
-    await run('Canadian War Museum',            () => syncWikidataMuseum(sql, 'Q1040396', 'Canadian War Museum'));
-    await run('Bundeswehr Museum',              () => syncWikidataMuseum(sql, 'Q672280',  'Military History Museum Dresden'));
-    await run('Army Museum Paris',              () => syncWikidataMuseum(sql, 'Q1142131', 'Musee de lArmee Paris'));
-    await run('Museum Military History Vienna', () => syncWikidataMuseum(sql, 'Q696747',  'Museum of Military History Vienna'));
-    await run('National War Museum Scotland',   () => syncWikidataMuseum(sql, 'Q7004546', 'National War Museum Scotland'));
-  }
   if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql));
   if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));
   if (src==='dpla')                     await run('DPLA',               () => syncDPLA(sql, process.env.DPLA_KEY, offset)); // excluded from 'all': ~40% of DPLA aggregator thumbnails are broken
