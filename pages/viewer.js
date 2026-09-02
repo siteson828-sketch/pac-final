@@ -668,9 +668,9 @@ export default function Viewer() {
     setGenre(GENRES[0]); setAiActive(true); setAiQuery(name);
     setWorks([]); setLiveWorks([]); setHasMore(false); setNavOpen(false);
     try {
-      const d = await fetch('/api/artworks?limit=48&search=' + encodeURIComponent(name)).then(r => r.json());
+      const d = await fetch('/api/artist-search?q=' + encodeURIComponent(name)).then(r => r.json());
       setWorks(d.works || []);
-      setAiInfo({ description: `Works by “${name}” — from our collection and live across museums.`, mood: '' });
+      setAiInfo({ description: `Works by “${name}”${d.total ? ` — ${d.total.toLocaleString()} in our collection` : ''}, plus live results across museums.`, mood: '' });
     } catch (e) { console.error('artist search error:', e); }
     setAiSearching(false);
     setLiveLoading(true);

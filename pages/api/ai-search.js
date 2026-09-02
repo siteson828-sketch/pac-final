@@ -120,6 +120,34 @@ export default async function handler(req, res) {
   const DEAD2 = '%artic.edu%'; // AIC IIIF now Cloudflare-challenged (403s all <img>/proxy fetches)
 
   try {
+    // Exact-artist short-circuit: if the query strongly matches an artist name
+    // (>5 direct hits), return those exact-artist results ranked exact-first and
+    // skip the paid AI expansion (so "Rembrandt" returns Rembrandt's works, not
+    // works that merely mention him).
+    try {
+      const directArtist = await sql`
+        SELECT id, title, artist, date_text, medium, source, thumb_url, full_url, iiif_info, iiif_manifest, detail_url, rights_label, bio
+        FROM artworks
+        WHERE commercial_ok = true AND thumb_url IS NOT NULL AND thumb_url LIKE 'http%'
+          AND thumb_url NOT LIKE ${DEAD} AND thumb_url NOT LIKE ${DEAD2}
+          AND artist ILIKE ${'%' + query + '%'}
+        ORDER BY CASE WHEN artist ILIKE ${query} THEN 1 WHEN artist ILIKE ${query + ',%'} THEN 2 WHEN artist ILIKE ${query + '%'} THEN 3 ELSE 4 END, synced_at DESC
+        LIMIT ${PAGE} OFFSET ${off}`;
+      if (directArtist.length > 5) {
+        return res.status(200).json({
+          works: directArtist,
+          total: directArtist.length,
+          ai_description: `Works by “${query}”.`,
+          ai_mood: '',
+          mode: 'artist',
+          has_more: directArtist.length === PAGE,
+          offset: off,
+          artist: true,
+          ai: false,
+        });
+      }
+    } catch (e) { /* fall through to AI expansion */ }
+
     const cacheKey = 'v2:' + query.toLowerCase(); // v2 = must_include/exclude shape
     let ai = await getCachedExpansion(sql, cacheKey);
     let aiError = null;
