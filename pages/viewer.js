@@ -11,6 +11,15 @@ const OSD_PREFIX = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_V
 
 const REGIONS = [
   {
+    // Themed keyword search across the whole collection (searchMode → &search=),
+    // not a specific institution's holdings. Honest label; no per-museum tiles or
+    // counts (the named military museums have no CC0-imaged works in our sources).
+    region: '⚔️ War & Military Art',
+    museums: [
+      { label: 'Military & War Art', source: 'battle military war soldier', searchMode: true },
+    ],
+  },
+  {
     region: 'United States',
     museums: [
       { label: 'Metropolitan Museum',       source: 'Metropolitan Museum of Art' },
@@ -702,9 +711,15 @@ export default function Viewer() {
         {/* MAIN */}
         <div className="main">
 
-          {/* GIVING BANNER */}
-          <a href="/pricing" style={{ display: 'block', textDecoration: 'none', background: 'linear-gradient(90deg,#1A1714,#2C2318)', color: '#F0EAD8', textAlign: 'center', padding: '9px 14px', fontSize: 12.5, lineHeight: 1.5, borderBottom: '1px solid #B8942A', flexShrink: 0 }}>
-            🎨 <strong style={{ color: '#B8942A' }}>35% of every membership</strong> supports arts education for children in Asheville &amp; Buncombe County, NC
+          {/* GIVING BANNER — prominent */}
+          <a href="/pricing" style={{ display: 'block', textDecoration: 'none', background: 'linear-gradient(90deg,#1A1714 0%,#2C2318 100%)', color: '#F0EAD8', textAlign: 'center', padding: '18px 20px', borderBottom: '2px solid #B8942A', flexShrink: 0 }}>
+            <div style={{ fontSize: 24, marginBottom: 4 }}>🎨</div>
+            <div style={{ fontFamily: 'Georgia,serif', fontSize: 'clamp(16px,2.4vw,23px)', fontWeight: 400, lineHeight: 1.25, maxWidth: 760, margin: '0 auto' }}>
+              <strong style={{ color: '#B8942A' }}>35% of every membership</strong> supports arts education for children in Asheville &amp; Buncombe County, NC
+            </div>
+            <div style={{ fontSize: 11, color: '#B0A898', marginTop: 8, textTransform: 'uppercase', letterSpacing: '.16em' }}>
+              Become a member → every plan gives back
+            </div>
           </a>
 
           {/* TOPBAR */}
