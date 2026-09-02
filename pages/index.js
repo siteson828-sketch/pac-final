@@ -564,19 +564,26 @@ export default function Home() {
         </div>
       )}
 
+      <style>{`
+        .tier-card{transition:transform .2s ease, box-shadow .2s ease}
+        .tier-card:hover{transform:translateY(-5px);box-shadow:0 14px 30px rgba(0,0,0,0.4)}
+        .social-fb:hover{color:#B8942A !important}
+        .social-fb svg{transition:transform .2s ease}
+        .social-fb:hover svg{transform:scale(1.12)}
+      `}</style>
       {/* MEMBERSHIP TIERS */}
       <div style={{ background: '#0D0B09', padding: '56px 24px', borderTop: '0.5px solid #3A3028', borderBottom: '0.5px solid #3A3028' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 12 }}>Membership</div>
           <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 'clamp(26px,4vw,40px)', fontWeight: 300, color: '#F0EAD8', marginBottom: 8 }}>Join &amp; give back to Asheville kids</h2>
-          <p style={{ color: '#8A8178', fontSize: 14, marginBottom: 32 }}>35% of every membership supports arts education for children in Asheville &amp; Buncombe County, NC.</p>
+          <p style={{ color: '#8A8178', fontSize: 14, marginBottom: 32 }}>Pick a plan, unlock the good stuff — and 35% of every membership goes straight to arts education for kids in Asheville &amp; Buncombe County, NC. 💛</p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
             {[
               { name: 'Explorer', price: '$9.99', gives: '$3.50 to Asheville kids', hl: false },
               { name: 'Collector', price: '$19.99', gives: '$7.00 to Asheville kids', hl: true },
               { name: 'Patron', price: '$49.99', gives: '$17.50 to Asheville kids', hl: false },
             ].map(t => (
-              <div key={t.name} style={{ background: '#2C2318', border: '1px solid ' + (t.hl ? '#B8942A' : '#3A3028'), borderRadius: 10, padding: '28px 22px' }}>
+              <div key={t.name} className="tier-card" style={{ background: '#2C2318', border: '1px solid ' + (t.hl ? '#B8942A' : '#3A3028'), borderRadius: 10, padding: '28px 22px' }}>
                 <div style={{ fontFamily: 'Georgia,serif', fontSize: 24, color: t.hl ? '#B8942A' : '#F0EAD8', marginBottom: 6 }}>{t.name}</div>
                 <div style={{ fontSize: 32, fontWeight: 300, color: '#F0EAD8', fontFamily: 'Georgia,serif' }}>{t.price}<span style={{ fontSize: 13, color: '#8A8178' }}>/month</span></div>
                 <div style={{ background: 'rgba(22,163,74,0.12)', border: '0.5px solid rgba(22,163,74,0.4)', color: '#16a34a', borderRadius: 6, padding: '8px 10px', margin: '14px 0', fontSize: 13, fontWeight: 700 }}>🎨 {t.gives}</div>
@@ -685,6 +692,15 @@ export default function Home() {
             © 2025 publicartcollections.net · All artwork public domain · Prints fulfilled by Printful · Ships worldwide
             <div style={{fontSize: 12, color: '#6A6058', marginTop: 8}}>
               🎨 35% of every membership is set aside for arts education in Asheville &amp; Buncombe County
+            </div>
+            {/* TODO: replace href with the real Facebook page URL before promoting to prod */}
+            <div style={{marginTop: 12}}>
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook"
+                className="social-fb"
+                style={{display: 'inline-flex', alignItems: 'center', gap: 7, color: '#8A8178', textDecoration: 'none', fontSize: 12}}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
+                Follow us on Facebook
+              </a>
             </div>
           </div>
         </div>
