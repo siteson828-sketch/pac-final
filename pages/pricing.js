@@ -59,7 +59,7 @@ export default function Pricing() {
       price: '$9.99',
       period: 'per month',
       color: '#8A8178',
-      gives: '$3.50/month set aside for local kids',
+      gives: '$3.50/month goes to Asheville kids',
       features: [
         'Browse 1.9 million+ artworks from 120+ world museums',
         'AI-powered natural language search',
@@ -77,7 +77,7 @@ export default function Pricing() {
       price: '$19.99',
       period: 'per month',
       color: '#B8942A',
-      gives: '$7.00/month set aside for local kids',
+      gives: '$7.00/month goes to Asheville kids',
       features: [
         'Everything in Explorer',
         'Order fine art prints, canvas, metal prints',
@@ -96,7 +96,7 @@ export default function Pricing() {
       price: '$49.99',
       period: 'per month',
       color: '#F0EAD8',
-      gives: '$17.50/month set aside for local kids',
+      gives: '$17.50/month goes to Asheville kids',
       features: [
         'Everything in Collector',
         '20% discount on all orders',
@@ -221,16 +221,17 @@ export default function Pricing() {
               </div>
               {tier.gives && (
                 <div style={{
-                  background: 'rgba(22,163,74,0.1)',
-                  border: '0.5px solid rgba(22,163,74,0.3)',
-                  borderRadius: 6,
-                  padding: '8px 12px',
+                  background: 'rgba(22,163,74,0.14)',
+                  border: '1px solid rgba(22,163,74,0.45)',
+                  borderRadius: 8,
+                  padding: '11px 12px',
                   margin: '16px 0 0',
                   textAlign: 'center',
-                  fontSize: 13,
+                  fontSize: 14,
+                  fontWeight: 700,
                   color: '#16a34a',
                 }}>
-                  🎨 {tier.gives} to support arts education
+                  🎨 {tier.gives}
                 </div>
               )}
               <div style={{ height: '1px', background: 'rgba(240,234,214,0.12)', margin: '22px 0' }} />

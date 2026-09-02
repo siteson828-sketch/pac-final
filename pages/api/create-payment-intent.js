@@ -4,7 +4,7 @@ import { hasStripe, createPaymentIntent } from '../../lib/stripe';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, isEmail, sameOrigin, clientIp } from '../../lib/sanitize';
-import { db, getTierForUser, tierDiscount, PAID_TIERS } from '../../lib/authdb';
+import { db, getTierForUser, tierDiscount } from '../../lib/authdb';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,14 +37,13 @@ export default async function handler(req, res) {
   const unitCents = Math.round(parseFloat(unit || '0') * 100);
   if (!unitCents) return res.status(400).json({ error: 'Could not price this product' });
 
-  // Tier gate: ordering is a paid feature. Resolve the caller's tier server-side
-  // and reject free/anonymous. Apply the advertised member discount to the charge.
+  // Ordering is open to any signed-in user. Membership tiers grant an order
+  // discount (see tierDiscount below), not access — anonymous users must sign in.
   let session = null;
   try { session = await getServerSession(req, res, authOptions); } catch (e) {}
-  if (!session?.user?.id) return res.status(401).json({ error: 'Please sign in and subscribe to order prints.' });
+  if (!session?.user?.id) return res.status(401).json({ error: 'Please sign in to order prints.' });
   let tier = 'free';
   try { tier = await getTierForUser(db(), session.user.id); } catch (e) {}
-  if (!PAID_TIERS.has(tier)) return res.status(403).json({ error: 'Ordering requires a Collector or Patron plan.' });
 
   const discount = tierDiscount(tier);
   const amountCents = Math.round(unitCents * qty * (1 - discount));

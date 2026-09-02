@@ -1,7 +1,7 @@
 import { neon } from '@neondatabase/serverless';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from './auth/[...nextauth]';
-import { db, getTierForUser, tierDiscount, PAID_TIERS } from '../../lib/authdb';
+import { db, getTierForUser, tierDiscount } from '../../lib/authdb';
 import { printfulFetch, resolveCatalogVariant, hasPrintfulKey } from '../../lib/printful';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
@@ -90,19 +90,17 @@ export default async function handler(req, res) {
   const rl = await checkRateLimit({ scope: 'order', ip, limit: 10, windowSeconds: 3600 });
   if (!rl.allowed) return bad(res, 429, 'Too many orders from this address. Please try again later.');
 
-  // --- tier gate (real, server-side) ---
-  // Ordering is a paid feature. Resolve the caller's tier from the session and
-  // reject free/anonymous. This is the actual access control — the useShopGate
-  // UI is only a hint.
+  // --- auth gate (real, server-side) ---
+  // Ordering is open to any signed-in user; tier only sets the discount applied
+  // below (not access). Reject anonymous callers. Must stay in sync with the
+  // create-payment-intent gate so a charge is never taken without an order.
   let authSession = null;
   try { authSession = await getServerSession(req, res, authOptions); } catch (e) {}
+  if (!authSession?.user?.id) {
+    return bad(res, 401, 'Please sign in to order.');
+  }
   let callerTier = 'free';
-  if (authSession?.user?.id) {
-    try { callerTier = await getTierForUser(db(), authSession.user.id); } catch (e) { callerTier = 'free'; }
-  }
-  if (!PAID_TIERS.has(callerTier)) {
-    return bad(res, 403, 'Ordering requires a Collector or Patron plan. Visit /pricing to subscribe.');
-  }
+  try { callerTier = await getTierForUser(db(), authSession.user.id); } catch (e) { callerTier = 'free'; }
 
   // --- validation ---
   if (!productName || !CATALOG[productName]) return bad(res, 400, 'Unknown or missing product');

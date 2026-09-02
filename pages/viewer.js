@@ -702,6 +702,11 @@ export default function Viewer() {
         {/* MAIN */}
         <div className="main">
 
+          {/* GIVING BANNER */}
+          <a href="/pricing" style={{ display: 'block', textDecoration: 'none', background: 'linear-gradient(90deg,#1A1714,#2C2318)', color: '#F0EAD8', textAlign: 'center', padding: '9px 14px', fontSize: 12.5, lineHeight: 1.5, borderBottom: '1px solid #B8942A', flexShrink: 0 }}>
+            🎨 <strong style={{ color: '#B8942A' }}>35% of every membership</strong> supports arts education for children in Asheville &amp; Buncombe County, NC
+          </a>
+
           {/* TOPBAR */}
           <div className="topbar">
             <button className="topbar-menu" onClick={() => setNavOpen(true)} aria-label="Open museum list">☰</button>

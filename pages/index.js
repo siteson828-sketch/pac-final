@@ -524,6 +524,10 @@ export default function Home() {
         <AuthNav />
       </nav>
 
+      {/* GIVING BANNER */}
+      <a href="/pricing" style={{ display: 'block', textDecoration: 'none', background: 'linear-gradient(90deg,#1A1714,#2C2318)', color: '#F0EAD8', textAlign: 'center', padding: '10px 16px', fontSize: 13, lineHeight: 1.5, borderBottom: '1px solid #B8942A' }}>
+        🎨 <strong style={{ color: '#B8942A' }}>35% of every membership</strong> supports arts education for children in Asheville &amp; Buncombe County, NC
+      </a>
 
       {/* HERO */}
       {hero && (
