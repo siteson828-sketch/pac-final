@@ -591,170 +591,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Homepage is landing-only: the gallery / search / in-page ordering below
-          is disabled (browsing + ordering live on /viewer). Wrapped out rather
-          than deleted to keep this diff safe. */}
-      {false && (<>
-      {/* SEARCH — curator's search (AI) + search by artist */}
-      <div className="search-sec">
-        <div className="search-head">
-          <span className="eyebrow">The Curator's Search</span>
-          <p>Search by mood, colour, era, or feeling</p>
-        </div>
-        <div className="search-row">
-          <input
-            className="search-input"
-            value={aiQuery}
-            onChange={e => setAiQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && doAISearch(aiQuery)}
-            placeholder="Try: blue melancholy · powerful women · Dutch golden age · war and suffering…"
-          />
-          <button className="search-submit search-submit--gold" onClick={() => doAISearch(aiQuery)} disabled={aiSearching}>
-            {aiSearching ? 'Searching…' : 'Search'}
-          </button>
-        </div>
-        {/* SEARCH BY ARTIST */}
-        <div className="search-row">
-          <input
-            className="search-input"
-            value={artistQuery}
-            onChange={e => setArtistQuery(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && doArtistSearch(artistQuery)}
-            placeholder="Search by artist — Rembrandt, Monet, Hokusai, Van Gogh…"
-          />
-          <button className="search-submit search-submit--ink" onClick={() => doArtistSearch(artistQuery)} disabled={aiSearching}>
-            By Artist
-          </button>
-        </div>
-        <div className="chip-row">
-          {['Rembrandt', 'Monet', 'Van Gogh', 'Hokusai', 'Vermeer', 'Degas', 'Turner', 'Klimt', 'Cézanne', 'Goya'].map(a => (
-            <button key={a} className="taste-chip" onClick={() => { setArtistQuery(a); doArtistSearch(a); }}>{a}</button>
-          ))}
-        </div>
-        <div className="chip-row">
-          {['blue melancholy', 'powerful women', 'Dutch golden age', 'war and suffering', 'Japanese nature', 'impressionist light', 'ancient mythology', 'romantic landscapes'].map(s => (
-            <button key={s} className="taste-chip" onClick={() => { setAiQuery(s); doAISearch(s, { curated: true }); }}>{s}</button>
-          ))}
-        </div>
-        {aiInfo?.description && (
-          <div className="ai-note">
-            <b>Curator</b>&nbsp;&nbsp;{aiInfo.description}{aiInfo.mood ? ` · Mood: ${aiInfo.mood}` : ''}
-          </div>
-        )}
-      </div>
 
-      {/* COLLECTION FILTER BAR */}
-      <div className="coll-bar" id="gallery">
-        {COLLECTIONS.map(c => (
-          <button
-            key={c.label}
-            className={`coll-chip${collection.label === c.label && !museum && !appliedSearch ? ' active' : ''}`}
-            onClick={() => handleCollection(c)}
-          >
-            {c.label}
-          </button>
-        ))}
-      </div>
-
-      {/* MUSEUM FILTER BAR — hide chips whose collection has no works yet
-          (e.g. a Smithsonian unit still syncing), so a filter is never empty. */}
-      <div className="museum-bar">
-        {MUSEUMS.filter(m => !museumCounts || (museumCounts[m.key] || 0) > 0).map(m => (
-          <button
-            key={m.key}
-            className={`museum-chip${museum === m.key ? ' active' : ''}`}
-            onClick={() => handleMuseum(m.key)}
-          >
-            {m.label}
-          </button>
-        ))}
-      </div>
-
-      {/* GALLERY HEADER */}
-      <div className="gallery-header">
-        <h2 className="gallery-title">
-          {galleryLabel}
-          {total !== null && !appliedSearch && !museum && collection.label === 'All' && (
-            <span> — {Number(total).toLocaleString()}+ works</span>
-          )}
-        </h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          {appliedSearch && <p className="gallery-meta">Search results</p>}
-          <button
-            className={`btn-shuffle${order === 'random' ? ' active' : ''}`}
-            onClick={handleShuffle}
-          >
-            {order === 'random' ? 'Shuffled' : 'Shuffle'}
-          </button>
-        </div>
-      </div>
-
-      {/* GALLERY GRID */}
-      {loading && works.length === 0 ? (
-        <div className="gallery-grid">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="skeleton-card skeleton">
-              <div className="skeleton-img" />
-              <div className="skeleton-body">
-                <div className="skeleton-line" style={{ width: '50%' }} />
-                <div className="skeleton-line" style={{ width: '75%' }} />
-                <div className="skeleton-line" style={{ width: '35%' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : works.length === 0 ? (
-        <div className="empty-state">
-          <div className="empty-icon">—</div>
-          <p className="empty-text">No works found</p>
-          <button className="btn" onClick={handleClear}>Clear filters</button>
-        </div>
-      ) : (
-        <div className="gallery-grid">
-          {works.map(w => (
-            <div key={w.id} className="gallery-card" onClick={() => setModal(w)}>
-              <div className="card-img-wrap">
-                {w.thumb_url && !imgErrors[w.id] ? (
-                  <img
-                    src={getThumbUrl(w.thumb_url)}
-                    alt={w.title}
-                    loading="lazy"
-                    style={{ opacity: 0, transition: 'opacity .35s ease' }}
-                    onLoad={e => { e.currentTarget.style.opacity = 1; }}
-                    onError={() => setImgErrors(e => ({ ...e, [w.id]: true }))}
-                  />
-                ) : (
-                  <div className="card-placeholder">—</div>
-                )}
-                <div className="card-hover">
-                  <span className="card-hover-label">View &amp; Order →</span>
-                </div>
-              </div>
-              <div className="card-body">
-                <div className="card-museum">{fmt(w.source)}</div>
-                <div className="card-title">{w.title}</div>
-                <div className="card-artist">
-                  {w.artist || 'Artist unknown'}{w.date_text ? ` · ${w.date_text}` : ''}
-                </div>
-                <div className="card-foot">
-                  <span className="card-price">Prints from $18</span>
-                  <span className="card-badge">{(w.rights_label || 'CC0').split('—')[0].trim()}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* LOAD MORE */}
-      {hasMore && (
-        <div className="load-more">
-          <button className="btn" onClick={handleLoadMore} disabled={loading}>
-            {loading ? 'Loading…' : 'Load more works'}
-          </button>
-        </div>
-      )}
-      </>)}
 
       {/* MISSION */}
       <div style={{
@@ -823,24 +660,15 @@ export default function Home() {
             <div>
               <div className="footer-col-title">Collections</div>
               {['All Museums', 'Impressionism', 'Baroque', 'Renaissance', 'Modern Art', 'Photography'].map(c => (
-                <button
-                  key={c}
-                  className="footer-link"
-                  onClick={() => {
-                    const match = COLLECTIONS.find(x => x.label === c);
-                    if (match) handleCollection(match);
-                    else handleSearch();
-                    document.getElementById('gallery')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                >
+                <a key={c} href="/viewer" className="footer-link">
                   {c}
-                </button>
+                </a>
               ))}
             </div>
             <div>
               <div className="footer-col-title">Museums</div>
               {MUSEUMS.slice(0, 8).map(m => (
-                <button key={m.key} className="footer-link" onClick={() => handleMuseum(m.key)}>{m.label}</button>
+                <a key={m.key} href="/viewer" className="footer-link">{m.label}</a>
               ))}
               <a href="/viewer" className="footer-link">All museums →</a>
             </div>
