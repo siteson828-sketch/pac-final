@@ -553,7 +553,7 @@ export default function Home() {
             </p>
             <div className="hero-actions">
               <a href="/viewer" className="hero-btn hero-btn-light">Browse the Collection</a>
-              <button className="hero-btn hero-btn-outline" onClick={() => setModal(hero)}>View This Work</button>
+              <a href="/viewer" className="hero-btn hero-btn-outline">View This Work</a>
             </div>
           </div>
           {hero.title && (
@@ -591,6 +591,10 @@ export default function Home() {
         </div>
       </div>
 
+      {/* Homepage is landing-only: the gallery / search / in-page ordering below
+          is disabled (browsing + ordering live on /viewer). Wrapped out rather
+          than deleted to keep this diff safe. */}
+      {false && (<>
       {/* SEARCH — curator's search (AI) + search by artist */}
       <div className="search-sec">
         <div className="search-head">
@@ -750,6 +754,7 @@ export default function Home() {
           </button>
         </div>
       )}
+      </>)}
 
       {/* MISSION */}
       <div style={{
