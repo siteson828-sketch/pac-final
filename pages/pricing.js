@@ -7,12 +7,13 @@ import { useRouter } from 'next/router';
 import { useSession } from 'next-auth/react';
 
 // Responsive layout lives in classes (inline styles can't do media queries): the
-// 3-tier grid stacks to a single column on phones and padding tightens up.
+// Tier grid (Free + 3 paid) collapses 4→2→1 columns as the viewport narrows.
 const CSS = `
 .pricing-nav{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:22px 48px;border-bottom:1px solid rgba(240,234,214,0.12)}
 .pricing-wrap{max-width:1100px;margin:0 auto;padding:72px 32px}
-.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;align-items:start}
-@media(max-width:860px){.pricing-grid{grid-template-columns:1fr;gap:20px;max-width:440px;margin:0 auto}}
+.pricing-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:start}
+@media(max-width:1080px){.pricing-grid{grid-template-columns:repeat(2,1fr);gap:20px;max-width:680px;margin:0 auto}}
+@media(max-width:600px){.pricing-grid{grid-template-columns:1fr;max-width:440px;margin:0 auto}}
 @media(max-width:600px){
   .pricing-nav{padding:16px 18px}
   .pricing-wrap{padding:40px 18px 56px}
@@ -55,17 +56,34 @@ export default function Pricing() {
 
   const tiers = [
     {
+      name: 'Free',
+      price: '$0',
+      period: 'forever',
+      color: '#8A8178',
+      features: [
+        'Browse 1.9 million+ artworks',
+        'AI search',
+        'Gigapixel zoom',
+        'Free screen quality downloads',
+        'Sign in required to order',
+      ],
+      cta: 'Start browsing',
+      href: '/viewer',
+      highlighted: false,
+    },
+    {
       name: 'Explorer',
       price: '$9.99',
       period: 'per month',
       color: '#8A8178',
       gives: '$3.50/month goes to Asheville kids',
       features: [
-        'Browse 1.9 million+ artworks from 120+ world museums',
-        'AI-powered natural language search',
+        'Browse 1.9 million+ artworks from 120+ museums',
+        'AI-powered search',
         'Gigapixel zoom viewer',
         'Free screen quality downloads',
-        '35% supports Asheville arts education',
+        'Order prints and merchandise at full price',
+        '$3.50/month supports Asheville kids arts education',
       ],
       cta: 'Start exploring',
       key: 'explorer',
@@ -80,11 +98,8 @@ export default function Pricing() {
       gives: '$7.00/month goes to Asheville kids',
       features: [
         'Everything in Explorer',
-        'Order fine art prints, canvas, metal prints',
-        'Order apparel and gifts (mugs, shirts, totes, phone cases)',
         '10% discount on all orders',
-        'Ships to 180+ countries',
-        '35% supports Asheville arts education',
+        '$7.00/month supports Asheville kids arts education',
       ],
       cta: 'Start collecting',
       key: 'collector',
@@ -101,7 +116,7 @@ export default function Pricing() {
         'Everything in Collector',
         '20% discount on all orders',
         'Priority support',
-        '35% supports Asheville arts education',
+        '$17.50/month supports Asheville kids arts education',
       ],
       cta: 'Become a patron',
       key: 'patron',
@@ -192,7 +207,7 @@ export default function Pricing() {
             Access the World&apos;s Art
           </h1>
           <p style={{ fontSize: 16, color: 'var(--muted-solid)', maxWidth: 520, margin: '0 auto', lineHeight: 1.8 }}>
-            Browsing, AI search, gigapixel zoom, and full-resolution downloads are free for everyone. Upgrade to order museum-quality prints with a member discount.
+            Browsing, AI search, gigapixel zoom, and full-resolution downloads are free for everyone. Sign in to order museum-quality prints — members get a discount, and 35% of every membership supports arts education for Asheville kids.
           </p>
           {error && (
             <div style={{ marginTop: 22, display: 'inline-block', background: 'rgba(180,60,40,0.14)', border: '1px solid rgba(200,80,60,0.4)', color: '#E0A090', borderRadius: 'var(--radius)', padding: '10px 16px', fontSize: 13 }}>
