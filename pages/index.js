@@ -693,9 +693,8 @@ export default function Home() {
             <div style={{fontSize: 12, color: '#6A6058', marginTop: 8}}>
               🎨 35% of every membership is set aside for arts education in Asheville &amp; Buncombe County
             </div>
-            {/* TODO: replace href with the real Facebook page URL before promoting to prod */}
             <div style={{marginTop: 12}}>
-              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook"
+              <a href="https://www.facebook.com/profile.php?id=61593644387948" target="_blank" rel="noopener noreferrer" aria-label="Facebook"
                 className="social-fb"
                 style={{display: 'inline-flex', alignItems: 'center', gap: 7, color: '#8A8178', textDecoration: 'none', fontSize: 12}}>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M22 12a10 10 0 1 0-11.56 9.88v-6.99H7.9V12h2.54V9.8c0-2.5 1.49-3.89 3.77-3.89 1.09 0 2.24.2 2.24.2v2.46h-1.26c-1.24 0-1.63.77-1.63 1.56V12h2.78l-.44 2.89h-2.34v6.99A10 10 0 0 0 22 12z"/></svg>
