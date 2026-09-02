@@ -552,7 +552,7 @@ export default function Home() {
               Museum masterpieces from the world's great collections — each in the public domain, available as archival fine-art prints, canvas, and gifts.
             </p>
             <div className="hero-actions">
-              <a href="#gallery" className="hero-btn hero-btn-light">Browse the Collection</a>
+              <a href="/viewer" className="hero-btn hero-btn-light">Browse the Collection</a>
               <button className="hero-btn hero-btn-outline" onClick={() => setModal(hero)}>View This Work</button>
             </div>
           </div>
@@ -563,6 +563,33 @@ export default function Home() {
           )}
         </div>
       )}
+
+      {/* MEMBERSHIP TIERS */}
+      <div style={{ background: '#0D0B09', padding: '56px 24px', borderTop: '0.5px solid #3A3028', borderBottom: '0.5px solid #3A3028' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 12 }}>Membership</div>
+          <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 'clamp(26px,4vw,40px)', fontWeight: 300, color: '#F0EAD8', marginBottom: 8 }}>Join &amp; give back to Asheville kids</h2>
+          <p style={{ color: '#8A8178', fontSize: 14, marginBottom: 32 }}>35% of every membership supports arts education for children in Asheville &amp; Buncombe County, NC.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
+            {[
+              { name: 'Explorer', price: '$9.99', gives: '$3.50 to Asheville kids', hl: false },
+              { name: 'Collector', price: '$19.99', gives: '$7.00 to Asheville kids', hl: true },
+              { name: 'Patron', price: '$49.99', gives: '$17.50 to Asheville kids', hl: false },
+            ].map(t => (
+              <div key={t.name} style={{ background: '#2C2318', border: '1px solid ' + (t.hl ? '#B8942A' : '#3A3028'), borderRadius: 10, padding: '28px 22px' }}>
+                <div style={{ fontFamily: 'Georgia,serif', fontSize: 24, color: t.hl ? '#B8942A' : '#F0EAD8', marginBottom: 6 }}>{t.name}</div>
+                <div style={{ fontSize: 32, fontWeight: 300, color: '#F0EAD8', fontFamily: 'Georgia,serif' }}>{t.price}<span style={{ fontSize: 13, color: '#8A8178' }}>/month</span></div>
+                <div style={{ background: 'rgba(22,163,74,0.12)', border: '0.5px solid rgba(22,163,74,0.4)', color: '#16a34a', borderRadius: 6, padding: '8px 10px', margin: '14px 0', fontSize: 13, fontWeight: 700 }}>🎨 {t.gives}</div>
+                <a href="/pricing" style={{ display: 'block', textAlign: 'center', background: t.hl ? '#B8942A' : 'transparent', color: t.hl ? '#1A1714' : '#F0EAD8', border: '1px solid ' + (t.hl ? '#B8942A' : 'rgba(240,234,214,0.3)'), padding: '12px', borderRadius: 4, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>Subscribe</a>
+              </div>
+            ))}
+          </div>
+          <div style={{ marginTop: 28, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a href="/viewer" style={{ background: '#B8942A', color: '#1A1714', padding: '13px 26px', borderRadius: 4, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>Browse by Museum →</a>
+            <a href="/viewer" style={{ background: 'transparent', color: '#F0EAD8', border: '1px solid rgba(240,234,214,0.3)', padding: '13px 26px', borderRadius: 4, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>Browse by Genre →</a>
+          </div>
+        </div>
+      </div>
 
       {/* SEARCH — curator's search (AI) + search by artist */}
       <div className="search-sec">

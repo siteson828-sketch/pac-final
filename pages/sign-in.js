@@ -2,6 +2,13 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { signIn, useSession } from 'next-auth/react';
 
+// Return the caller to where they were (e.g. mid-order on /viewer) after login,
+// instead of always dumping them on /viewer. Only allow same-site relative paths.
+function safeCallback(cb) {
+  const s = Array.isArray(cb) ? cb[0] : cb;
+  return (typeof s === 'string' && s.startsWith('/') && !s.startsWith('//')) ? s : '/viewer';
+}
+
 export default function SignInPage() {
   const router = useRouter();
   const { status } = useSession();
@@ -11,7 +18,7 @@ export default function SignInPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (status === 'authenticated') router.replace('/viewer');
+    if (status === 'authenticated') router.replace(safeCallback(router.query.callbackUrl));
   }, [status, router]);
 
   async function onSubmit(e) {
@@ -21,7 +28,7 @@ export default function SignInPage() {
     const res = await signIn('credentials', { redirect: false, email, password });
     setBusy(false);
     if (res?.error) setError('Invalid email or password.');
-    else router.replace('/viewer');
+    else router.replace(safeCallback(router.query.callbackUrl));
   }
 
   return (

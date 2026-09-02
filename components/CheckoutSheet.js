@@ -86,7 +86,7 @@ const CO_CSS = `
 }
 `;
 
-export default function CheckoutSheet({ checkout, onClose }) {
+export default function CheckoutSheet({ checkout, onClose, onOrdered }) {
   const [coStep, setCoStep]     = useState('details');  // details | payment | result
   const [coSize, setCoSize]     = useState(null);
   const [coQty, setCoQty]       = useState(1);
@@ -246,7 +246,11 @@ export default function CheckoutSheet({ checkout, onClose }) {
         ? { ok: true, msg: data.message || 'Order placed', data }
         : { ok: false, msg: data.error || 'Payment succeeded but the order could not be created — contact support.' });
       setCoStep('result');
-      if (resp.ok) trackGHL('order_completed', { artwork: art?.title, museum: art?.source, orderTotal: amountCents ? (amountCents / 100).toFixed(2) : undefined });
+      if (resp.ok) {
+        trackGHL('order_completed', { artwork: art?.title, museum: art?.source, orderTotal: amountCents ? (amountCents / 100).toFixed(2) : undefined });
+        // Let the host (e.g. viewer cart) remove the purchased item after payment.
+        if (onOrdered) { try { onOrdered(checkout.art, checkout.product); } catch (e) {} }
+      }
     } catch (e) {
       setCoError(e.message);
     } finally {
