@@ -18,6 +18,21 @@ export const dynamic = 'force-dynamic';
 const SYNONYMS = {
   nude: ['nude', 'nudes', 'naked', 'nu', 'nue', 'nus', 'nues', 'nackt', 'akt', 'akte', 'nudo', 'nuda', 'nudi', 'desnudo', 'desnuda', 'naakt', 'nudité', 'nudita'],
 };
+
+// Actual war/military museum sources present in the DB (ingested via Europeana /
+// Digital Commonwealth). The viewer's "Military & War Art" tile pulls ONLY from
+// these (see ?warmuseums=1), not war-themed art from other museums. "Warsaw"
+// sources are deliberately excluded — a city, not a war museum.
+const WAR_MUSEUM_SOURCES = [
+  'Europeana — Army Museum',
+  'Europeana — Estonian War Museum',
+  'Europeana — King Ferdinand I National Military Museum',
+  'Europeana — National Museum of Romanian Navy',
+  'Europeana — Netherlands Institute for Military History',
+  'Europeana — The Military Archives of Sweden',
+  'Europeana — Vytautas the Great War Museum',
+  'Digital Commonwealth — U.S. Army Natick Soldier Systems Center',
+];
 function synonymRegex(q) {
   const norm = String(q || '').trim().toLowerCase().replace(/s$/, ''); // nude/nudes → nude
   const set = SYNONYMS[norm];
@@ -67,7 +82,12 @@ export default async function handler(req, res) {
     }
 
     let works;
-    if (search && source) {
+    if (req.query.warmuseums) {
+      const sv = search || ''; // optional in-tile keyword filter; '' = no filter
+      works = rand
+        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source = ANY(${WAR_MUSEUM_SOURCES}) AND (${sv} = '' OR title ILIKE ${'%'+sv+'%'} OR artist ILIKE ${'%'+sv+'%'} OR medium ILIKE ${'%'+sv+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
+        : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source = ANY(${WAR_MUSEUM_SOURCES}) AND (${sv} = '' OR title ILIKE ${'%'+sv+'%'} OR artist ILIKE ${'%'+sv+'%'} OR medium ILIKE ${'%'+sv+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+    } else if (search && source) {
       works = rand
         ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source} AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY RANDOM() LIMIT ${lim}`
         : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source} AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;

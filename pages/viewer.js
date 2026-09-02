@@ -11,12 +11,12 @@ const OSD_PREFIX = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_V
 
 const REGIONS = [
   {
-    // Themed keyword search across the whole collection (searchMode → &search=),
-    // not a specific institution's holdings. Honest label; no per-museum tiles or
-    // counts (the named military museums have no CC0-imaged works in our sources).
+    // Real war/military museum holdings only (via ?warmuseums=1 → the curated
+    // WAR_MUSEUM_SOURCES list in /api/artworks), not war-themed art from other
+    // museums. Sourced from Europeana (Army Museum, Estonian War Museum, etc.).
     region: '⚔️ War & Military Art',
     museums: [
-      { label: 'Military & War Art', source: 'battle military war soldier', searchMode: true },
+      { label: 'Military & War Museums', warMuseums: true },
     ],
   },
   {
@@ -580,7 +580,10 @@ export default function Viewer() {
     setLoading(true);
     try {
       let url = `/api/artworks?limit=48&offset=${offset}`;
-      if (museum.searchMode) {
+      if (museum.warMuseums) {
+        url += `&warmuseums=1`;
+        if (genreFilter?.search) url += `&search=${encodeURIComponent(genreFilter.search)}`;
+      } else if (museum.searchMode) {
         url += `&search=${encodeURIComponent(museum.source)}`;
         if (genreFilter?.search) url += `+${encodeURIComponent(genreFilter.search)}`;
       } else {
@@ -718,7 +721,8 @@ export default function Viewer() {
     setLoading(true);
     const q = searchInput.trim();
     let url = `/api/artworks?limit=48&offset=0`;
-    if (selected.searchMode) url += `&search=${encodeURIComponent(selected.source + ' ' + q)}`;
+    if (selected.warMuseums) url += `&warmuseums=1&search=${encodeURIComponent(q)}`;
+    else if (selected.searchMode) url += `&search=${encodeURIComponent(selected.source + ' ' + q)}`;
     else url += `&source=${encodeURIComponent(selected.source)}&search=${encodeURIComponent(q)}`;
     fetch(url).then(r => r.json()).then(data => {
       setWorks(data.works || []);
