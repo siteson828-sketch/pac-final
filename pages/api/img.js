@@ -28,6 +28,7 @@ const ALLOWED = new Set([
   'iiif.artsmia.org', '1.api.artsmia.org',
   'ids.si.edu',
   'ark.digitalcommonwealth.org', 'bpldcassets.blob.core.windows.net',
+  'archive.org', // Internet Archive services/img (bare host; .archive.org suffix misses it)
   'images.collection.cooperhewitt.org',
   'd32dm0rphc51dk.cloudfront.net',
   'media.gettyimages.com',
