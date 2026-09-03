@@ -211,7 +211,14 @@ function getThumbUrl(url) {
   // Vercel's datacenter egress IPs (403), while direct browser loads succeed.
   // Loading AIC IIIF thumbnails directly is the working path.
   if (url.includes('/full/!400,400/')) return url.replace('/full/!400,400/', '/full/!300,300/'); // IIIF: V&A, AIC, MIA, LoC…
-  if (url.includes('commons.wikimedia.org') && /[?&]width=\d+/.test(url)) return url.replace(/width=\d+/, 'width=300'); // Wikimedia/Wikidata
+  // Wikimedia Commons (Vatican, Picasso, Hermitage, Louvre, British, Prado, all
+  // Wikidata museums) throttles Special:FilePath hotlinks when a full grid loads
+  // at once → route through our edge-cached proxy so the browser never hits their
+  // rate limit. ~11% of the collection.
+  if (url.includes('commons.wikimedia.org')) {
+    const sized = /[?&]width=\d+/.test(url) ? url.replace(/width=\d+/, 'width=300') : url;
+    return '/api/img?url=' + encodeURIComponent(sized);
+  }
   if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian (direct — WAF blocks proxy fetch)
   try {
     if (PROXY_HOSTS.has(new URL(url).hostname)) return '/api/img?url=' + encodeURIComponent(url);

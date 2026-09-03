@@ -100,7 +100,12 @@ function getThumbUrl(url) {
     return u;
   }
   if (url.includes('/full/!400,400/')) return url.replace('/full/!400,400/', '/full/!300,300/'); // IIIF
-  if (url.includes('commons.wikimedia.org') && /[?&]width=\d+/.test(url)) return url.replace(/width=\d+/, 'width=300'); // Wikimedia/Wikidata
+  // Wikimedia Commons throttles Special:FilePath hotlinks at grid scale → proxy
+  // through our edge cache (covers Vatican, Picasso, Hermitage, Wikidata, etc.).
+  if (url.includes('commons.wikimedia.org')) {
+    const sized = /[?&]width=\d+/.test(url) ? url.replace(/width=\d+/, 'width=300') : url;
+    return '/api/img?url=' + encodeURIComponent(sized);
+  }
   if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian (direct)
   try {
     if (PROXY_HOSTS.has(new URL(url).hostname)) return '/api/img?url=' + encodeURIComponent(url);
