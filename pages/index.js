@@ -91,6 +91,14 @@ const PROXY_HOSTS = new Set([
 ]);
 function getThumbUrl(url) {
   if (!url) return '';
+  // Library of Congress: normalize the sync's malformed thumb URLs (see viewer.js).
+  if (url.includes('tile.loc.gov')) {
+    const u = url.split('#')[0];
+    if (u.includes('_150px.jpg')) return u.slice(0, u.indexOf('_150px.jpg') + 10);
+    const m = u.match(/^(.*\.(?:gif|jpe?g|png|tif))\/full\/[^/]*\/\d+\/default\.\w+$/i);
+    if (m) return m[1];
+    return u;
+  }
   if (url.includes('/full/!400,400/')) return url.replace('/full/!400,400/', '/full/!300,300/'); // IIIF
   if (url.includes('commons.wikimedia.org') && /[?&]width=\d+/.test(url)) return url.replace(/width=\d+/, 'width=300'); // Wikimedia/Wikidata
   if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian (direct)

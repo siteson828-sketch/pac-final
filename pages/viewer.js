@@ -196,6 +196,17 @@ const PROXY_HOSTS = new Set([
 ]);
 function getThumbUrl(url) {
   if (!url) return '';
+  // Library of Congress: the sync produced malformed thumb URLs — a static
+  // …_150px.jpg with a bogus IIIF suffix glued on via '#', and some …/X.gif with
+  // an IIIF suffix appended (those 404). Normalize to the real file so LoC
+  // thumbnails actually load. (Bare-identifier IIIF URLs are left untouched.)
+  if (url.includes('tile.loc.gov')) {
+    const u = url.split('#')[0];
+    if (u.includes('_150px.jpg')) return u.slice(0, u.indexOf('_150px.jpg') + 10);
+    const m = u.match(/^(.*\.(?:gif|jpe?g|png|tif))\/full\/[^/]*\/\d+\/default\.\w+$/i);
+    if (m) return m[1];
+    return u;
+  }
   // NOTE: do NOT proxy artic.edu (AIC) through /api/img — AIC's origin blocks
   // Vercel's datacenter egress IPs (403), while direct browser loads succeed.
   // Loading AIC IIIF thumbnails directly is the working path.
