@@ -103,7 +103,11 @@ function getThumbUrl(url) {
   // Wikimedia Commons throttles Special:FilePath hotlinks at grid scale → proxy
   // through our edge cache (covers Vatican, Picasso, Hermitage, Wikidata, etc.).
   if (url.includes('commons.wikimedia.org')) {
-    const sized = /[?&]width=\d+/.test(url) ? url.replace(/width=\d+/, 'width=300') : url;
+    // Force a width so Special:FilePath renders a thumbnail (no-width URLs return
+    // the original file — huge JPEGs or unrenderable TIFF/SVG → blank).
+    const sized = /[?&]width=\d+/.test(url)
+      ? url.replace(/width=\d+/, 'width=300')
+      : url + (url.includes('?') ? '&' : '?') + 'width=300';
     return '/api/img?url=' + encodeURIComponent(sized);
   }
   if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian (direct)

@@ -216,7 +216,13 @@ function getThumbUrl(url) {
   // at once → route through our edge-cached proxy so the browser never hits their
   // rate limit. ~11% of the collection.
   if (url.includes('commons.wikimedia.org')) {
-    const sized = /[?&]width=\d+/.test(url) ? url.replace(/width=\d+/, 'width=300') : url;
+    // Force a width so Special:FilePath returns a rendered thumbnail — many
+    // Wikidata Global URLs have no width and resolve to the ORIGINAL file (huge
+    // JPEGs that blow the proxy's 10MB cap, or TIFF/SVG the browser can't render)
+    // → blank. width=300 gives a small JPEG every time.
+    const sized = /[?&]width=\d+/.test(url)
+      ? url.replace(/width=\d+/, 'width=300')
+      : url + (url.includes('?') ? '&' : '?') + 'width=300';
     return '/api/img?url=' + encodeURIComponent(sized);
   }
   if (url.includes('ids.si.edu/ids/deliveryService')) return url + (url.includes('?') ? '&' : '?') + 'max=300'; // Smithsonian (direct — WAF blocks proxy fetch)
