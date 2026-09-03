@@ -952,7 +952,17 @@ export default function Viewer() {
                             loading="lazy"
                             style={{ opacity: 0, transition: 'opacity .35s ease' }}
                             onLoad={e => { e.currentTarget.style.opacity = 1; }}
-                            onError={() => setImgErrors(e => ({ ...e, [w.id]: true }))}
+                            onError={e => {
+                              // Fallback: if the direct museum thumbnail fails, retry once
+                              // through our /api/img proxy (edge-cached); only then give up.
+                              const img = e.currentTarget;
+                              if (!img.dataset.proxied && w.thumb_url) {
+                                img.dataset.proxied = '1';
+                                img.src = '/api/img?url=' + encodeURIComponent(w.thumb_url);
+                              } else {
+                                setImgErrors(er => ({ ...er, [w.id]: true }));
+                              }
+                            }}
                           />
                         ) : (
                           <div className="card-ph">—</div>
