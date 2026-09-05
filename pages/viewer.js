@@ -154,6 +154,17 @@ const GENRES = [
   { label: 'Sculpture',    search: 'sculpture' },
   { label: 'Photography',  search: 'photograph' },
   { label: 'Illustration', search: 'illustration' },
+  { label: '🗺️ Antique Maps',           search: 'map' },
+  { label: '🌿 Botanical Prints',        search: 'botanical' },
+  { label: '📜 Vintage Posters',         search: 'poster' },
+  { label: '⭐ Star Maps',               search: 'celestial' },
+  { label: '👗 Fashion Plates',          search: 'fashion' },
+  { label: '📖 Illuminated Manuscripts', search: 'manuscript' },
+  { label: '🦋 Natural History',         search: 'natural history' },
+  { label: '🏛️ Architecture',            search: 'architecture' },
+  { label: '🏯 Japanese Woodblock',      search: 'woodblock' },
+  { label: '✈️ Travel Posters',          search: 'travel' },
+  { label: '🔬 Scientific Art',          search: 'scientific' },
 ];
 
 const ORDERS = [
