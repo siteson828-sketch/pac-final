@@ -479,6 +479,89 @@ async function syncEuropeana(sql, key, offset=0) {
   return await upsert(sql, works);
 }
 
+// Europeana Fashion: fashion plates / costume / textile art. Only CC0 & Public
+// Domain Mark items are kept — upsert() stamps everything CC0, so (like the
+// Smithsonian sync) we must feed it genuine PD works or the rights label lies.
+// reusability=open still returns CC BY / BY-SA, so we filter per item, and use
+// the stable Europeana record id (never Math.random) to avoid duplicate bloat.
+async function syncEuropeanaFashion(sql, key, offset=0) {
+  if (!key) return 0;
+  await sql`CREATE TABLE IF NOT EXISTS sync_cursors (source TEXT PRIMARY KEY, next_offset BIGINT NOT NULL DEFAULT 0, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+  await sql`ALTER TABLE sync_cursors ADD COLUMN IF NOT EXISTS cursor_text TEXT`;
+
+  const queries = [
+    'fashion plate', 'costume design', 'dress', 'textile pattern', 'fashion illustration',
+    'couture', 'lace', 'embroidery', 'millinery', 'fashion drawing',
+  ];
+  const isPD = r => {
+    const arr = Array.isArray(r) ? r : (r ? [r] : []);
+    return arr.some(u => /creativecommons\.org\/publicdomain\/(zero|mark)/i.test(String(u)));
+  };
+  const works = [];
+  const MAX_PER_CALL = 4000;
+  const PAGES_PER_TERM = 15;
+
+  for (let qi = offset; qi < offset + 5 && qi < queries.length; qi++) {
+    const q = queries[qi];
+    const ckey = 'europeanafashion:' + q;
+    let cursor = '*';
+    try {
+      const r = await sql`SELECT cursor_text FROM sync_cursors WHERE source = ${ckey}`;
+      if (r.length && r[0].cursor_text) cursor = r[0].cursor_text;
+    } catch (e) {}
+    if (cursor === 'DONE') continue;
+
+    let pages = 0;
+    while (pages < PAGES_PER_TERM && works.length < MAX_PER_CALL) {
+      let d;
+      try {
+        const url = 'https://api.europeana.eu/record/v2/search.json' +
+          '?wskey=' + key +
+          '&query=' + encodeURIComponent(q) +
+          '&reusability=open&media=true&qf=TYPE:IMAGE&rows=100&profile=rich' +
+          '&cursor=' + encodeURIComponent(cursor);
+        d = await fetch(url).then(r => r.json());
+      } catch (e) { console.error('Europeana fashion error:', e.message); break; }
+      if (!d.success || !d.items?.length) { cursor = 'DONE'; break; }
+      for (const o of d.items) {
+        if (!isPD(o.rights)) continue; // CC0 / Public Domain Mark only — upsert stamps CC0
+        const previewArr = Array.isArray(o.edmPreview) ? o.edmPreview : (o.edmPreview ? [o.edmPreview] : []);
+        const thumb = previewArr[0];
+        if (!thumb) continue;
+        const recId = (o.id || '').replace(/^\//, '');
+        if (!recId) continue; // stable id only — never Math.random()
+        const shownBy = Array.isArray(o.edmIsShownBy) ? o.edmIsShownBy[0] : o.edmIsShownBy;
+        const provider = Array.isArray(o.dataProvider) ? o.dataProvider[0] : (o.dataProvider || 'Europeana');
+        const title = Array.isArray(o.title) ? o.title[0] : (o.title || 'Untitled');
+        const artist = Array.isArray(o.dcCreator) ? o.dcCreator[0] : (o.dcCreator || '');
+        works.push({
+          source: 'Europeana Fashion — ' + provider,
+          source_id: recId,
+          title: String(title).trim() || 'Untitled',
+          artist: String(artist).replace(/^#/, '').replace(/_/g, ' ').trim(),
+          date_text: Array.isArray(o.year) ? o.year[0] : (o.year || ''),
+          medium: 'Fashion Illustration',
+          thumb_url: thumb,
+          full_url: shownBy || thumb,
+          detail_url: 'https://www.europeana.eu/en/item/' + recId,
+          bio: Array.isArray(o.dcDescription) ? o.dcDescription[0] : (o.dcDescription || ''),
+        });
+      }
+      pages++;
+      if (d.nextCursor) cursor = d.nextCursor;
+      else { cursor = 'DONE'; break; }
+      await sleep(300);
+    }
+    try {
+      await sql`INSERT INTO sync_cursors (source, next_offset, cursor_text, updated_at)
+                VALUES (${ckey}, 0, ${cursor}, NOW())
+                ON CONFLICT (source) DO UPDATE SET cursor_text = ${cursor}, updated_at = NOW()`;
+    } catch (e) {}
+    if (works.length >= MAX_PER_CALL) break;
+  }
+  return await upsert(sql, works);
+}
+
 // COMPLETE Smithsonian sync: all 15 art/cultural units, CC0-only, resumable.
 // The Open Access API exposes ~4.5M records, but ~4.4M are natural-history
 // SPECIMENS (pressed plants, pinned insects, bird skins, fossils) under the
@@ -1274,6 +1357,7 @@ export default async function handler(req, res) {
   if (src==='smk'        ||src==='all') await run('SMK Denmark',        () => syncSMK(sql, offset));
   if (src==='vam'        ||src==='all') await run('V&A Museum',         () => syncVAM(sql, offset));
   if (src==='europeana'  ||src==='all') await run('Europeana',          () => syncEuropeana(sql, process.env.EUROPEANA_KEY, offset));
+  if (src==='europeanafashion'||src==='all') await run('Europeana Fashion', () => syncEuropeanaFashion(sql, process.env.EUROPEANA_KEY, offset));
   if (src==='smithsonian'||src==='smithsonianall'||src==='all') await run('Smithsonian', () => syncSmithsonian(sql, process.env.SMITHSONIAN_KEY));
   if (src==='harvard'    ||src==='all') await run('Harvard',            () => syncHarvard(sql));
   if (src==='getty'      ||src==='all') await run('Getty Museum',       () => syncWikidataMuseum(sql, 'Q1700481', 'Getty Museum'));
