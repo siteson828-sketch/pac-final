@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /sync-manager
+Disallow: /order-success
+Disallow: /unsubscribe
+Disallow: /api/
+
+Sitemap: https://www.publicartcollections.net/sitemap.xml
