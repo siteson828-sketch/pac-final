@@ -498,10 +498,16 @@ async function syncEuropeanaFashion(sql, key, offset=0) {
     return arr.some(u => /creativecommons\.org\/publicdomain\/(zero|mark)/i.test(String(u)));
   };
   const works = [];
-  const MAX_PER_CALL = 4000;
-  const PAGES_PER_TERM = 15;
+  const MAX_PER_CALL = 1500;
+  const PAGES_PER_TERM = 3;
 
-  for (let qi = offset; qi < offset + 5 && qi < queries.length; qi++) {
+  // Process EVERY term each call. Deep pagination is handled by the per-term
+  // cursors below, so we must NOT slice by `offset`: the orchestrator passes
+  // offset in steps of 1000, and the old `qi = offset` slice turned that into an
+  // empty range (qi=1000 is never < queries.length), which is why this source
+  // ingested 0 works. Page/work budgets are sized to finish within the 300s
+  // function limit and the orchestrator's 250s abort.
+  for (let qi = 0; qi < queries.length; qi++) {
     const q = queries[qi];
     const ckey = 'europeanafashion:' + q;
     let cursor = '*';
@@ -890,6 +896,25 @@ async function syncMia(sql) {
   return upsert(sql, works);
 }
 
+// LOC `image_url` arrays mix raw .gif/.svg URLs with proper IIIF service URLs
+// (and append #w=..&h=.. fragments). Pick the IIIF url, strip the fragment, and
+// derive the IIIF identifier base so we can request clean !w,h derivatives.
+// Returns null when no usable IIIF image is present — the old code blindly took
+// image_url[0] and appended /full/!400,400/... to whatever it was, producing
+// unrenderable .gif#.../full/... and .svg/full/... thumbnails.
+function locImage(imgUrls) {
+  const arr = Array.isArray(imgUrls) ? imgUrls : (imgUrls ? [imgUrls] : []);
+  const iiif = arr
+    .map(u => String(u).split('#')[0])
+    .find(u => /\/image-services\/iiif\/.+\/full\/[^/]+\/0\/default\.jpg$/.test(u));
+  if (!iiif) return null;
+  const base = iiif.replace(/\/full\/[^/]+\/0\/default\.jpg$/, '');
+  return {
+    thumb: `${base}/full/!400,400/0/default.jpg`,
+    full:  `${base}/full/!1200,1200/0/default.jpg`,
+  };
+}
+
 async function syncLOC(sql, offset=0) {
   // Offset-chunked: `offset` is a starting index into the term list; process 2 terms per call.
   const works = [];
@@ -907,12 +932,11 @@ async function syncLOC(sql, offset=0) {
         for (const o of items) {
           const id = String(o.id||o.url||'');
           if (!id||seen.has(id)) continue;
-          const imgUrls = o.image_url||[];
-          if (!imgUrls.length) continue;
+          const img = locImage(o.image_url);
+          if (!img) continue;
           seen.add(id);
-          const iiifBase = imgUrls[0].replace(/\/full\/[^/]+\/0\/default\.jpg$/, '');
-          const thumb = `${iiifBase}/full/!400,400/0/default.jpg`;
-          const full  = `${iiifBase}/full/!1200,1200/0/default.jpg`;
+          const thumb = img.thumb;
+          const full  = img.full;
           const contributor = Array.isArray(o.contributor) ? o.contributor[0] : (o.contributor||'');
           works.push({
             source:'Library of Congress',
@@ -930,6 +954,49 @@ async function syncLOC(sql, offset=0) {
         await sleep(500);
       } catch(e) { break; }
     }
+  }
+  return upsert(sql, works);
+}
+
+// Library of Congress — MAPS only. Same LOC JSON API as syncLOC, but against the
+// /maps/ format portal (~57k image maps under no-known-restrictions), which is
+// why plain `original-format:maps` on /search/ returned 0. Feeds the "maps"
+// browse category. `offset` is a record offset (50/page); each call sweeps a
+// bounded ~20-page window (≈1000 records) to stay within the insert budget.
+async function syncLOCMaps(sql, offset=0) {
+  const works = [];
+  const seen = new Set();
+  const startPage = Math.floor((offset||0)/50) + 1;
+  for (let page=startPage; page<startPage+20; page++) {
+    try {
+      const d = await fetchJson(
+        `https://www.loc.gov/maps/?fo=json&fa=online-format:image%7Crights-status:no-known-restrictions&c=50&sp=${page}&at=results,pagination`
+      );
+      const items = d.results||[];
+      if (!items.length) break;
+      for (const o of items) {
+        if (o.access_restricted) continue;
+        const id = String(o.id||o.url||'');
+        if (!id||seen.has(id)) continue;
+        const img = locImage(o.image_url);
+        if (!img) continue;
+        seen.add(id);
+        const contributor = Array.isArray(o.contributor) ? o.contributor[0] : (o.contributor||'');
+        works.push({
+          source:'Library of Congress — Maps',
+          source_id: id.replace(/^https?:\/\/www\.loc\.gov\/item\//, '').replace(/\/$/, ''),
+          title: Array.isArray(o.title) ? o.title[0] : (o.title||'Untitled'),
+          artist: contributor.replace(/\s*\(.+\)$/, '').trim(),
+          date_text: o.date||'',
+          medium: 'Map',
+          thumb_url: img.thumb, full_url: img.full,
+          detail_url: o.url||'', bio:''
+        });
+      }
+      const pg = d.pagination||{};
+      if (!pg.next) break;
+      await sleep(500);
+    } catch(e) { break; }
   }
   return upsert(sql, works);
 }
@@ -1365,6 +1432,7 @@ export default async function handler(req, res) {
   if (src==='mia'        ||src==='all') await run('Minneapolis Inst. of Art', () => syncMia(sql));
   if (src==='yale'       ||src==='all') await run('Yale Art Gallery',   () => syncWikidataMuseum(sql, 'Q1568434', 'Yale University Art Gallery', offset));
   if (src==='loc'        ||src==='all') await run('Library of Congress',() => syncLOC(sql, offset));
+  if (src==='locmaps'    ||src==='all') await run('Library of Congress — Maps', () => syncLOCMaps(sql, offset));
   if (src==='bnf'        ||src==='all') await run('BnF Gallica',        () => syncBnF(sql, offset));
   if (src==='nypl'       ||src==='all') await run('NYPL',               () => syncNYPL(sql));
   if (src==='wikimedia'  ||src==='all') await run('Wikimedia Commons',  () => syncWikimedia(sql));

@@ -15,7 +15,7 @@ export const config = { maxDuration: 300 };
 // intentionally NOT driven here.
 
 // P1 — big aggregators (always-fresh, huge): pull most often.
-const P1 = ['europeana', 'dpla', 'wikidataglobal', 'wikimedia', 'internetarchive', 'loc', 'bnf', 'digitalcommonwealth', 'tepapa', 'trove', 'digitalnz', 'bhl'];
+const P1 = ['europeana', 'dpla', 'wikidataglobal', 'wikimedia', 'internetarchive', 'loc', 'locmaps', 'bnf', 'digitalcommonwealth', 'tepapa', 'trove', 'digitalnz', 'bhl'];
 // P2 — major museums with direct APIs.
 const P2 = ['met', 'artic', 'cleveland', 'rijks', 'vam', 'smk', 'walters', 'mia', 'yale', 'harvard', 'getty', 'nypl', 'europeanafashion'];
 // P3 — everything else (Wikidata museums + regional collections). Long tail.
