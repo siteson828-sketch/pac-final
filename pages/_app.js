@@ -89,6 +89,8 @@ export default function App({ Component, pageProps }) {
         {/* Global viewport — without this, mobile browsers render pages at desktop
             width and content overflows/left-justifies. Zoom left enabled for a11y. */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* Pinterest domain verification. */}
+        <meta name="p:domain_verify" content="1074aac0d78cc9972b99b7bd54b049f6" />
         {/* Favicons / PWA manifest — served from /public. */}
         <link rel="icon" href="/favicon.ico" />
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
