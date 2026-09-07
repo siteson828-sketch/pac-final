@@ -6,11 +6,14 @@ import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import { loadIdentity } from '../lib/identity';
 
-// Facebook Pixel — only rendered when an ID is configured, so we never fire
-// fbq('init','undefined') or load the script on an unconfigured deploy. The
-// external fbevents.js load also requires connect.facebook.net in the CSP
-// script-src (see next.config.js).
-const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
+// Facebook Pixel. NEXT_PUBLIC_FACEBOOK_PIXEL_ID overrides the default, but ONLY
+// if it's a plain numeric pixel ID — a prior deploy had the entire Meta Pixel
+// HTML snippet pasted in as the value, which fbq('init', …) then choked on. So
+// we validate and otherwise fall back to the account's known ID (public by
+// design, safe to hardcode). Loading fbevents.js also needs connect.facebook.net
+// in the CSP script-src (see next.config.js).
+const FB_PIXEL_ENV = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
+const FB_PIXEL_ID = /^\d{8,20}$/.test(FB_PIXEL_ENV || '') ? FB_PIXEL_ENV : '1629159322257845';
 
 // Per-route SEO/social metadata. The site was shipping with NO <title>, meta
 // description, or Open Graph tags on any page — so browser tabs/Google showed
