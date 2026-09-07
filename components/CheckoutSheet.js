@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { saveIdentity, loadIdentity } from '../lib/identity';
+import { fbTrack } from '../lib/fbpixel';
 
 // Shared checkout sheet — Stripe Elements when configured, otherwise a no-charge
 // draft order. Ported verbatim from the viewer's in-place flow so every surface
@@ -209,6 +210,7 @@ export default function CheckoutSheet({ checkout, onClose, onOrdered }) {
       setAmountCents(data.amount);
       setCoStep('payment');
       trackGHL('cart_started', { artwork: checkout.art?.title, museum: checkout.art?.source, orderTotal: (data.amount / 100).toFixed(2) });
+      fbTrack('InitiateCheckout', { content_name: checkout.art?.title, value: data.amount / 100, currency: 'USD' });
     } catch (e) {
       setCoError(e.message);
     } finally {
@@ -258,6 +260,7 @@ export default function CheckoutSheet({ checkout, onClose, onOrdered }) {
       setCoStep('result');
       if (resp.ok) {
         trackGHL('order_completed', { artwork: art?.title, museum: art?.source, orderTotal: amountCents ? (amountCents / 100).toFixed(2) : undefined });
+        fbTrack('Purchase', { content_name: art?.title, value: amountCents ? amountCents / 100 : undefined, currency: 'USD' });
         // Let the host (e.g. viewer cart) remove the purchased item after payment.
         if (onOrdered) { try { onOrdered(checkout.art, checkout.product); } catch (e) {} }
       }

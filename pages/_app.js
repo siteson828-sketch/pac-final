@@ -1,9 +1,16 @@
 import { SessionProvider } from 'next-auth/react';
 import Head from 'next/head';
+import Script from 'next/script';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import { loadIdentity } from '../lib/identity';
+
+// Facebook Pixel — only rendered when an ID is configured, so we never fire
+// fbq('init','undefined') or load the script on an unconfigured deploy. The
+// external fbevents.js load also requires connect.facebook.net in the CSP
+// script-src (see next.config.js).
+const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID;
 
 // Per-route SEO/social metadata. The site was shipping with NO <title>, meta
 // description, or Open Graph tags on any page — so browser tabs/Google showed
@@ -78,7 +85,12 @@ export default function App({ Component, pageProps }) {
 
   useEffect(() => {
     track(window.location.pathname + window.location.search);
-    const onChange = url => track(url);
+    const onChange = url => {
+      track(url);
+      // SPA route change → fire a fresh Pixel PageView (the base snippet only
+      // fires one on initial load). No-op until the pixel loads.
+      if (typeof window.fbq === 'function') window.fbq('track', 'PageView');
+    };
     router.events.on('routeChangeComplete', onChange);
     return () => router.events.off('routeChangeComplete', onChange);
   }, [router.events]);
@@ -115,6 +127,28 @@ export default function App({ Component, pageProps }) {
         <meta name="twitter:description" content={meta.description} key="twitter:description" />
         <meta name="twitter:image" content={OG_IMAGE} key="twitter:image" />
       </Head>
+      {FB_PIXEL_ID && (
+        <>
+          <Script id="facebook-pixel" strategy="afterInteractive">
+            {`
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', '${FB_PIXEL_ID}');
+    fbq('track', 'PageView');
+            `}
+          </Script>
+          <noscript>
+            <img height="1" width="1" alt="" style={{ display: 'none' }}
+              src={`https://www.facebook.com/tr?id=${FB_PIXEL_ID}&ev=PageView&noscript=1`} />
+          </noscript>
+        </>
+      )}
       <Component {...pageProps} />
     </SessionProvider>
   );

@@ -4,6 +4,7 @@ import AuthNav from '../components/AuthNav';
 import LeadPopup from '../components/LeadPopup';
 import CheckoutSheet, { PRODUCTS } from '../components/CheckoutSheet';
 import { loadIdentity } from '../lib/identity';
+import { fbTrack, priceValue } from '../lib/fbpixel';
 
 const OSD_VERSION = '4.1.0';
 const OSD_SRC = `https://cdnjs.cloudflare.com/ajax/libs/openseadragon/${OSD_VERSION}/openseadragon.min.js`;
@@ -479,6 +480,7 @@ export default function Viewer() {
   const addToCart = (art, product = PRODUCTS[0]) => {
     setCart(prev => prev.some(it => cartKey(it.art, it.product) === cartKey(art, product)) ? prev : [...prev, { art, product }]);
     setCartOpen(true);
+    fbTrack('AddToCart', { content_name: art?.title, content_category: art?.source, value: priceValue(product?.price), currency: 'USD' });
   };
   const removeFromCart = key => setCart(prev => prev.filter(it => cartKey(it.art, it.product) !== key));
 
@@ -978,7 +980,7 @@ export default function Viewer() {
               <>
                 <div className="art-grid">
                   {works.map(w => (
-                    <div key={w.id} className="art-card" onClick={() => { setModal(w); trackGHL('artwork_view', { artwork: w.title, museum: w.source }); }}>
+                    <div key={w.id} className="art-card" onClick={() => { setModal(w); trackGHL('artwork_view', { artwork: w.title, museum: w.source }); fbTrack('ViewContent', { content_name: w.title, content_category: w.source, value: 18, currency: 'USD' }); }}>
                       <div className="card-img">
                         {w.thumb_url && !imgErrors[w.id] ? (
                           <img

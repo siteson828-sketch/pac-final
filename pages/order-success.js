@@ -2,13 +2,21 @@
 // starts (/order-success?tier=explorer|collector|patron). Shows the giving
 // amount set aside for the tier, a message personalized to the visitor's
 // location (Vercel IP geo), and how many members they're joining.
+import { useEffect } from 'react';
 import { db } from '../lib/authdb';
 import { givingForTier, givingLocationMessage, publicGivingTotal } from '../lib/giving';
+import { fbTrack } from '../lib/fbpixel';
 
 const TIER_NAMES = { explorer: 'Explorer', collector: 'Collector', patron: 'Patron' };
+const TIER_PRICE = { explorer: 9.99, collector: 19.99, patron: 49.99 };
 
 export default function OrderSuccess({ tier, giving, locationMessage, members }) {
   const tierName = TIER_NAMES[tier] || 'member';
+
+  // Membership conversion — Stripe redirects here once the subscription starts.
+  useEffect(() => {
+    fbTrack('Purchase', { content_name: `${tierName} membership`, value: TIER_PRICE[tier] || 0, currency: 'USD' });
+  }, [tier, tierName]);
   return (
     <div style={{ minHeight: '100vh', background: 'var(--charcoal,#1A1714)', color: '#F0EAD8', fontFamily: 'system-ui,sans-serif', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
       <div style={{ maxWidth: 560, textAlign: 'center' }}>
