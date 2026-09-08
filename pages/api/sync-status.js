@@ -20,14 +20,26 @@ export default async function handler(req, res) {
         max_daily INTEGER DEFAULT 2000,
         offset_step INTEGER DEFAULT 1000
       )`;
-    const [total, states, recent] = await Promise.all([
+    const [total, states, recent, newRows] = await Promise.all([
       sql`SELECT COUNT(*) AS count FROM artworks WHERE commercial_ok = true`,
       sql`SELECT source, priority, total_synced, synced_today, max_daily, current_offset, last_run FROM sync_state ORDER BY priority ASC, total_synced DESC`,
+      // synced_at is refreshed on every upsert (incl. re-syncs of existing works),
+      // so this counts works TOUCHED, not net-new.
       sql`SELECT COUNT(*) AS count FROM artworks WHERE synced_at > NOW() - INTERVAL '24 hours'`,
+      // created_at is set only on INSERT (ON CONFLICT DO UPDATE never touches it),
+      // so these are EXACT net-new counts — for rows inserted since the created_at
+      // column was added (2026-09-08); older rows are NULL and excluded.
+      sql`SELECT
+            COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '24 hours') AS d24,
+            COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '1 hour')   AS h1
+          FROM artworks WHERE created_at IS NOT NULL`,
     ]);
     return res.status(200).json({
       total_works: parseInt(total[0].count),
-      added_last_24h: parseInt(recent[0].count),
+      synced_last_24h: parseInt(recent[0].count),   // works touched (inserts + re-syncs)
+      added_last_24h: parseInt(recent[0].count),    // kept for back-compat (same as synced_last_24h)
+      net_new_last_24h: parseInt(newRows[0].d24),   // exact new inserts (created_at based)
+      net_new_last_hour: parseInt(newRows[0].h1),
       source_count: states.length,
       estimated_daily_max: states.reduce((a, r) => a + (r.max_daily || 0), 0),
       sources: states,
