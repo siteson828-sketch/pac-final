@@ -3,16 +3,23 @@ import { neon } from '@neondatabase/serverless';
 export const dynamic = 'force-dynamic';
 export const config = { maxDuration: 300 };
 
-// Single sync driver. Fires every 10 min (vercel.json), picks ONE source per
-// run by priority then least-recently-run, calls /api/sync for it, advances a
-// per-source offset, and wraps the offset back to 0 when a run yields nothing
-// (so exhausted/paginated sources re-sweep for new works instead of paging into
-// the void). Replaces the old per-source + sync-museums/sync-heavy crons.
+// Sync driver. Fires every 10 min (vercel.json) and runs the N stalest eligible
+// sources IN PARALLEL (was: one source per run, serially). Each picks up its
+// per-source offset, calls /api/sync, advances the offset while it keeps finding
+// NET-NEW works, and wraps the offset back to 0 on a dry run (so a paginated
+// source re-sweeps for new works instead of paging past the end forever).
 //
-// Only REAL /api/sync source keys are listed (verified against sync.js). The
-// cursor-based syncs (smithsonian, metcomplete/clevelandcomplete/miacomplete)
-// self-manage their own cursors and keep their own dedicated crons — they are
-// intentionally NOT driven here.
+// Selection is least-recently-run first, NOT priority-first. The old
+// `ORDER BY priority ASC` let P1 sources that always return 0 (and so never hit
+// their daily cap) sort ahead of the museum APIs forever — every P2/P3 source
+// had been starved since 2026-09-05. Stale-first rotation gives each source a
+// fair turn; the per-tier max_daily caps still let big aggregators pull more
+// volume per day.
+//
+// Cursor-based syncs (smithsonian, metcomplete/clevelandcomplete/miacomplete)
+// self-manage their own cursors and keep dedicated crons — not driven here.
+
+const PARALLEL = 3;
 
 // P1 — big aggregators (always-fresh, huge): pull most often.
 const P1 = ['europeana', 'dpla', 'wikidataglobal', 'wikimedia', 'internetarchive', 'loc', 'locmaps', 'bnf', 'digitalcommonwealth', 'tepapa', 'trove', 'digitalnz', 'bhl'];
@@ -34,11 +41,33 @@ const P3 = [
   'wales', 'walker', 'wallace', 'warsaw', 'whitney',
 ];
 
+// Sources verified to return 0 works after many runs (sync-status: total_synced=0
+// despite recent last_run). Excluded from the rotation so they stop burning
+// parallel slots on dead endpoints. Re-enable a key once it's fixed/provisioned:
+//   bhl            → needs BHL_KEY in Vercel
+//   wikidataglobal → SPARQL 20-type set is exhausted (needs a broader query)
+//   wikimedia/trove/digitalnz/tepapa → endpoints currently return nothing
+const DISABLED = new Set(['trove', 'wikidataglobal', 'digitalnz', 'bhl', 'tepapa', 'wikimedia']);
+
 const ALL_SOURCES = [
   ...P1.map(key => ({ key, priority: 1, maxDaily: 30000, offsetStep: 3000 })),
   ...P2.map(key => ({ key, priority: 2, maxDaily: 8000, offsetStep: 1000 })),
   ...P3.map(key => ({ key, priority: 3, maxDaily: 2000, offsetStep: 1000 })),
-];
+].filter(s => !DISABLED.has(s.key));
+
+// One /api/sync call for a single source. Never throws — a failure resolves to a
+// zero-work result so one bad source can't abort the whole parallel batch.
+async function runSync(s) {
+  try {
+    const resp = await fetch(
+      `https://www.publicartcollections.net/api/sync?source=${encodeURIComponent(s.source)}&offset=${s.current_offset}`,
+      { headers: { Authorization: 'Bearer ' + process.env.SYNC_SECRET }, signal: AbortSignal.timeout(240000) }
+    ).then(r => r.json());
+    return { source: s.source, offset_step: s.offset_step, current_offset: s.current_offset, newWorks: resp.newWorks || 0, error: resp.error || null };
+  } catch (e) {
+    return { source: s.source, offset_step: s.offset_step, current_offset: s.current_offset, newWorks: 0, error: e.message };
+  }
+}
 
 export default async function handler(req, res) {
   const auth = req.headers.authorization || '';
@@ -75,36 +104,35 @@ export default async function handler(req, res) {
   // New UTC day → reset daily counters.
   await sql`UPDATE sync_state SET synced_today = 0, last_reset = CURRENT_DATE WHERE last_reset < CURRENT_DATE`;
 
-  // Next source: highest priority, under its daily cap, least recently run.
-  const next = await sql`
-    SELECT source, current_offset, offset_step, max_daily, synced_today
-    FROM sync_state WHERE synced_today < max_daily
-    ORDER BY priority ASC, last_run ASC LIMIT 1`;
+  // Next sources: the PARALLEL stalest that are under their daily cap and not
+  // disabled. Stale-first (last_run ASC) so starved museum APIs get a turn.
+  const disabledArr = [...DISABLED];
+  const picks = await sql`
+    SELECT source, current_offset, offset_step
+    FROM sync_state
+    WHERE synced_today < max_daily AND NOT (source = ANY(${disabledArr}))
+    ORDER BY last_run ASC
+    LIMIT ${PARALLEL}`;
 
-  if (!next.length) {
+  if (!picks.length) {
     return res.status(200).json({ message: 'All sources at daily maximum — resumes at midnight UTC' });
   }
-  const s = next[0];
 
-  let newWorks = 0, error = null;
-  try {
-    const resp = await fetch(
-      `https://www.publicartcollections.net/api/sync?source=${encodeURIComponent(s.source)}&offset=${s.current_offset}`,
-      { headers: { Authorization: 'Bearer ' + process.env.SYNC_SECRET }, signal: AbortSignal.timeout(250000) }
-    ).then(r => r.json());
-    newWorks = resp.newWorks || 0;
-  } catch (e) { error = e.message; }
-
-  // Advance offset while productive; wrap to 0 on a dry/errored run so the
-  // source re-sweeps instead of paging past the end forever.
-  const nextOffset = newWorks > 0 ? s.current_offset + s.offset_step : 0;
-  await sql`
-    UPDATE sync_state SET
-      current_offset = ${nextOffset},
-      total_synced = total_synced + ${newWorks},
-      synced_today = synced_today + ${newWorks},
-      last_run = NOW()
-    WHERE source = ${s.source}`;
+  // Run the batch in parallel, then persist each source's result.
+  const results = await Promise.all(picks.map(runSync));
+  for (const r of results) {
+    // newWorks is now NET-NEW (true inserts) — see upsert() in sync.js. Advance
+    // the offset only when the source actually found new works; otherwise wrap to
+    // 0 to re-sweep from the start next time.
+    const nextOffset = r.newWorks > 0 ? r.current_offset + r.offset_step : 0;
+    await sql`
+      UPDATE sync_state SET
+        current_offset = ${nextOffset},
+        total_synced = total_synced + ${r.newWorks},
+        synced_today = synced_today + ${r.newWorks},
+        last_run = NOW()
+      WHERE source = ${r.source}`;
+  }
 
   const [dbTotal, states] = await Promise.all([
     sql`SELECT COUNT(*) AS count FROM artworks WHERE commercial_ok = true`,
@@ -113,10 +141,12 @@ export default async function handler(req, res) {
 
   return res.status(200).json({
     success: true,
-    synced_source: s.source,
-    new_works: newWorks,
-    offset_advanced_to: nextOffset,
-    error,
+    ran: results.map(r => ({
+      source: r.source,
+      new_works: r.newWorks,
+      offset_advanced_to: r.newWorks > 0 ? r.current_offset + r.offset_step : 0,
+      error: r.error,
+    })),
     total_in_db: parseInt(dbTotal[0].count),
     sources_status: states,
   });

@@ -48,7 +48,13 @@ async function upsert(sql, works) {
     try {
       // print_url = the museum's own highest-resolution URL (we never store the image itself).
       const printUrl = w.print_url || w.full_url || w.thumb_url || '';
-      await sql`
+      // RETURNING (xmax = 0) distinguishes a genuine INSERT (xmax=0) from a
+      // conflict DO UPDATE (xmax≠0). We count ONLY true inserts, so `saved` =
+      // net-new works, not rows touched. Previously every upsert counted, which
+      // made re-harvesting aggregators look productive (synced_today in the tens
+      // of thousands) while net-new was ~0 — masking that the sync was mostly
+      // re-fetching works already in the DB.
+      const r = await sql`
         INSERT INTO artworks (source,source_id,title,artist,date_text,medium,department,
           thumb_url,full_url,iiif_info,iiif_manifest,detail_url,print_url,rights,rights_label,commercial_ok,bio,synced_at)
         VALUES (${w.source},${w.source_id},${w.title},${w.artist||''},${w.date_text||''},
@@ -58,8 +64,9 @@ async function upsert(sql, works) {
         ON CONFLICT (source,source_id) DO UPDATE SET
           thumb_url=EXCLUDED.thumb_url, full_url=EXCLUDED.full_url, print_url=EXCLUDED.print_url,
           iiif_info=EXCLUDED.iiif_info, iiif_manifest=EXCLUDED.iiif_manifest, synced_at=NOW()
+        RETURNING (xmax = 0) AS inserted
       `;
-      saved++;
+      if (r[0] && r[0].inserted) saved++;
     } catch(e) {}
   }
   return saved;
@@ -413,7 +420,21 @@ async function syncEuropeana(sql, key, offset=0) {
   const MAX_PER_CALL = 5000;
   const PAGES_PER_TERM = 20; // 20 * 100 = up to 2000 records per term per call
 
-  for (let qi = offset; qi < offset + 5 && qi < queries.length; qi++) {
+  // Self-managed term rotation. The orchestrator advances `offset` in thousands
+  // (offset_step), which is meaningless as a term index — passing offset=3000
+  // made the old `qi = offset` loop process ZERO terms, so Europeana silently
+  // died once terms 0-4 were marked done. We ignore the numeric offset and rotate
+  // through the term list with our own persisted pointer ('europeana:__rot'),
+  // 5 terms/call → all 15 swept every 3 calls, regardless of what offset arrives.
+  let rot = 0;
+  try {
+    const r = await sql`SELECT next_offset FROM sync_cursors WHERE source = ${'europeana:__rot'}`;
+    if (r.length) rot = Number(r[0].next_offset) || 0;
+  } catch (e) {}
+  rot = ((rot % queries.length) + queries.length) % queries.length;
+
+  for (let k = 0; k < 5; k++) {
+    const qi = (rot + k) % queries.length;
     const q = queries[qi];
     const ckey = 'europeana:' + q;
     let cursor = '*';
@@ -434,7 +455,11 @@ async function syncEuropeana(sql, key, offset=0) {
           '&cursor=' + encodeURIComponent(cursor);
         d = await fetch(url).then(r => r.json());
       } catch (e) { console.error('Europeana error:', e.message); break; }
-      if (!d.success || !d.items?.length) { cursor = 'DONE'; break; }
+      // A transient failure (rate limit / 5xx returns success:false) must NOT mark
+      // the term DONE — that false-exhaustion bug stalled 14/15 terms despite each
+      // having 100k-384k works available. Keep the cursor and retry next run.
+      if (!d.success) break;
+      if (!d.items?.length) { cursor = 'DONE'; break; } // genuine end of results
       for (const o of d.items) {
         const previewArr = Array.isArray(o.edmPreview) ? o.edmPreview : (o.edmPreview ? [o.edmPreview] : []);
         const thumb = previewArr[0];
@@ -476,6 +501,15 @@ async function syncEuropeana(sql, key, offset=0) {
     } catch (e) {}
     if (works.length >= MAX_PER_CALL) break;
   }
+
+  // Advance the rotation pointer so the next call sweeps the next 5 terms.
+  const newRot = (rot + 5) % queries.length;
+  try {
+    await sql`INSERT INTO sync_cursors (source, next_offset, updated_at)
+              VALUES (${'europeana:__rot'}, ${newRot}, NOW())
+              ON CONFLICT (source) DO UPDATE SET next_offset = ${newRot}, updated_at = NOW()`;
+  } catch (e) {}
+
   return await upsert(sql, works);
 }
 
