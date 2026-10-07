@@ -106,18 +106,31 @@ export default async function handler(req, res) {
           : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND (title ILIKE ${'%'+search+'%'} OR artist ILIKE ${'%'+search+'%'} OR source ILIKE ${'%'+search+'%'} OR medium ILIKE ${'%'+search+'%'}) ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
       }
     } else if (source) {
-      works = rand
-        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY RANDOM() LIMIT ${lim}`
-        : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(trim(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, ''))) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+      if (rand) {
+        // Random museum browse. A big museum (e.g. Boston Public Library, 234k
+        // rows) made a plain ORDER BY RANDOM() sort ~2.4s. TABLESAMPLE SYSTEM (1)
+        // reads ~1% of pages (~90-140ms) and is reliable down to ~8k-row sources.
+        // Smaller sources (median source = 24 rows) can sample short/empty, so we
+        // fall back to ORDER BY RANDOM() — cheap on a small subset. Big museums,
+        // the slow case, take the fast single-query path; only rarely-browsed
+        // small sources pay the second query.
+        works = await sql`SELECT * FROM artworks TABLESAMPLE SYSTEM (1) WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY random() LIMIT ${lim}`;
+        if (!works || works.length < lim) {
+          works = await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source} ORDER BY RANDOM() LIMIT ${lim}`;
+        }
+      } else {
+        works = await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(trim(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, ''))) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
+      }
     } else {
       works = rand
         // Homepage "discover" shuffle runs on every load. A full-table ORDER BY
         // RANDOM() sorts all ~2M rows (~3.5s measured); TABLESAMPLE SYSTEM reads
         // ~1% of heap pages scattered across the table (~265ms) then shuffles
         // that small sample — faster AND more diverse (a sampled page block spans
-        // many museums). Only safe on the UNFILTERED feed: source/search subsets
-        // can be tiny (median source = 24 rows) where a 1% sample returns empty,
-        // so every other branch above deliberately keeps ORDER BY RANDOM().
+        // many museums). The unfiltered feed is always huge so a 1% sample never
+        // comes up short; the source branch above uses the same trick with a
+        // RANDOM() fallback for small sources, and the search branches (small,
+        // selective result sets) stay on plain ORDER BY RANDOM().
         ? await sql`SELECT * FROM artworks TABLESAMPLE SYSTEM (1) WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' ORDER BY random() LIMIT ${lim}`
         : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     }
