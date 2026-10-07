@@ -24,13 +24,13 @@ const SITE = 'https://www.publicartcollections.net';
 const OG_IMAGE = SITE + '/og-image.png';
 const DEFAULT_META = {
   title: 'Public Art Collections — Museum-Quality Public-Domain Art Prints',
-  description: 'Browse 1.9M+ public-domain artworks from 120+ world museums and order museum-quality prints. 35% of every membership supports arts education for children in Asheville & Buncombe County, NC.',
+  description: 'Browse 2M+ public-domain artworks from 120+ world museums and order museum-quality prints. 35% of every membership supports arts education for children in Asheville & Buncombe County, NC.',
 };
 const PAGE_META = {
   '/': DEFAULT_META,
   '/viewer': {
     title: 'Browse by Museum — Public Art Collections',
-    description: 'Explore 1.9M+ public-domain artworks from 120+ museums worldwide — the Met, Rijksmuseum, Art Institute of Chicago, Smithsonian and more — in a deep-zoom viewer.',
+    description: 'Explore 2M+ public-domain artworks from 120+ museums worldwide — the Met, Rijksmuseum, Art Institute of Chicago, Smithsonian and more — in a deep-zoom viewer.',
   },
   '/pricing': {
     title: 'Membership & Pricing — Public Art Collections',

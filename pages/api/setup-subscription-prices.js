@@ -21,7 +21,7 @@ const WEBHOOK_EVENTS = [
 // Asheville and Buncombe County; partnerships to deliver the funds are in progress.
 const GIVES = ' 35% of your membership is set aside to support arts education for children in Asheville and Buncombe County.';
 const TIERS = [
-  { key: 'explorer', name: 'Explorer', amount: 999, description: 'Browse 1.9M+ museum artworks, AI search, gigapixel zoom, and free screen-quality downloads.' + GIVES },
+  { key: 'explorer', name: 'Explorer', amount: 999, description: 'Browse 2M+ museum artworks, AI search, gigapixel zoom, and free screen-quality downloads.' + GIVES },
   { key: 'collector', name: 'Collector', amount: 1999, description: 'Everything in Explorer plus order museum-quality prints with a 10% member discount.' + GIVES },
   { key: 'patron', name: 'Patron', amount: 4999, description: 'Everything in Collector with a 20% member discount, higher-res downloads, and priority handling.' + GIVES },
 ];

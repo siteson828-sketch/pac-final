@@ -61,7 +61,7 @@ export default function Pricing() {
       period: 'forever',
       color: '#8A8178',
       features: [
-        'Browse 1.9 million+ artworks',
+        'Browse 2 million+ artworks',
         'AI search',
         'Gigapixel zoom',
         'Free screen quality downloads',
@@ -78,7 +78,7 @@ export default function Pricing() {
       color: '#8A8178',
       gives: '$3.50/month goes to Asheville kids',
       features: [
-        'Browse 1.9 million+ artworks from 120+ museums',
+        'Browse 2 million+ artworks from 120+ museums',
         'AI-powered search',
         'Gigapixel zoom viewer',
         'Free screen quality downloads',

@@ -19,14 +19,14 @@ const COPY = {
     col: 'day1_sent_at',
     subject: 'Your favorite artwork is waiting 🎨',
     html: (f) => `<p style="font-size:15px;color:#B0A898;line-height:1.8;">Hi ${f || 'there'},</p>
-      <p style="font-size:15px;color:#B0A898;line-height:1.8;margin-bottom:24px;">Yesterday you discovered our collection of a million+ museum masterpieces. Try the AI search — type "blue melancholy" or "stormy seascape" and watch what happens.</p>
+      <p style="font-size:15px;color:#B0A898;line-height:1.8;margin-bottom:24px;">Yesterday you discovered our collection of 2 million+ museum masterpieces. Try the AI search — type "blue melancholy" or "stormy seascape" and watch what happens.</p>
       <a href="https://www.publicartcollections.net/viewer" style="display:inline-block;background:#B8942A;color:#1A1714;padding:12px 24px;border-radius:4px;text-decoration:none;font-weight:600;">Browse the collection →</a>`,
   },
   day3: {
     col: 'day3_sent_at',
     subject: 'Turn any masterpiece into wall art from $18',
     html: (f) => `<p style="font-size:15px;color:#B0A898;line-height:1.8;">Hi ${f || 'there'},</p>
-      <p style="font-size:15px;color:#B0A898;line-height:1.8;">Any of our million+ artworks can be ordered as a museum-quality print — fine-art prints from $18, canvas from $45, shipped to 180+ countries.</p>
+      <p style="font-size:15px;color:#B0A898;line-height:1.8;">Any of our 2 million+ artworks can be ordered as a museum-quality print — fine-art prints from $18, canvas from $45, shipped to 180+ countries.</p>
       <a href="https://www.publicartcollections.net/viewer" style="display:inline-block;background:#B8942A;color:#1A1714;padding:12px 24px;border-radius:4px;text-decoration:none;font-weight:600;margin-top:12px;">Order your print →</a>`,
   },
   weekly: {

@@ -111,7 +111,14 @@ export default async function handler(req, res) {
         : await sql`SELECT * FROM (SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' AND source=${source}) s ORDER BY ROW_NUMBER() OVER (PARTITION BY lower(trim(regexp_replace(split_part(coalesce(artist,''), ${NL}, 1), ${STRIP}, ''))) ORDER BY (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC), (CASE WHEN artist ~* ${FAMOUS_ARTISTS_RE} THEN 30 ELSE 0 END + CASE WHEN medium ~* ${COLOR_RE} THEN 14 ELSE 0 END + CASE WHEN medium ~* ${MONO_RE} THEN -10 ELSE 0 END + CASE WHEN title ~* ${ICONIC_RE} THEN 25 ELSE 0 END) DESC, synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     } else {
       works = rand
-        ? await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' ORDER BY RANDOM() LIMIT ${lim}`
+        // Homepage "discover" shuffle runs on every load. A full-table ORDER BY
+        // RANDOM() sorts all ~2M rows (~3.5s measured); TABLESAMPLE SYSTEM reads
+        // ~1% of heap pages scattered across the table (~265ms) then shuffles
+        // that small sample — faster AND more diverse (a sampled page block spans
+        // many museums). Only safe on the UNFILTERED feed: source/search subsets
+        // can be tiny (median source = 24 rows) where a 1% sample returns empty,
+        // so every other branch above deliberately keeps ORDER BY RANDOM().
+        ? await sql`SELECT * FROM artworks TABLESAMPLE SYSTEM (1) WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' ORDER BY random() LIMIT ${lim}`
         : await sql`SELECT * FROM artworks WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!='' AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%' ORDER BY synced_at DESC LIMIT ${lim} OFFSET ${off}`;
     }
     // Return each record as a lightweight pointer (URLs point at the museum's own

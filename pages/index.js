@@ -649,7 +649,7 @@ export default function Home() {
             {[
               { num: '35%', label: 'set aside for kids' },
               { num: '120+', label: 'museums worldwide' },
-              { num: '1.9M+', label: 'artworks available' },
+              { num: '2M+', label: 'artworks available' },
               { num: '∞', label: 'kids who benefit' },
             ].map(s => (
               <div key={s.label} style={{background: '#2C2318', borderRadius: 8, padding: 20, border: '0.5px solid #3A3028'}}>

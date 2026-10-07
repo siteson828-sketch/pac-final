@@ -15,7 +15,7 @@ export default async function handler(req, res) {
 
   const inner = `
     <h1 style="font-size:28px;font-weight:300;margin:0 0 16px;line-height:1.2;">Welcome!</h1>
-    <p style="font-size:15px;color:#B0A898;line-height:1.8;margin-bottom:24px;">You now have access to over a million public-domain artworks from 120+ museums worldwide. Browse, search by AI, and order museum-quality prints delivered to your door.</p>
+    <p style="font-size:15px;color:#B0A898;line-height:1.8;margin-bottom:24px;">You now have access to over 2 million public-domain artworks from 120+ museums worldwide. Browse, search by AI, and order museum-quality prints delivered to your door.</p>
     <a href="https://www.publicartcollections.net/viewer" style="display:inline-block;background:#B8942A;color:#1A1714;padding:14px 24px;border-radius:4px;font-size:15px;font-weight:600;text-decoration:none;">Browse the collection →</a>`;
 
   try {
