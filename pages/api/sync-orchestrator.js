@@ -9,12 +9,13 @@ export const config = { maxDuration: 300 };
 // NET-NEW works, and wraps the offset back to 0 on a dry run (so a paginated
 // source re-sweeps for new works instead of paging past the end forever).
 //
-// Selection is least-recently-run first, NOT priority-first. The old
-// `ORDER BY priority ASC` let P1 sources that always return 0 (and so never hit
-// their daily cap) sort ahead of the museum APIs forever — every P2/P3 source
-// had been starved since 2026-09-05. Stale-first rotation gives each source a
-// fair turn; the per-tier max_daily caps still let big aggregators pull more
-// volume per day.
+// Selection is tier-balanced stale-first: each parallel batch takes the stalest
+// eligible source from EACH priority tier (then backfills). The old
+// `ORDER BY priority ASC` let dead P1 sources sit ahead of the museum APIs
+// forever (every P2/P3 starved since 2026-09-05). But pure `last_run ASC` over-
+// corrected — the 124 dormant P3 long-tail sources buried the high-value P1
+// aggregators (Europeana landed 131st in line, ~7h out). One-per-tier guarantees
+// P1 (Europeana), P2 (museums), and P3 (long tail) each get a slot every tick.
 //
 // Cursor-based syncs (smithsonian, metcomplete/clevelandcomplete/miacomplete)
 // self-manage their own cursors and keep dedicated crons — not driven here.
@@ -104,18 +105,30 @@ export default async function handler(req, res) {
   // New UTC day → reset daily counters.
   await sql`UPDATE sync_state SET synced_today = 0, last_reset = CURRENT_DATE WHERE last_reset < CURRENT_DATE`;
 
-  // Next sources: the PARALLEL stalest that are under their daily cap and not
-  // disabled. Stale-first (last_run ASC) so starved museum APIs get a turn.
+  // Eligible sources (under daily cap, not disabled), stalest first.
   const disabledArr = [...DISABLED];
-  const picks = await sql`
-    SELECT source, current_offset, offset_step
+  const eligible = await sql`
+    SELECT source, priority, current_offset, offset_step
     FROM sync_state
     WHERE synced_today < max_daily AND NOT (source = ANY(${disabledArr}))
-    ORDER BY last_run ASC
-    LIMIT ${PARALLEL}`;
+    ORDER BY last_run ASC`;
 
-  if (!picks.length) {
+  if (!eligible.length) {
     return res.status(200).json({ message: 'All sources at daily maximum — resumes at midnight UTC' });
+  }
+
+  // Take the stalest from each priority tier first (so the P3 long tail can't
+  // bury Europeana/other P1 aggregators), then backfill remaining slots with the
+  // next-stalest overall.
+  const picks = [];
+  const takenTiers = new Set();
+  for (const r of eligible) {
+    if (picks.length >= PARALLEL) break;
+    if (!takenTiers.has(r.priority)) { picks.push(r); takenTiers.add(r.priority); }
+  }
+  for (const r of eligible) {
+    if (picks.length >= PARALLEL) break;
+    if (!picks.includes(r)) picks.push(r);
   }
 
   // Run the batch in parallel, then persist each source's result.
