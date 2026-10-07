@@ -65,6 +65,9 @@ export default async function handler(req, res) {
     const ICONIC_RE = '(water lil|starry night|sunflower|great wave|girl with a pearl|american gothic|birth of venus|night watch|las meninas|mona lisa|the kiss|the scream|nighthawks|liberty leading|luncheon of the boating|moulin de la galette|card players|the bathers|haystack|rouen cathedral|impression, sunrise|irises|the bedroom|whistler|venus de|the swing|the hay wain|fighting temeraire|rain, steam)';
 
     if (count === 'true') {
+      // Total count barely moves and runs on every page load — cache it hard at
+      // the edge (1h) to spare Neon the full-table COUNT on each request.
+      res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=86400');
       const rows = await sql`SELECT COUNT(*) as total FROM artworks WHERE commercial_ok = true`;
       return res.status(200).json({ total: parseInt(rows[0].total) });
     }
