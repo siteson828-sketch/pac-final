@@ -27,7 +27,7 @@ export default function Unsubscribe() {
             : 'Processing…'}
         </h1>
         <p style={{ fontSize: 14, color: '#8A8178', marginBottom: 24 }}>
-          {state === 'done' ? 'You will no longer receive marketing emails or SMS from Public Art Collections.'
+          {state === 'done' ? 'You will no longer receive marketing emails or SMS from Great Art Classics.'
             : state === 'failed' ? 'The unsubscribe link may be missing its address. Contact hello@publicartcollections.net and we will remove you.'
             : 'One moment while we update your preferences.'}
         </p>

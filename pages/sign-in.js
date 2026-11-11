@@ -35,7 +35,7 @@ export default function SignInPage() {
     <div style={wrap}>
       <div style={card}>
         <a href="/" style={{ ...brand, textDecoration: 'none', display: 'block', textAlign: 'center' }}>
-          Public Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Collections</span>
+          Great Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Classics</span>
         </a>
         <div style={eyebrow}>Members</div>
         <h1 style={title}>Sign in</h1>

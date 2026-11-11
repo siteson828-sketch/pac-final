@@ -504,7 +504,7 @@ export default function Viewer() {
   };
 
   useEffect(() => {
-    document.title = 'World Museum Viewer — Public Art Collections';
+    document.title = 'World Museum Viewer — Great Art Classics';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotalDb(d.total));
     fetch('/api/artworks?sourceCounts=1').then(r => r.json()).then(d => setMuseumCounts(d.counts || {})).catch(() => {});
   }, []);
@@ -776,7 +776,7 @@ export default function Viewer() {
         {/* SIDEBAR */}
         <aside className={`sidebar${navOpen ? ' open' : ''}`}>
           <div className="sidebar-head">
-            <a href="/" className="sidebar-logo">Public Art <span>Collections</span></a>
+            <a href="/" className="sidebar-logo">Great Art <span>Classics</span></a>
             <div className="sidebar-sub">
               {totalDb ? `${Number(totalDb).toLocaleString()} works` : `${ALL_MUSEUMS.length} institutions`}
             </div>

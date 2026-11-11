@@ -42,7 +42,7 @@ export default function SignUpPage() {
     <div style={wrap}>
       <div style={card}>
         <a href="/" style={{ ...brand, textDecoration: 'none', display: 'block', textAlign: 'center' }}>
-          Public Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Collections</span>
+          Great Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Classics</span>
         </a>
         <div style={eyebrow}>Join</div>
         <h1 style={title}>Create your account</h1>

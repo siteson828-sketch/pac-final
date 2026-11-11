@@ -131,7 +131,7 @@ export default function Pricing() {
 
       <nav className="pricing-nav">
         <a href="/" style={{ fontFamily: 'var(--serif)', fontSize: 22, fontWeight: 500, color: '#F5F1E8', textDecoration: 'none', letterSpacing: '.02em' }}>
-          Public Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Collections</span>
+          Great Art <span style={{ color: 'var(--gold-bright)', fontStyle: 'italic' }}>Classics</span>
         </a>
         <div style={{ display: 'flex', gap: 18, alignItems: 'center' }}>
           <a href="/sign-in" style={{ color: 'var(--muted-solid)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>Sign in</a>

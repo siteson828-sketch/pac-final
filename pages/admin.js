@@ -57,7 +57,7 @@ export default function Admin() {
         secret,
         action: 'send_sms',
         phone: visitor.phone,
-        message: 'Hi ' + (visitor.name || 'there') + '! You left something special at Public Art Collections. Your artwork is waiting: publicartcollections.net/viewer',
+        message: 'Hi ' + (visitor.name || 'there') + '! You left something special at Great Art Classics. Your artwork is waiting: publicartcollections.net/viewer',
       }),
     });
     alert('SMS requested for ' + visitor.phone);
@@ -98,7 +98,7 @@ export default function Admin() {
       <nav style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 32px', background: '#0D0B09', borderBottom: '0.5px solid #3A3028', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <a href="/" style={{ fontFamily: 'Georgia,serif', fontSize: 18, color: '#F0EAD8', textDecoration: 'none' }}>
-            Public Art <span style={{ color: '#B8942A' }}>Collections</span>
+            Great Art <span style={{ color: '#B8942A' }}>Classics</span>
           </a>
           <span style={{ fontSize: 11, color: '#6A6058', padding: '3px 8px', background: '#2C2318', borderRadius: 4 }}>Admin</span>
         </div>

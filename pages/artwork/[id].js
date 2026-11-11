@@ -151,7 +151,7 @@ export default function ArtworkPage({ work, related }) {
   // Open the shared checkout sheet in place — never navigates off this page.
   const openCheckout = product => setCheckout({ product, art: work });
 
-  const metaTitle = `${work.title}${work.artist ? ` by ${work.artist}` : ''} — Public Art Collections`;
+  const metaTitle = `${work.title}${work.artist ? ` by ${work.artist}` : ''} — Great Art Classics`;
   const metaDesc = [work.title, work.artist, work.medium, work.date_text].filter(Boolean).join(' · ')
     + '. Available as a fine art print from $18.';
 
@@ -168,7 +168,7 @@ export default function ArtworkPage({ work, related }) {
 
       {/* NAV */}
       <nav className="nav">
-        <a href="/" className="nav-logo">Public Art <span>Collections</span></a>
+        <a href="/" className="nav-logo">Great Art <span>Classics</span></a>
         <a href="/#gallery" className="nav-back">← Back to gallery</a>
         <span className="nav-spacer" />
         <a href="/api/artworks" className="nav-api">API</a>
@@ -303,7 +303,7 @@ export default function ArtworkPage({ work, related }) {
       <footer>
         <div className="footer-inner">
           <div>
-            <div className="footer-logo">Public Art <span>Collections</span></div>
+            <div className="footer-logo">Great Art <span>Classics</span></div>
             <p className="footer-desc">Museum-quality art for every home. All works public domain.</p>
           </div>
           <div>

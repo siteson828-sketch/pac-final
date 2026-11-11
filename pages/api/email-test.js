@@ -11,7 +11,7 @@ export default async function handler(req, res) {
 
   const to = String(req.query.to || '').slice(0, 254).trim();
   if (!to) return res.status(400).json({ error: '?to= required' });
-  const from = String(req.query.from || process.env.RESEND_FROM_EMAIL || 'Public Art Collections <hello@publicartcollections.net>').slice(0, 160).trim();
+  const from = String(req.query.from || process.env.RESEND_FROM_EMAIL || 'Great Art Classics <hello@publicartcollections.net>').slice(0, 160).trim();
 
   const inner = `
     <h1 style="font-size:28px;font-weight:300;margin:0 0 16px;line-height:1.2;">Welcome!</h1>
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
     const r = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from, to, subject: 'Welcome to Public Art Collections 🎨', html: emailShell(inner, to) }),
+      body: JSON.stringify({ from, to, subject: 'Welcome to Great Art Classics 🎨', html: emailShell(inner, to) }),
     });
     let d = {};
     try { d = await r.json(); } catch (e) {}

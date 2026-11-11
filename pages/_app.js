@@ -23,22 +23,22 @@ const FB_PIXEL_ID = /^\d{8,20}$/.test(FB_PIXEL_ENV || '') ? FB_PIXEL_ENV : '1629
 const SITE = 'https://www.publicartcollections.net';
 const OG_IMAGE = SITE + '/og-image.png';
 const DEFAULT_META = {
-  title: 'Public Art Collections — Museum-Quality Public-Domain Art Prints',
+  title: 'Great Art Classics — Museum-Quality Public-Domain Art Prints',
   description: 'Browse 2M+ public-domain artworks from 120+ world museums and order museum-quality prints. 35% of every membership supports arts education for children in Asheville & Buncombe County, NC.',
 };
 const PAGE_META = {
   '/': DEFAULT_META,
   '/viewer': {
-    title: 'Browse by Museum — Public Art Collections',
+    title: 'Browse by Museum — Great Art Classics',
     description: 'Explore 2M+ public-domain artworks from 120+ museums worldwide — the Met, Rijksmuseum, Art Institute of Chicago, Smithsonian and more — in a deep-zoom viewer.',
   },
   '/pricing': {
-    title: 'Membership & Pricing — Public Art Collections',
+    title: 'Membership & Pricing — Great Art Classics',
     description: 'Explorer, Collector, and Patron memberships from $9.99/mo. 35% of every membership funds arts education for children in Asheville & Buncombe County, NC.',
   },
   '/sign-in': {
-    title: 'Sign In — Public Art Collections',
-    description: 'Sign in to your Public Art Collections account to order prints and manage your membership.',
+    title: 'Sign In — Great Art Classics',
+    description: 'Sign in to your Great Art Classics account to order prints and manage your membership.',
   },
 };
 
@@ -118,7 +118,7 @@ export default function App({ Component, pageProps }) {
         <meta name="description" content={meta.description} key="description" />
         <link rel="canonical" href={canonical} key="canonical" />
         <meta property="og:type" content="website" key="og:type" />
-        <meta property="og:site_name" content="Public Art Collections" key="og:site_name" />
+        <meta property="og:site_name" content="Great Art Classics" key="og:site_name" />
         <meta property="og:title" content={meta.title} key="og:title" />
         <meta property="og:description" content={meta.description} key="og:description" />
         <meta property="og:url" content={canonical} key="og:url" />
