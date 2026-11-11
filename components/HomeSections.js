@@ -148,6 +148,40 @@ export const HOME_CSS = `
 .hs-sticky .hs-btn{flex:1;min-height:46px;padding:0 10px;font-size:11px}
 .hs-sticky-space{display:none;height:68px}
 
+/* GALLERY POP — ink + cream base, one hot accent, bold colour blocks */
+:root{--gold:#E23A1C;--gold-bright:#FF5A36;--line-gold:#FF5A36;--pop-yellow:#FFD23F;--pop-blue:#2B3FE0;--pop-pink:#FF9EC4;--pop-peach:#FFE6D2}
+.hs-btn-gold{color:#fff}
+.hs-btn-gold:hover{background:#E23A1C}
+.hs-strip-num{color:var(--pop-yellow)}
+.hs-steps .hs-step{border:2px solid #1A1714;box-shadow:6px 6px 0 #1A1714;transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+.hs-steps .hs-step:hover{transform:translate(-2px,-2px);box-shadow:8px 8px 0 #1A1714}
+.hs-steps .hs-step:nth-child(1){background:var(--pop-yellow)}
+.hs-steps .hs-step:nth-child(2){background:var(--pop-blue);color:#fff}
+.hs-steps .hs-step:nth-child(2) p{color:#E3E7FF}
+.hs-steps .hs-step:nth-child(3){background:var(--pop-pink)}
+.hs-steps .hs-step p{color:#1A1714}
+.hs-steps .hs-step:nth-child(2) p{color:#E3E7FF}
+.hs-step-n{color:inherit;opacity:1}
+.hs-surprise{background:var(--pop-peach)}
+.hs-frame{border:2px solid #1A1714;box-shadow:10px 10px 0 var(--pop-blue)}
+.hs-art-museum{color:#E23A1C}
+.hs-kids{background:var(--pop-blue);color:#fff}
+.hs-kids .hs-lead,.hs-big-cap{color:#E3E7FF}
+.hs-year,.hs-bar-lbl,.hs-note{color:#C9D1FF}
+.hs-bar{background:rgba(255,255,255,.18)}
+.hs-bar-fill{background:linear-gradient(90deg,#FF5A36,var(--pop-yellow))}
+.hs-bar-lbl b,.hs-live{color:var(--pop-yellow)}
+.hs-live{border-color:var(--pop-yellow);background:rgba(255,210,63,.12)}
+.hs-tabs{background:rgba(255,255,255,.16)}
+.hs-tab{color:#fff}
+.hs-tab[aria-pressed="true"]{background:var(--pop-yellow);color:#1A1714}
+.hs-tier{border:2px solid #1A1714;box-shadow:5px 5px 0 #1A1714}
+.hs-tier-pop{background:var(--pop-yellow);border:2px solid #1A1714}
+.hs-badge{background:#E23A1C;color:#fff;border:2px solid #1A1714}
+.hs-final{background:var(--pop-pink)}
+.hs-final .hs-btn-dark{background:#1A1714;color:#fff}
+.hs-kids .hs-eyebrow,.hs-kids .hs-h2 em,.hs-kids .hs-big{color:var(--pop-yellow)}
+
 @media(max-width:860px){
   .hs-sec{padding:52px 18px}
   .hs-steps,.hs-tier-grid{grid-template-columns:1fr}
