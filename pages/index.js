@@ -580,6 +580,7 @@ export default function Home() {
         <div className="hero-gradient" />
         <div className="hero-frame" />
         <div className="hero-content">
+          <div className="hero-card">
           <p className="hero-eyebrow">Great art, minus the museum ticket</p>
           <h1 className="hero-title">Art for your walls.<br /><em>Art for Asheville&apos;s kids.</em></h1>
           <div className="hero-ornament">
@@ -591,6 +592,7 @@ export default function Home() {
           <div className="hero-actions">
             <a href="/viewer" className="hero-btn hero-btn-light">Explore the art</a>
             <a href="#kids" className="hero-btn hero-btn-outline">How kids benefit</a>
+          </div>
           </div>
         </div>
         {hero && hero.title && (

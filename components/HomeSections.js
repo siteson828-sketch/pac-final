@@ -182,6 +182,27 @@ export const HOME_CSS = `
 .hs-final .hs-btn-dark{background:#1A1714;color:#fff}
 .hs-kids .hs-eyebrow,.hs-kids .hs-h2 em,.hs-kids .hs-big{color:var(--pop-yellow)}
 
+/* HERO POP — bright art mosaic, headline on a chunky cream card */
+.hero{background:var(--pop-yellow);height:auto;min-height:580px}
+.hero .hero-mosaic img{filter:saturate(1.15) brightness(1.02)}
+.hero .hero-gradient{background:rgba(255,210,63,.18)}
+.hero .hero-frame{display:none}
+.hero .hero-content{position:relative;inset:auto;min-height:580px;padding:40px 24px}
+.hero-card{background:#FAF8F4;border:3px solid #1A1714;box-shadow:10px 10px 0 #1A1714;padding:38px 44px;max-width:760px;text-align:center}
+.hero .hero-eyebrow{display:inline-block;background:#E23A1C;color:#fff;padding:6px 12px;letter-spacing:.2em;margin-bottom:18px}
+.hero .hero-title{color:#1A1714}
+.hero .hero-title em{color:#E23A1C}
+.hero .hero-ornament{color:#1A1714;margin-bottom:20px}
+.hero .hero-ornament::before,.hero .hero-ornament::after{background:#1A1714}
+.hero .hero-sub{color:#3A332B;margin-left:auto;margin-right:auto}
+.hero .hero-btn-light{background:#E23A1C;color:#fff;border:2px solid #1A1714}
+.hero .hero-btn-light:hover{background:#FF5A36}
+.hero .hero-btn-outline{color:#1A1714;border:2px solid #1A1714;background:var(--pop-yellow)}
+.hero .hero-btn-outline:hover{background:#FFE07A}
+.hero .hero-caption{background:#1A1714;color:#F0EAD8;padding:6px 10px}
+.hero .hero-caption strong{color:#F0EAD8}
+@media(max-width:600px){.hero-card{padding:26px 20px;box-shadow:6px 6px 0 #1A1714}}
+
 @media(max-width:860px){
   .hs-sec{padding:52px 18px}
   .hs-steps,.hs-tier-grid{grid-template-columns:1fr}
