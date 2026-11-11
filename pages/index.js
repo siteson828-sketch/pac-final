@@ -3,6 +3,7 @@ import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
 import AuthNav from '../components/AuthNav';
 import LeadPopup from '../components/LeadPopup';
 import CheckoutSheet, { PRODUCTS } from '../components/CheckoutSheet';
+import { useBrand } from '../lib/brand';
 import {
   HOME_CSS, GivingBanner, TrustStrip, HowItWorks, SurpriseMe, KidsImpact,
   MembershipTiers, FinalCta, StickyCta,
@@ -323,6 +324,7 @@ footer{background:var(--charcoal);color:#B0A898;padding:64px 36px 32px;border-to
   .hero-content{padding:24px 18px}
   .hero-caption{display:none}
 }
+@media(max-width:380px){.nav-logo{font-size:16px}}
 `;
 
 export default function Home() {
@@ -351,6 +353,7 @@ export default function Home() {
   const [givingTotal, setGivingTotal] = useState(null); // { members, total } — PII-free, from /api/giving-total
   const [checkout, setCheckout] = useState(null);  // { product, art } when the shared checkout sheet is open
   const gate = useShopGate();
+  const brand = useBrand(); // preview-only name switcher (?brand=…); defaults to the current name
 
   const load = useCallback(async (reset, q, src, ord, coll, currentOffset = 0) => {
     const off = reset ? 0 : currentOffset;
@@ -415,12 +418,15 @@ export default function Home() {
   };
 
   useEffect(() => {
-    document.title = 'Public Art Collections — Museum Prints & Art Marketplace';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotal(d.total));
     fetch('/api/giving-total').then(r => r.json()).then(setGivingTotal).catch(() => {});
     fetch('/api/artworks?sourceCounts=1').then(r => r.json()).then(d => setMuseumCounts(d.counts || {})).catch(() => {});
     load(true, '', '', 'random', COLLECTIONS[0], 0);
   }, [load]);
+
+  useEffect(() => {
+    document.title = `${brand.first} ${brand.accent} — Museum Prints & Art Marketplace`;
+  }, [brand.first, brand.accent]);
 
   useEffect(() => {
     if (works.length < 2) return;
@@ -531,7 +537,7 @@ export default function Home() {
 
       {/* NAV */}
       <nav className="nav">
-        <a href="/" className="nav-logo">Public Art <span>Collections</span></a>
+        <a href="/" className="nav-logo">{brand.first} <span>{brand.accent}</span></a>
         <div className="nav-search">
           <input
             className="nav-input"
@@ -606,7 +612,7 @@ export default function Home() {
         <div className="footer-inner">
           <div className="footer-grid">
             <div>
-              <div className="footer-logo">Public Art <span>Collections</span></div>
+              <div className="footer-logo">{brand.first} <span>{brand.accent}</span></div>
               <p className="footer-desc">Museum-quality art for every home. All works public domain — ethically sourced from the world's great collections.</p>
             </div>
             <div>
