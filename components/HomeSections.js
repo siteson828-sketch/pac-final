@@ -242,8 +242,8 @@ export function HowItWorks() {
       <div className="hs-wrap hs-center">
         <Reveal>
           <div className="hs-eyebrow">How it works</div>
-          <h2 className="hs-h2">Three easy steps. <em>One big heart.</em></h2>
-          <p className="hs-lead">No catch, no clutter. Explore for free, order what you love, and give back if you want to.</p>
+          <h2 className="hs-h2">Find it. Love it. <em>Hang it.</em></h2>
+          <p className="hs-lead">Browsing is free. Printing is easy. And if you want, your art habit helps a kid in Asheville make some of their own.</p>
         </Reveal>
         <div className="hs-steps">
           {steps.map(([n, t, d, kids], i) => (
@@ -286,7 +286,7 @@ export function SurpriseMe({ works, getThumbUrl, fmt }) {
       <div className="hs-wrap hs-center">
         <Reveal>
           <div className="hs-eyebrow">Feeling lucky?</div>
-          <h2 className="hs-h2">Let the museum <em>surprise you</em></h2>
+          <h2 className="hs-h2">Feeling lucky? <em>Let the museum pick.</em></h2>
         </Reveal>
         <Reveal className="hs-stage" delay={100}>
           <div className="hs-frame">
@@ -372,7 +372,7 @@ export function MembershipTiers() {
       <div className="hs-wrap hs-center">
         <Reveal>
           <div className="hs-eyebrow">Membership</div>
-          <h2 className="hs-h2">Pick a plan. <em>Save on prints. Give back.</em></h2>
+          <h2 className="hs-h2">Join the club. <em>Save money. Back a kid.</em></h2>
           <p className="hs-lead">Browsing is free for everyone. Members get discounts on every order, and 35% of the fee is set aside for kids.</p>
         </Reveal>
         <div className="hs-tier-grid">
@@ -397,7 +397,7 @@ export function FinalCta() {
   return (
     <section className="hs hs-final hs-center">
       <Reveal>
-        <h2>Ready to find your masterpiece?</h2>
+        <h2>Your wall called. It wants a masterpiece.</h2>
         <div className="hs-row">
           <a className="hs-btn hs-btn-dark" href="/viewer">Explore the art</a>
           <a className="hs-btn hs-btn-ghost" href="#kids">See how kids benefit</a>

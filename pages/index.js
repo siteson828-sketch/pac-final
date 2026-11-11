@@ -580,7 +580,7 @@ export default function Home() {
         <div className="hero-gradient" />
         <div className="hero-frame" />
         <div className="hero-content">
-          <p className="hero-eyebrow">Museum masterpieces · made to hang</p>
+          <p className="hero-eyebrow">Great art, minus the museum ticket</p>
           <h1 className="hero-title">Art for your walls.<br /><em>Art for Asheville&apos;s kids.</em></h1>
           <div className="hero-ornament">
             {total ? `${Number(total).toLocaleString()} works` : '2M+ works'} · 120+ museums
