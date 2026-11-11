@@ -203,6 +203,20 @@ export const HOME_CSS = `
 .hero .hero-caption strong{color:#F0EAD8}
 @media(max-width:600px){.hero-card{padding:26px 20px;box-shadow:6px 6px 0 #1A1714}}
 
+/* ROUNDER — soften the corners */
+.hero-card{border-radius:32px;border-width:2px;box-shadow:8px 8px 0 #1A1714}
+.hero .hero-eyebrow{border-radius:999px;padding:7px 16px}
+.hero .hero-btn,.hs-btn{border-radius:999px}
+.hs-steps .hs-step{border-radius:28px;box-shadow:5px 5px 0 #1A1714}
+.hs-frame{border-radius:24px;box-shadow:8px 8px 0 var(--pop-blue)}
+.hs-frame-in{border-radius:14px}
+.hs-tier{border-radius:28px;box-shadow:5px 5px 0 #1A1714}
+.hs-give{border-radius:14px}
+.hs-kids{border-radius:40px 40px 0 0}
+.hs-final{border-radius:40px 40px 0 0}
+.hs-tabs,.hs-badge,.hs-live{border-radius:999px}
+@media(max-width:600px){.hero-card{border-radius:24px}.hs-kids,.hs-final{border-radius:28px 28px 0 0}}
+
 @media(max-width:860px){
   .hs-sec{padding:52px 18px}
   .hs-steps,.hs-tier-grid{grid-template-columns:1fr}
