@@ -3,6 +3,10 @@ import { useShopGate, PinModal, TradeAccessPanel } from '../lib/useShopGate';
 import AuthNav from '../components/AuthNav';
 import LeadPopup from '../components/LeadPopup';
 import CheckoutSheet, { PRODUCTS } from '../components/CheckoutSheet';
+import {
+  HOME_CSS, GivingBanner, TrustStrip, HowItWorks, SurpriseMe, KidsImpact,
+  MembershipTiers, FinalCta, StickyCta,
+} from '../components/HomeSections';
 
 // `ai: true` routes a chip through the AI search (Claude term expansion + quality
 // gating). Two reasons a chip needs it:
@@ -300,8 +304,8 @@ footer{background:var(--charcoal);color:#B0A898;padding:64px 36px 32px;border-to
 @media(max-width:900px){.footer-grid{grid-template-columns:1fr 1fr;gap:36px}}
 @media(max-width:800px){
   .nav{padding:0 16px;gap:12px}
-  .hero{height:480px}
-  .hero-content{padding:32px 24px}
+  .hero{height:auto;min-height:480px}
+  .hero-content{position:relative;inset:auto;min-height:480px;padding:44px 24px 40px}
   .hero-frame{inset:14px}
   .coll-bar,.museum-bar{padding-left:16px;padding-right:16px;justify-content:flex-start}
   .gallery-header{padding:32px 16px 0}
@@ -311,7 +315,9 @@ footer{background:var(--charcoal);color:#B0A898;padding:64px 36px 32px;border-to
   .footer-grid{grid-template-columns:1fr;gap:32px}
 }
 @media(max-width:500px){
-  .nav-count,.nav-link{display:none}
+  .nav-count,.nav-link,.nav-search{display:none}
+  .nav{gap:8px;padding:0 12px}
+  .nav-logo{font-size:18px}
   .gallery-grid{grid-template-columns:repeat(2,1fr);gap:12px;padding:16px 12px 44px}
   .gallery-title{font-size:27px}
   .hero-content{padding:24px 18px}
@@ -342,6 +348,7 @@ export default function Home() {
   const [aiPageMode, setAiPageMode]     = useState(null); // 'strict'|'broad' — echoed to page the same set
   const [aiCurated, setAiCurated]       = useState(false); // curated (fine-art sources only) — for category buttons
   const [aiExtra, setAiExtra]           = useState('');    // tuned gate params (&must/&exclude/&artists) preserved across load-more
+  const [givingTotal, setGivingTotal] = useState(null); // { members, total } — PII-free, from /api/giving-total
   const [checkout, setCheckout] = useState(null);  // { product, art } when the shared checkout sheet is open
   const gate = useShopGate();
 
@@ -410,6 +417,7 @@ export default function Home() {
   useEffect(() => {
     document.title = 'Public Art Collections — Museum Prints & Art Marketplace';
     fetch('/api/artworks?count=true').then(r => r.json()).then(d => setTotal(d.total));
+    fetch('/api/giving-total').then(r => r.json()).then(setGivingTotal).catch(() => {});
     fetch('/api/artworks?sourceCounts=1').then(r => r.json()).then(d => setMuseumCounts(d.counts || {})).catch(() => {});
     load(true, '', '', 'random', COLLECTIONS[0], 0);
   }, [load]);
@@ -541,14 +549,19 @@ export default function Home() {
         <AuthNav />
       </nav>
 
+      <style>{HOME_CSS}</style>
+      <style>{`
+        .social-fb:hover{color:#B8942A !important}
+        .social-fb svg{transition:transform .2s ease}
+        .social-fb:hover svg{transform:scale(1.12)}
+      `}</style>
+
       {/* GIVING BANNER */}
-      <a href="/pricing" style={{ display: 'block', textDecoration: 'none', background: 'linear-gradient(90deg,#1A1714,#2C2318)', color: '#F0EAD8', textAlign: 'center', padding: '10px 16px', fontSize: 13, lineHeight: 1.5, borderBottom: '1px solid #B8942A' }}>
-        🎨 <strong style={{ color: '#B8942A' }}>35% of every membership</strong> supports arts education for children in Asheville &amp; Buncombe County, NC
-      </a>
+      <GivingBanner />
 
       {/* HERO */}
-      {hero && (
-        <div className="hero">
+      <div className="hero">
+        {hero && (
           <div className="hero-mosaic">
             {works.slice(0, 12).map((w, i) => (
               w.thumb_url
@@ -557,121 +570,36 @@ export default function Home() {
                 : <div key={i} />
             ))}
           </div>
-          <div className="hero-gradient" />
-          <div className="hero-frame" />
-          <div className="hero-content">
-            <p className="hero-eyebrow">Public Art · Collections</p>
-            <h1 className="hero-title">The World's Art,<br /><em>in Your Home</em></h1>
-            <div className="hero-ornament">
-              {total ? `${Number(total).toLocaleString()} works · est. collection` : 'est. collection'}
-            </div>
-            <p className="hero-sub">
-              Museum masterpieces from the world's great collections — each in the public domain, available as archival fine-art prints, canvas, and gifts.
-            </p>
-            <div className="hero-actions">
-              <a href="/viewer" className="hero-btn hero-btn-light">Browse the Collection</a>
-              <a href="/viewer" className="hero-btn hero-btn-outline">View This Work</a>
-            </div>
+        )}
+        <div className="hero-gradient" />
+        <div className="hero-frame" />
+        <div className="hero-content">
+          <p className="hero-eyebrow">Museum masterpieces · made to hang</p>
+          <h1 className="hero-title">Art for your walls.<br /><em>Art for Asheville&apos;s kids.</em></h1>
+          <div className="hero-ornament">
+            {total ? `${Number(total).toLocaleString()} works` : '2M+ works'} · 120+ museums
           </div>
-          {hero.title && (
-            <div className="hero-caption">
-              <strong>{hero.title}</strong>{[hero.artist, fmt(hero.source)].filter(Boolean).join(' · ')}
-            </div>
-          )}
-        </div>
-      )}
-
-      <style>{`
-        .tier-card{transition:transform .2s ease, box-shadow .2s ease}
-        .tier-card:hover{transform:translateY(-5px);box-shadow:0 14px 30px rgba(0,0,0,0.4)}
-        .social-fb:hover{color:#B8942A !important}
-        .social-fb svg{transition:transform .2s ease}
-        .social-fb:hover svg{transform:scale(1.12)}
-      `}</style>
-      {/* MEMBERSHIP TIERS */}
-      <div style={{ background: '#0D0B09', padding: '56px 24px', borderTop: '0.5px solid #3A3028', borderBottom: '0.5px solid #3A3028' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 12 }}>Membership</div>
-          <h2 style={{ fontFamily: 'Georgia,serif', fontSize: 'clamp(26px,4vw,40px)', fontWeight: 300, color: '#F0EAD8', marginBottom: 8 }}>Join &amp; give back to Asheville kids</h2>
-          <p style={{ color: '#8A8178', fontSize: 14, marginBottom: 32 }}>Pick a plan, unlock the good stuff — and 35% of every membership goes straight to arts education for kids in Asheville &amp; Buncombe County, NC. 💛</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 16 }}>
-            {[
-              { name: 'Explorer', price: '$9.99', gives: '$3.50 to Asheville kids', hl: false },
-              { name: 'Collector', price: '$19.99', gives: '$7.00 to Asheville kids', hl: true },
-              { name: 'Patron', price: '$49.99', gives: '$17.50 to Asheville kids', hl: false },
-            ].map(t => (
-              <div key={t.name} className="tier-card" style={{ background: '#2C2318', border: '1px solid ' + (t.hl ? '#B8942A' : '#3A3028'), borderRadius: 10, padding: '28px 22px' }}>
-                <div style={{ fontFamily: 'Georgia,serif', fontSize: 24, color: t.hl ? '#B8942A' : '#F0EAD8', marginBottom: 6 }}>{t.name}</div>
-                <div style={{ fontSize: 32, fontWeight: 300, color: '#F0EAD8', fontFamily: 'Georgia,serif' }}>{t.price}<span style={{ fontSize: 13, color: '#8A8178' }}>/month</span></div>
-                <div style={{ background: 'rgba(22,163,74,0.12)', border: '0.5px solid rgba(22,163,74,0.4)', color: '#16a34a', borderRadius: 6, padding: '8px 10px', margin: '14px 0', fontSize: 13, fontWeight: 700 }}>🎨 {t.gives}</div>
-                <a href="/pricing" style={{ display: 'block', textAlign: 'center', background: t.hl ? '#B8942A' : 'transparent', color: t.hl ? '#1A1714' : '#F0EAD8', border: '1px solid ' + (t.hl ? '#B8942A' : 'rgba(240,234,214,0.3)'), padding: '12px', borderRadius: 4, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>Subscribe</a>
-              </div>
-            ))}
-          </div>
-          <div style={{ marginTop: 28, display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <a href="/viewer" style={{ background: '#B8942A', color: '#1A1714', padding: '13px 26px', borderRadius: 4, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>Browse by Museum →</a>
-            <a href="/viewer" style={{ background: 'transparent', color: '#F0EAD8', border: '1px solid rgba(240,234,214,0.3)', padding: '13px 26px', borderRadius: 4, fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.12em', textDecoration: 'none' }}>Browse by Genre →</a>
-          </div>
-        </div>
-      </div>
-
-
-
-      {/* MISSION */}
-      <div style={{
-        background: '#0D0B09',
-        borderTop: '0.5px solid #3A3028',
-        borderBottom: '0.5px solid #3A3028',
-        padding: '64px 32px',
-        textAlign: 'center',
-      }}>
-        <div style={{maxWidth: 700, margin: '0 auto'}}>
-          <div style={{fontSize: 11, letterSpacing: '.15em', textTransform: 'uppercase', color: '#B8942A', marginBottom: 16}}>
-            Our mission
-          </div>
-          <h2 style={{
-            fontFamily: 'Georgia,serif',
-            fontSize: 'clamp(28px,5vw,48px)',
-            fontWeight: 300,
-            color: '#F0EAD8',
-            marginBottom: 16,
-            lineHeight: 1.1,
-          }}>
-            Every membership supports<br/>
-            <em style={{color: '#B8942A', fontStyle: 'italic'}}>Asheville&apos;s children</em>
-          </h2>
-          <p style={{fontSize: 15, color: '#8A8178', lineHeight: 1.8, marginBottom: 32}}>
-            35% of every membership fee is set aside to support arts education for children
-            in Asheville and Buncombe County. We are actively building partnerships with local
-            schools and arts organizations to deliver these funds directly to kids who need them most.
+          <p className="hero-sub">
+            Browse the world&apos;s great museums free and order museum-quality prints. Join as a member and 35% of your membership is set aside for arts education for children in Asheville, NC.
           </p>
-          <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 16, marginBottom: 32}}>
-            {[
-              { num: '35%', label: 'set aside for kids' },
-              { num: '120+', label: 'museums worldwide' },
-              { num: '2M+', label: 'artworks available' },
-              { num: '∞', label: 'kids who benefit' },
-            ].map(s => (
-              <div key={s.label} style={{background: '#2C2318', borderRadius: 8, padding: 20, border: '0.5px solid #3A3028'}}>
-                <div style={{fontFamily: 'Georgia,serif', fontSize: 32, fontWeight: 300, color: '#B8942A', marginBottom: 4}}>{s.num}</div>
-                <div style={{fontSize: 11, color: '#8A8178', textTransform: 'uppercase', letterSpacing: '.08em'}}>{s.label}</div>
-              </div>
-            ))}
+          <div className="hero-actions">
+            <a href="/viewer" className="hero-btn hero-btn-light">Explore the art</a>
+            <a href="#kids" className="hero-btn hero-btn-outline">How kids benefit</a>
           </div>
-          <a href="/pricing" style={{
-            background: '#B8942A',
-            color: '#1A1714',
-            padding: '14px 32px',
-            borderRadius: 4,
-            fontSize: 14,
-            fontWeight: 600,
-            textDecoration: 'none',
-            display: 'inline-block',
-          }}>
-            Support Asheville kids →
-          </a>
         </div>
+        {hero && hero.title && (
+          <div className="hero-caption">
+            <strong>{hero.title}</strong>{[hero.artist, fmt(hero.source)].filter(Boolean).join(' · ')}
+          </div>
+        )}
       </div>
+
+      <TrustStrip total={total} />
+      <HowItWorks />
+      <SurpriseMe works={works} getThumbUrl={getThumbUrl} fmt={fmt} />
+      <KidsImpact givingTotal={givingTotal} />
+      <MembershipTiers />
+      <FinalCta />
 
       {/* FOOTER */}
       <footer>
@@ -721,6 +649,7 @@ export default function Home() {
           </div>
         </div>
       </footer>
+      <StickyCta />
 
       {/* MODAL */}
       {modal && (
