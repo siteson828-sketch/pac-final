@@ -49,7 +49,7 @@ const nextConfig = {
       {
         source: '/:path((?!api/).*)',
         has: [{ type: 'host', value: 'pac-final.vercel.app' }],
-        destination: 'https://www.publicartcollections.net/:path',
+        destination: 'https://www.greatartclassics.com/:path',
         permanent: true,
       },
     ];

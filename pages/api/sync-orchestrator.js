@@ -61,7 +61,7 @@ const ALL_SOURCES = [
 async function runSync(s) {
   try {
     const resp = await fetch(
-      `https://www.publicartcollections.net/api/sync?source=${encodeURIComponent(s.source)}&offset=${s.current_offset}`,
+      `https://www.greatartclassics.com/api/sync?source=${encodeURIComponent(s.source)}&offset=${s.current_offset}`,
       { headers: { Authorization: 'Bearer ' + process.env.SYNC_SECRET }, signal: AbortSignal.timeout(240000) }
     ).then(r => r.json());
     return { source: s.source, offset_step: s.offset_step, current_offset: s.current_offset, newWorks: resp.newWorks || 0, error: resp.error || null };

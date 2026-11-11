@@ -642,7 +642,7 @@ export default function Home() {
             </div>
           </div>
           <div className="footer-bottom">
-            © 2025 publicartcollections.net · All artwork public domain · Prints fulfilled by Printful · Ships worldwide
+            © 2025 greatartclassics.com · All artwork public domain · Prints fulfilled by Printful · Ships worldwide
             <div style={{fontSize: 12, color: '#6A6058', marginTop: 8}}>
               🎨 35% of every membership is set aside for arts education in Asheville &amp; Buncombe County
             </div>

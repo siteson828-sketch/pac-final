@@ -20,7 +20,7 @@ const FB_PIXEL_ID = /^\d{8,20}$/.test(FB_PIXEL_ENV || '') ? FB_PIXEL_ENV : '1629
 // the raw URL and social shares (e.g. the footer's Facebook page) rendered blank
 // previews. Centralised here rather than per-page so every route is covered from
 // one place; unlisted routes fall back to DEFAULT_META.
-const SITE = 'https://www.publicartcollections.net';
+const SITE = 'https://www.greatartclassics.com';
 const OG_IMAGE = SITE + '/og-image.png';
 const DEFAULT_META = {
   title: 'Great Art Classics — Museum-Quality Public-Domain Art Prints',

@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     }
     const portal = await createBillingPortalSession({
       customerId: user.stripe_customer_id,
-      returnUrl: 'https://www.publicartcollections.net/pricing',
+      returnUrl: 'https://www.greatartclassics.com/pricing',
     });
     return res.status(200).json({ url: portal.url });
   } catch (e) {

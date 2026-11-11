@@ -6,4 +6,4 @@ Disallow: /order-success
 Disallow: /unsubscribe
 Disallow: /api/
 
-Sitemap: https://www.publicartcollections.net/sitemap.xml
+Sitemap: https://www.greatartclassics.com/sitemap.xml
