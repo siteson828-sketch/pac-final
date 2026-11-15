@@ -57,11 +57,12 @@ async function completeCheckout(page, productSelector) {
   expect(orderBody?.productName).toBe('Mug');
 }
 
-test('home: product tile opens checkout in place', async ({ page }) => {
+// The homepage is a marketing page (no gallery / checkout of its own), so this
+// is a smoke test: it renders and its main call-to-action leads to the viewer.
+test('home: renders and links to the viewer', async ({ page }) => {
   await page.goto('/');
-  await page.locator('.gallery-card').first().click();
-  await expect(page.locator('.modal')).toBeVisible();
-  await completeCheckout(page, '.prod-item');
+  await expect(page.locator('h1')).toContainText('Art for your walls');
+  await expect(page.locator('a.hero-btn-light')).toHaveAttribute('href', '/viewer');
 });
 
 test('viewer: product tile opens checkout in place', async ({ page }) => {
