@@ -26,11 +26,11 @@ function fromPrice(name) {
 }
 
 export default function Holiday() {
-  const front = useCurated(FRONT_CAT, { similar: false });
+  const front = useCurated(FRONT_CAT, { pages: 4 });
   // If none of the hand-picked works are in the collection, fall back to a search.
   const needFallback = !front.loading && front.famous.length === 0;
   const fallback = useArtPicks(needFallback ? ALL_PICKS.q : '');
-  const works = front.famous.length ? front.famous : fallback.works;
+  const works = front.famous.length + front.similar.length ? [...front.famous, ...front.similar] : fallback.works;
   const loading = front.loading || (needFallback && fallback.loading);
   const covers = useCovers();
   const frames = works.slice(0, 2);
@@ -78,12 +78,16 @@ export default function Holiday() {
 
         <section id="picks" className="hl-sec hl-wrap" style={{ paddingTop: 20 }}>
           <h2>Famous favorites, ready to gift</h2>
-          <p className="hl-sub">Masterpieces everyone knows, in the colors of the season. Tap one to make it a gift: a framed poster, mug, tote or blanket.</p>
-          <PicksGrid works={works} loading={loading} limit={20} />
+          <p className="hl-sub">Hundreds of our best, brightest works, starting with the masterpieces everyone knows. Tap one to make it a gift: a framed poster, mug, tote or blanket.</p>
+          <PicksGrid works={works} loading={loading} limit={works.length} />
           {!loading && !works.length && (
             <p className="hl-msg">Our holiday picks are taking a moment to load. <a href={'/holiday/' + ALL_PICKS.slug} style={{ color: 'var(--gold)' }}>Try the full picks page</a> or <a href="#browse" style={{ color: 'var(--gold)' }}>search every museum</a>.</p>
           )}
-          <div className="hl-more"><a href={'/holiday/' + ALL_PICKS.slug} className="hl-btn hl-btn-ghost">See all famous favorites</a></div>
+          <div className="hl-more">
+            {front.hasMore
+              ? <button type="button" disabled={front.busy} className="hl-btn hl-btn-ghost" style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }} onClick={front.loadMore}>{front.busy ? 'Loading…' : 'Show more art'}</button>
+              : <a href={'/holiday/' + ALL_PICKS.slug} className="hl-btn hl-btn-ghost">See all famous favorites</a>}
+          </div>
         </section>
 
         <section id="holiday" className="hl-band hl-band-dark">

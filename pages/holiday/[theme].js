@@ -24,7 +24,7 @@ function posterPrice() {
 }
 
 export default function HolidayTheme({ theme }) {
-  const cur = useCurated(theme.slug);
+  const cur = useCurated(theme.slug, { pages: 3 });
   const needFallback = !cur.loading && cur.famous.length + cur.similar.length === 0;
   const fb = useArtPicks(needFallback ? theme.q : '');
   const [shown, setShown] = useState(24);

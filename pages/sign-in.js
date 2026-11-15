@@ -25,10 +25,15 @@ export default function SignInPage() {
     e.preventDefault();
     setError('');
     setBusy(true);
-    const res = await signIn('credentials', { redirect: false, email, password });
-    setBusy(false);
-    if (res?.error) setError('Invalid email or password.');
-    else router.replace(safeCallback(router.query.callbackUrl));
+    try {
+      const res = await signIn('credentials', { redirect: false, email: email.trim(), password });
+      if (res?.error) setError('That email and password do not match. Check them and try again.');
+      else router.replace(safeCallback(router.query.callbackUrl));
+    } catch (err) {
+      setError('We could not reach the server. Check your connection and try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -52,7 +57,7 @@ export default function SignInPage() {
         </form>
 
         <div style={foot}>
-          No account? <a href="/sign-up" style={link}>Create one</a>
+          No account? <a href={router.query.callbackUrl ? '/sign-up?callbackUrl=' + encodeURIComponent(safeCallback(router.query.callbackUrl)) : '/sign-up'} style={link}>Create one</a>
         </div>
       </div>
     </div>

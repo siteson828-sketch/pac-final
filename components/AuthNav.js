@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { useSession, signOut } from 'next-auth/react';
 
 // Compact, self-styled auth control dropped into each page's nav so the
@@ -16,6 +17,7 @@ const primary = { ...link, color: 'var(--ink)', borderColor: 'rgba(156,124,56,0.
 export default function AuthNav() {
   const { data: session, status } = useSession();
   const [tier, setTier] = useState(null);
+  const router = useRouter();
 
   // Fresh tier read (the JWT tier can be stale right after subscribing), used to
   // decide whether to show "Manage subscription".
@@ -33,8 +35,8 @@ export default function AuthNav() {
       const r = await fetch('/api/billing-portal', { method: 'POST' });
       const d = await r.json();
       if (r.ok && d.url) { window.location.href = d.url; return; }
-      alert(d.error || 'Could not open the billing portal.');
-    } catch (e) { alert('Could not open the billing portal.'); }
+      window.location.href = '/pricing';
+    } catch (e) { window.location.href = '/pricing'; }
   }
 
   // Render the signed-out links while loading too, so they appear immediately
@@ -42,17 +44,20 @@ export default function AuthNav() {
   // client render matches the server (both non-authenticated), so no hydration
   // mismatch — the account view appears on the subsequent state update.
   if (status !== 'authenticated') {
+    // Come back to this page after signing in (same-site relative path only).
+    const here = (router && router.asPath) || '';
+    const signInHref = here && here !== '/' && here.startsWith('/') && !here.startsWith('//') && !here.startsWith('/sign-') ? '/sign-in?callbackUrl=' + encodeURIComponent(here) : '/sign-in';
     return (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
         <a href="/pricing" style={link}>Pricing</a>
-        <a href="/sign-in" style={primary}>Sign in</a>
+        <a href={signInHref} style={primary}>Sign in</a>
       </span>
     );
   }
 
   const email = session?.user?.email || '';
   const label = email.length > 22 ? email.slice(0, 20) + '…' : email;
-  const paid = tier === 'collector' || tier === 'trade';
+  const paid = tier === 'collector' || tier === 'patron' || tier === 'trade';
   return (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
       {paid

@@ -48,18 +48,24 @@ export function useArtPicks(query) {
 }
 
 // Famous, hand-picked works from our stored collection (see /api/holiday-curated).
-export function useCurated(cat, { similar = true } = {}) {
+export function useCurated(cat, { similar = true, pages = 1 } = {}) {
   const [state, setState] = useState({ famous: [], similar: [], loading: true, error: false, hasMore: false, page: 0, busy: false });
   const url = (page) => '/api/holiday-curated?cat=' + encodeURIComponent(cat) + (similar ? '&page=' + page : '&similar=0');
   useEffect(() => {
     let dead = false;
     setState({ famous: [], similar: [], loading: true, error: false, hasMore: false, page: 0, busy: false });
-    fetch(url(0)).then(r => r.json())
-      .then(d => { if (!dead) setState({ famous: d.famous || [], similar: d.similar || [], loading: false, error: !!d.error, hasMore: !!d.hasMore, page: 0, busy: false }); })
-      .catch(() => { if (!dead) setState(s => ({ ...s, loading: false, error: true })); });
+    const n = similar ? Math.max(1, pages) : 1;
+    Promise.all(Array.from({ length: n }, (_, k) => fetch(url(k)).then(r => r.json()).catch(() => ({ similar: [], famous: [], error: true }))))
+      .then(rs => {
+        if (dead) return;
+        const seen = new Set();
+        const famous = (rs[0].famous || []).filter(w => !seen.has(w.id) && seen.add(w.id));
+        const more = rs.flatMap(r => r.similar || []).filter(w => !seen.has(w.id) && seen.add(w.id));
+        setState({ famous, similar: more, loading: false, error: rs.every(r => r.error), hasMore: !!rs[rs.length - 1].hasMore, page: n - 1, busy: false });
+      });
     return () => { dead = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cat, similar]);
+  }, [cat, similar, pages]);
   const loadMore = () => {
     if (state.busy || !state.hasMore) return;
     const next = state.page + 1;
@@ -175,7 +181,7 @@ export function HolidayFoot() {
 
 export const FONT_LINKS = 'https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Manrope:wght@400;500;600;700&display=swap';
 
-export const CSS = `
+const BASE_CSS = `
 body{margin:0;background:#0A0908}
 .hl{--gold:#D8B565;--ink:#F4EEE2;--mut:#B8AE9C;--line:#2A241E;--ink-soft:#CFC6B5;--radius:999px;--sans:'Manrope',system-ui,sans-serif;background:#0A0908;color:var(--ink);font-family:'Manrope',system-ui,-apple-system,sans-serif;line-height:1.55;overflow-x:clip}
 .hl *{box-sizing:border-box}
@@ -277,3 +283,99 @@ body{margin:0;background:#0A0908}
 .hl-save b{color:var(--gold)}
 @media(max-width:640px){.hl-picks{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
 `;
+
+// ---- Holiday cheer on the site's cream + navy palette (overrides the base rules above) ----
+const LIGHT_CSS = `
+body{margin:0;background:#FBF6EA}
+.hl{--gold:#B3262E;--ink:#1F2B4D;--mut:#5E6584;--line:#E6DBC3;--ink-soft:#3B4668;--pine:#1F5B45;--cran:#B3262E;--brass:#D4A23A;background:#FBF6EA;color:var(--ink)}
+.hl-bar{background:linear-gradient(90deg,#8E1F2B,#B3262E 50%,#8E1F2B);border-bottom:0;color:#FFF6E3;font-weight:600}
+.hl-nav{background:transparent}
+.hl-logo{color:var(--ink)}
+.hl-logo span{color:var(--cran)}
+.hl-links a{color:var(--ink-soft)}
+.hl-links a:hover{color:var(--cran)}
+.hl h1 em,.hl h2 em{color:var(--cran)}
+.hl-eyebrow{color:var(--cran)}
+.hl-eyebrow-light{color:#FFE7A8}
+.hl-lead,.hl-sub,.hl-card-n,.hl-save p{color:var(--ink-soft)}
+.hl-lead-light{color:#FFF1EE}
+.hl-btn-gold{background:var(--cran);color:#FFF8EC;box-shadow:0 6px 18px rgba(179,38,46,.28)}
+.hl-btn-gold:hover{background:#8E1F2B}
+.hl-btn-ghost{border:1.5px solid var(--ink);color:var(--ink)}
+.hl-btn-ghost:hover{border-color:var(--cran);color:var(--cran)}
+.hl-fine{color:var(--mut);border-top-color:var(--line)}
+/* festive stage behind the framed pictures */
+.hl-hero-art{padding:64px 30px 34px;border-radius:30px;isolation:isolate;
+  background:
+   radial-gradient(circle at 12% 22%,#fff 0 2px,transparent 3px) 0 0/90px 90px,
+   radial-gradient(circle at 70% 64%,#ffffffcc 0 1.6px,transparent 2.6px) 0 0/70px 70px,
+   radial-gradient(circle at 40% 8%,#ffffff99 0 1.2px,transparent 2px) 0 0/50px 50px,
+   radial-gradient(ellipse at 50% 120%,#B3262E55,transparent 60%),
+   linear-gradient(165deg,#1F2B4D,#1B4A3B 120%)}
+.hl-hero-art::before{content:"";position:absolute;left:0;right:0;top:0;height:30px;z-index:1;border-radius:30px 30px 0 0;
+  background:
+   radial-gradient(circle,#E8423F 0 6px,transparent 7px) 0 12px/64px 30px,
+   radial-gradient(circle,#F3C34E 0 6px,transparent 7px) 16px 12px/64px 30px,
+   radial-gradient(circle,#4FB286 0 6px,transparent 7px) 32px 12px/64px 30px,
+   radial-gradient(circle,#6FA8FF 0 6px,transparent 7px) 48px 12px/64px 30px,
+   linear-gradient(#0000,#0000)}
+.hl-hero-art::after{content:"";position:absolute;left:0;right:0;top:11px;height:2px;background:#0a1a14;opacity:.55;z-index:0}
+.hl-frame{position:relative;z-index:2;border-color:var(--brass);background:#FFFBF0;box-shadow:0 24px 50px rgba(0,0,0,.45)}
+/* cards */
+.hl-art{background:#fff;border:1px solid var(--line);box-shadow:0 4px 14px rgba(31,43,77,.07)}
+.hl-art:hover,.hl-art:focus-visible{border-color:var(--cran);box-shadow:0 10px 24px rgba(31,43,77,.15)}
+.hl-art-img{background:#EFE6D2}
+.hl-art-t{color:var(--ink)}
+.hl-art-a{color:var(--mut)}
+.hl-art-go{color:var(--cran)}
+.hl-skel{background:linear-gradient(110deg,#EFE6D2 30%,#F7F0E0 50%,#EFE6D2 70%);background-size:200% 100%}
+.hl-tile,.hl-gift{background:#fff;border-color:var(--line);box-shadow:0 4px 14px rgba(31,43,77,.07)}
+.hl-tile:hover,.hl-gift:hover{border-color:var(--cran)}
+.hl-tile-for{color:var(--cran)}
+.hl-tile-sub{color:var(--mut)}
+.hl-gift-img{background:linear-gradient(150deg,#F3E8CF,#EADCBB)}
+.hl-price{color:var(--cran)}
+/* bands */
+.hl-band-dark{background:linear-gradient(180deg,#1F2B4D,#18223D);border:0;color:#FBF6EA}
+.hl-band-dark .hl-sub{color:#D9DDF0}
+.hl-band-dark h2{color:#FFF6E3}
+.hl-band-dark .hl-chip{border-color:#5A6794;color:#FBF6EA}
+.hl-band-dark .hl-chip:hover{border-color:#FFE7A8;color:#FFE7A8}
+.hl-band-dark .hl-search input{background:#fff;color:var(--ink);border-color:#fff}
+.hl-band-dark .hl-btn-gold{background:#F3C34E;color:#1F2B4D;box-shadow:none}
+.hl-band-dark .hl-btn-gold:hover{background:#FFE08A}
+.hl-band-green{background:linear-gradient(160deg,#1F5B45,#17382E);color:#F6F1E4}
+.hl-band-green h2{color:#FFF6E3}
+.hl-band-green .hl-step{border-top-color:#F3C34E}
+.hl-band-green .hl-step p{color:#E6EFE6}
+.hl-band-green .hl-num{color:#F3C34E}
+.hl-band-red{background:linear-gradient(160deg,#B3262E,#8E1F2B);color:#FFF6E3}
+.hl-band-red h2{color:#FFF6E3}
+.hl-card{background:#FFFBF0;color:var(--ink)}
+.hl-card-k{color:var(--mut)}
+.hl-card-v{color:var(--cran)}
+.hl-band-red .hl-btn-gold{background:var(--ink);color:#FFF6E3;box-shadow:none}
+.hl-band-red .hl-btn-gold:hover{background:#0F1730}
+.hl-chip{border-color:#CDBF9F;color:var(--ink-soft);background:#fff}
+.hl-chip:hover{border-color:var(--cran);color:var(--cran)}
+.hl-search input{background:#fff;border-color:#CDBF9F;color:var(--ink)}
+.hl-search input:focus{outline-color:var(--cran)}
+.hl-save{background:#fff;border-color:var(--line)}
+.hl-save b{color:var(--cran)}
+.hl-msg{color:var(--mut)}
+.hl-msg a{color:var(--cran)!important}
+.hl-foot{border-top-color:var(--line);color:var(--mut)}
+.hl-foot a{color:var(--cran)}
+.hl a.hl-btn-gold{color:#FFF8EC}
+.hl a.hl-btn-ghost{color:var(--ink)}
+.hl a.hl-btn-ghost:hover{color:var(--cran)}
+.hl .hl-band-dark a.hl-btn-gold,.hl .hl-band-dark button.hl-btn-gold{color:#1F2B4D}
+.hl .hl-band-red a.hl-btn-gold{color:#FFF6E3}
+.hl .hl-band-dark .hl-btn-ghost{color:#FBF6EA;border-color:#5A6794}
+.hl-shelf{color:var(--ink)}
+.hl-sec h2,.hl-wrap h2{color:var(--ink)}
+.hl .hl-band-red h2,.hl .hl-band-dark h2,.hl .hl-band-green h2{color:#FFF6E3}
+.hl .hl-band-green h3{color:#FFF6E3}
+`;
+
+export const CSS = BASE_CSS + LIGHT_CSS;

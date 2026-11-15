@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { signIn, useSession } from 'next-auth/react';
 
+function safeCallback(cb) {
+  const s = Array.isArray(cb) ? cb[0] : cb;
+  return (typeof s === 'string' && s.startsWith('/') && !s.startsWith('//')) ? s : '/pricing';
+}
+
 export default function SignUpPage() {
   const router = useRouter();
   const { status } = useSession();
@@ -12,7 +17,7 @@ export default function SignUpPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (status === 'authenticated') router.replace('/pricing');
+    if (status === 'authenticated') router.replace(safeCallback(router.query.callbackUrl));
   }, [status, router]);
 
   async function onSubmit(e) {
@@ -20,22 +25,27 @@ export default function SignUpPage() {
     setError('');
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     setBusy(true);
-    // 1) create the account, 2) sign the new user straight in.
-    const reg = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, email, password }),
-    });
-    if (!reg.ok) {
-      const j = await reg.json().catch(() => ({}));
+    const cb = safeCallback(router.query.callbackUrl);
+    try {
+      // 1) create the account, 2) sign the new user straight in.
+      const reg = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email: email.trim(), password }),
+      });
+      if (!reg.ok) {
+        const j = await reg.json().catch(() => ({}));
+        setError(j.error || 'Could not create your account.');
+        return;
+      }
+      const res = await signIn('credentials', { redirect: false, email: email.trim(), password });
+      if (res?.error) router.replace('/sign-in?callbackUrl=' + encodeURIComponent(cb));
+      else router.replace(cb);
+    } catch (err) {
+      setError('We could not reach the server. Check your connection and try again.');
+    } finally {
       setBusy(false);
-      setError(j.error || 'Could not create your account.');
-      return;
     }
-    const res = await signIn('credentials', { redirect: false, email, password });
-    setBusy(false);
-    if (res?.error) router.replace('/sign-in');
-    else router.replace('/pricing');
   }
 
   return (
@@ -61,7 +71,7 @@ export default function SignUpPage() {
         </form>
 
         <div style={foot}>
-          Already have an account? <a href="/sign-in" style={link}>Sign in</a>
+          Already have an account? <a href={router.query.callbackUrl ? '/sign-in?callbackUrl=' + encodeURIComponent(safeCallback(router.query.callbackUrl)) : '/sign-in'} style={link}>Sign in</a>
         </div>
       </div>
     </div>
