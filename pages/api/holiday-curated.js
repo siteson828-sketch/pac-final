@@ -21,7 +21,7 @@ async function findEntry(sql, e) {
   const rows = await sql`SELECT * FROM artworks
     WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!=''
       AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%'
-      AND title ~* ${e.t} AND COALESCE(artist,'') ~* ${e.a || ''}
+      AND title ~* ${e.t} AND artist ~* ${e.a || '.'}
     ORDER BY (CASE WHEN source ~* ${PREFERRED} THEN 0 ELSE 1 END),
              (CASE WHEN title ~* ${'^(' + e.t + ')'} THEN 0 ELSE 1 END),
              length(title), id
@@ -95,6 +95,8 @@ export default async function handler(req, res) {
     }
 
     const body = { famous, similar, hasMore };
+    // Never let an empty/failed lookup sit in the edge cache for a day.
+    if (!debug && !famous.length && !similar.length) res.setHeader('Cache-Control', 'no-store');
     if (debug) body.debug = def.entries.map((e, i) => ({ entry: e.n, found: !!found[i], title: found[i]?.title || null, artist: found[i]?.artist || null, source: found[i]?.source || null }));
     return res.status(200).json(body);
   } catch (e) {
