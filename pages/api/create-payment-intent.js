@@ -3,7 +3,9 @@ import { authOptions } from './auth/[...nextauth]';
 import { hasStripe, createPaymentIntent } from '../../lib/stripe';
 import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { checkRateLimit } from '../../lib/rate-limit';
-import { cleanStr, isEmail, sameOrigin, clientIp } from '../../lib/sanitize';
+import { cleanStr, isEmail, sameOrigin, clientIp, sanitizeRecipient } from '../../lib/sanitize';
+import { savePendingOrder } from '../../lib/fulfill';
+import { neon } from '@neondatabase/serverless';
 import { db, getTierForUser, tierDiscount } from '../../lib/authdb';
 
 export const dynamic = 'force-dynamic';
@@ -59,6 +61,26 @@ export default async function handler(req, res) {
       metadata: { product: productName, size: size || '', quantity: String(qty), work: work || '', tier, discount: String(discount),
         gift_message: giftMessage || '', gift_recipient: giftRecipient || '', gift_occasion: giftOccasion || '' },
     });
+    // Safety net: store the full order server-side NOW, so a paid order can be
+    // sent to Printful even if the customer's browser never gets to call
+    // /api/create-order (closed tab, lost signal). Non-fatal: the browser path
+    // still works and writes the same row if this is skipped.
+    try {
+      const { recipient: rcp, errors: rErrs } = sanitizeRecipient(body.recipient);
+      const printUrl = String(body.print_url || '').trim().slice(0, 2000);
+      const complete = ['name', 'address1', 'city', 'country_code', 'zip'].every(f => rcp && rcp[f]);
+      if (complete && !rErrs.length && /^https:\/\//i.test(printUrl)) {
+        await savePendingOrder(neon(process.env.DATABASE_URL), {
+          payment_intent_id: pi.id,
+          user_id: session.user.id,
+          product: productName, size, quantity: qty,
+          print_url: printUrl, work,
+          retail_price: (parseFloat(unit) * (1 - discount)).toFixed(2),
+          recipient: rcp,
+          gift: { message: giftMessage, recipient: giftRecipient, occasion: giftOccasion },
+        });
+      }
+    } catch (e) { console.error('create-payment-intent: pending order save failed:', e.message); }
     return res.status(200).json({
       configured: true,
       client_secret: pi.client_secret,

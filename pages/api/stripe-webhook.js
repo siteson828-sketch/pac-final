@@ -1,6 +1,7 @@
 import { db, ensureAuthTables } from '../../lib/authdb';
 import { constructWebhookEvent, retrieveSubscription } from '../../lib/stripe';
 import { ensureGivingTable, recordGiving } from '../../lib/giving';
+import { fulfillPaidOrder } from '../../lib/fulfill';
 
 // Stripe webhook: keeps users.tier in sync with subscription lifecycle.
 // Requires the RAW body for signature verification, so Next's body parser is off.
@@ -32,6 +33,23 @@ export default async function handler(req, res) {
   } catch (e) {
     console.error('stripe-webhook signature error:', e.message);
     return res.status(400).json({ error: `Webhook Error: ${e.message}` });
+  }
+
+  // Paid print orders: submit to Printful here too, so the order ships even if the
+  // customer's browser never reaches /api/create-order. Idempotent. A 500 makes
+  // Stripe retry the delivery automatically (for up to ~3 days).
+  if (event.type === 'payment_intent.succeeded' && event.data.object?.metadata?.product) {
+    try {
+      const out = await fulfillPaidOrder(db(), event.data.object.id);
+      if (!out.ok && out.retry) {
+        console.error('stripe-webhook: print order fulfillment failed, asking Stripe to retry:', out);
+        return res.status(500).json({ error: 'fulfillment failed, retry' });
+      }
+    } catch (e) {
+      console.error('stripe-webhook: print order fulfillment error:', e.message);
+      return res.status(500).json({ error: 'fulfillment error, retry' });
+    }
+    return res.status(200).json({ received: true });
   }
 
   try {

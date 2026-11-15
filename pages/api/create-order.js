@@ -7,6 +7,7 @@ import { CATALOG, getPrice } from '../../lib/printful-catalog';
 import { hasStripe, retrievePaymentIntent } from '../../lib/stripe';
 import { hasGhl, upsertContact as ghlUpsert } from '../../lib/ghl';
 import { verifyToken } from '../../lib/order-token';
+import { savePendingOrder, fulfillPaidOrder } from '../../lib/fulfill';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { sanitizeRecipient, sameOrigin } from '../../lib/sanitize';
 import { isIpBlocked, recordAuthFailure, logSecurityEvent } from '../../lib/security';
@@ -143,6 +144,40 @@ export default async function handler(req, res) {
     paymentStatus = pi?.status || 'unknown';
     if (pi?.status !== 'succeeded') return bad(res, 402, `Payment not completed (status: ${paymentStatus})`);
     paid = true;
+  }
+
+  // --- paid orders: one guarded fulfillment path ---
+  // The same function is used by the Stripe webhook and the reconcile cron, so a
+  // given payment can only ever create one Printful order, and an order is never
+  // lost if this request dies. The row written at payment start (if any) wins.
+  if (paid) {
+    try {
+      await savePendingOrder(sql, {
+        payment_intent_id, user_id: authSession.user.id,
+        product: productName, size, quantity: qty, print_url, work,
+        retail_price: price, recipient: r,
+        gift: { message: giftMessage, recipient: giftRecipient, occasion: giftOccasion },
+      });
+      const out = await fulfillPaidOrder(sql, payment_intent_id);
+      if (out.ok) {
+        if (!out.already && !out.inProgress) {
+          await notifyOrder({ orderId: out.orderId, productName, size, qty, price, recipient: r, paid });
+          await logSecurityEvent({ ip, ua: req.headers['user-agent'], endpoint: 'create-order', result: 'ok', meta: { orderId: out.orderId, paid } });
+        }
+        return res.status(201).json({
+          ok: true, orderId: out.orderId, printful_order_id: out.printful_order_id,
+          printful_status: out.printful_status, retail_price: out.retail_price || price, paid,
+          message: out.inProgress
+            ? 'Payment received. Your order is being submitted for printing.'
+            : 'Payment received and order submitted to Printful (confirmed).',
+        });
+      }
+      console.error('create-order: fulfillment will be retried automatically:', out);
+      return bad(res, 502, 'Payment received. We hit a snag submitting your order and are retrying automatically. Please do not pay again.');
+    } catch (e) {
+      console.error('create-order: paid fulfillment error:', e);
+      return bad(res, 502, 'Payment received. We hit a snag submitting your order and are retrying automatically. Please do not pay again.');
+    }
   }
 
   // If Printful isn't configured yet, still persist the request so nothing is lost.

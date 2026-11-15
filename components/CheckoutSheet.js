@@ -197,6 +197,8 @@ export default function CheckoutSheet({ checkout, onClose, onOrdered }) {
           size: coSize,
           quantity: coQty,
           work: checkout.art?.title || '',
+          print_url: checkout.art?.print_url || checkout.art?.full_url || checkout.art?.thumb_url,
+          recipient: ship,
           email: ship.email,
           gift_message: personalMessage,
           gift_recipient: personalName,

@@ -11,6 +11,10 @@
     {
       "path": "/api/send-followup?type=weekly",
       "schedule": "0 9 * * 1"
+    },
+    {
+      "path": "/api/reconcile-orders",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
