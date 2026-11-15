@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     return res.status(409).json({ error: 'Subscription prices already configured. Pass &force=1 to create new ones.' });
   }
 
-  const origin = 'https://www.greatartclassics.com';
+  const origin = 'https://www.greatartclassics.org';
   try {
     const prices = {};
     for (const t of TIERS) {

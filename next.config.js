@@ -46,10 +46,24 @@ const nextConfig = {
     // matched, so previews keep working), and EXCLUDES /api/* so cron jobs and
     // server-to-server calls that hit the .vercel.app host aren't redirected.
     return [
+      // Old .com addresses forward to the .org (excluding /api so webhooks/cron
+      // that still hit the .com are not redirected).
+      {
+        source: '/:path((?!api/).*)',
+        has: [{ type: 'host', value: 'greatartclassics.com' }],
+        destination: 'https://www.greatartclassics.org/:path',
+        permanent: true,
+      },
+      {
+        source: '/:path((?!api/).*)',
+        has: [{ type: 'host', value: 'www.greatartclassics.com' }],
+        destination: 'https://www.greatartclassics.org/:path',
+        permanent: true,
+      },
       {
         source: '/:path((?!api/).*)',
         has: [{ type: 'host', value: 'pac-final.vercel.app' }],
-        destination: 'https://www.greatartclassics.com/:path',
+        destination: 'https://www.greatartclassics.org/:path',
         permanent: true,
       },
     ];

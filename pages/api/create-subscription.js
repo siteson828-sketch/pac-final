@@ -28,7 +28,7 @@ export default async function handler(req, res) {
   }
 
   const priceId = SUBSCRIPTION_PRICES[tier]();
-  const origin = 'https://www.greatartclassics.com';
+  const origin = 'https://www.greatartclassics.org';
 
   try {
     // Ensure the user row exists (so the webhook can match by id/email).

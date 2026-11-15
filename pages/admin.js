@@ -57,7 +57,7 @@ export default function Admin() {
         secret,
         action: 'send_sms',
         phone: visitor.phone,
-        message: 'Hi ' + (visitor.name || 'there') + '! You left something special at Great Art Classics. Your artwork is waiting: www.greatartclassics.com/viewer',
+        message: 'Hi ' + (visitor.name || 'there') + '! You left something special at Great Art Classics. Your artwork is waiting: www.greatartclassics.org/viewer',
       }),
     });
     alert('SMS requested for ' + visitor.phone);
