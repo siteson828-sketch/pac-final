@@ -1,3 +1,4 @@
+import { frozen } from '../../lib/syncFreeze';
 import { neon } from '@neondatabase/serverless';
 import { getCursor, setCursor, advance } from '../../lib/sync-cursor';
 
@@ -25,6 +26,7 @@ const FAST_SOURCES = [
 ];
 
 export default async function handler(req, res) {
+  if (frozen(res)) return;
   // Auth via Authorization: Bearer header only (see /api/sync).
   const auth = req.headers['authorization'] || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';

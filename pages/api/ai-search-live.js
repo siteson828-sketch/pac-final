@@ -2,6 +2,7 @@ import { neon } from '@neondatabase/serverless';
 import { checkRateLimit } from '../../lib/rate-limit';
 import { cleanStr, clientIp } from '../../lib/sanitize';
 import { liveSearch } from '../../lib/livemuseums';
+import { SYNC_FROZEN } from '../../lib/syncFreeze';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,6 +46,9 @@ export default async function handler(req, res) {
       }
     }
   } catch (e) { /* cache miss on any error */ }
+
+  // Frozen: serve cache only, never ping museum APIs.
+  if (SYNC_FROZEN) return res.status(200).json({ works: [], sources: {}, frozen: true });
 
   // Live fetch (bounded + fail-soft inside liveSearch).
   let result = { works: [], sources: {} };

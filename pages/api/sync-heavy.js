@@ -1,3 +1,4 @@
+import { frozen } from '../../lib/syncFreeze';
 import { neon } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
@@ -21,6 +22,7 @@ const CHUNKS = [
 const GROUPS = 5;
 
 export default async function handler(req, res) {
+  if (frozen(res)) return;
   // Auth via Authorization: Bearer header only (see /api/sync). ?secret= removed.
   const auth = req.headers['authorization'] || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';

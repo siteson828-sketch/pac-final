@@ -1,3 +1,4 @@
+import { frozen } from '../../lib/syncFreeze';
 import { neon } from '@neondatabase/serverless';
 import { clientIp } from '../../lib/sanitize';
 import { isIpBlocked, recordAuthFailure, logSecurityEvent } from '../../lib/security';
@@ -1405,6 +1406,7 @@ async function syncDigitalCommonwealth(sql, offset = 0) {
 }
 
 export default async function handler(req, res) {
+  if (frozen(res)) return;
   // Auth via Authorization: Bearer header only. Vercel Cron injects this using
   // CRON_SECRET; SYNC_SECRET is also accepted as a bearer for manual runs. The
   // legacy ?secret= query-string path was removed (secrets in URLs leak to logs).

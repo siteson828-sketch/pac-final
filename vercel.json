@@ -1,13 +1,16 @@
 {
   "crons": [
-    { "path": "/api/sync-orchestrator",            "schedule": "*/10 * * * *" },
-    { "path": "/api/sync-fast",                    "schedule": "*/15 * * * *" },
-    { "path": "/api/sync?source=smithsonian",      "schedule": "0 3 * * *"    },
-    { "path": "/api/sync?source=metcomplete",      "schedule": "0 */3 * * *"  },
-    { "path": "/api/sync?source=clevelandcomplete","schedule": "0 */6 * * *"  },
-    { "path": "/api/sync?source=miacomplete",      "schedule": "0 5 * * *"    },
-    { "path": "/api/send-followup?type=day1",      "schedule": "0 10 * * *"   },
-    { "path": "/api/send-followup?type=day3",      "schedule": "30 10 * * *"  },
-    { "path": "/api/send-followup?type=weekly",    "schedule": "0 9 * * 1"    }
+    {
+      "path": "/api/send-followup?type=day1",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/send-followup?type=day3",
+      "schedule": "30 10 * * *"
+    },
+    {
+      "path": "/api/send-followup?type=weekly",
+      "schedule": "0 9 * * 1"
+    }
   ]
 }

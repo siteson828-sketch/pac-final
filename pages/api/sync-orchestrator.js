@@ -1,3 +1,4 @@
+import { frozen } from '../../lib/syncFreeze';
 import { neon } from '@neondatabase/serverless';
 
 export const dynamic = 'force-dynamic';
@@ -71,6 +72,7 @@ async function runSync(s) {
 }
 
 export default async function handler(req, res) {
+  if (frozen(res)) return;
   const auth = req.headers.authorization || '';
   const secret = req.query.secret;
   const S = process.env.SYNC_SECRET, C = process.env.CRON_SECRET;
