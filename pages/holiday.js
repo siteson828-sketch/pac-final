@@ -2,7 +2,7 @@ import Head from 'next/head';
 import { CATALOG } from '../lib/printful-catalog';
 import { getThumbUrl } from '../lib/thumb';
 import { THEMES, FRONT_CAT, ALL_PICKS } from '../lib/holidayThemes';
-import { CSS, FONT_LINKS, Holly, HolidayNav, HolidayFoot, PicksGrid, useArtPicks, useCurated, useCovers } from '../components/HolidayKit';
+import { CSS, FONT_LINKS, Holly, HolidayNav, HolidayFoot, PicksGrid, GiftArt, useArtPicks, useCurated, useCovers } from '../components/HolidayKit';
 
 // /holiday — seasonal "front door" for ads, email and social. Same shop and checkout
 // as the rest of the site; this page only changes the story and the way in:
@@ -112,11 +112,11 @@ export default function Holiday() {
           <h2>Something for everyone on the list</h2>
           <p className="hl-sub">Pick the artwork, then pick the gift. We print it and ship it.</p>
           <div className="hl-grid hl-grid-4">
-            {GIFTS.map(g => {
+            {GIFTS.map((g, gi) => {
               const p = fromPrice(g.product);
               return (
                 <a key={g.product} href="#picks" className="hl-gift">
-                  <div className="hl-gift-img" />
+                  <div className="hl-gift-img"><GiftArt kind={g.product} uid={gi} src={works[gi + 2] ? getThumbUrl(works[gi + 2].thumb_url) : ''} /></div>
                   <div className="hl-tile-name">{g.product}</div>
                   <div className="hl-tile-sub">{g.blurb}</div>
                   {p != null && <div className="hl-price">From ${p.toFixed(2)}</div>}

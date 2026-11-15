@@ -100,6 +100,44 @@ export function ArtCard({ w }) {
   );
 }
 
+// Simple drawn product with a famous work on it (we have no product photos).
+export function GiftArt({ kind, src, uid }) {
+  const id = 'ga-' + uid;
+  const img = (x, y, w, h, clip) => src
+    ? <image href={src} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid slice" clipPath={'url(#' + clip + ')'} />
+    : <rect x={x} y={y} width={w} height={h} fill="#6b3a2e" clipPath={'url(#' + clip + ')'} />;
+  return (
+    <svg viewBox="0 0 200 200" role="img" aria-label={kind} style={{ width: '100%', height: '100%', display: 'block' }}>
+      <defs>
+        <clipPath id={id + 'p'}><rect x="56" y="38" width="88" height="124" /></clipPath>
+        <clipPath id={id + 'm'}><rect x="46" y="52" width="86" height="96" rx="10" /></clipPath>
+        <clipPath id={id + 't'}><rect x="66" y="96" width="68" height="68" /></clipPath>
+        <clipPath id={id + 'b'}><rect x="26" y="52" width="148" height="96" rx="4" /></clipPath>
+      </defs>
+      {kind === 'Framed Poster' && (<g>
+        <rect x="40" y="22" width="120" height="156" fill="#D8B565" /><rect x="47" y="29" width="106" height="142" fill="#F4EEE2" />
+        {img(56, 38, 88, 124, id + 'p')}<rect x="56" y="38" width="88" height="124" fill="none" stroke="#00000033" />
+      </g>)}
+      {kind === 'Mug' && (<g>
+        <path d="M130 70 h14 a18 18 0 0 1 0 50 h-14" fill="none" stroke="#F4EEE2" strokeWidth="11" />
+        <rect x="46" y="52" width="86" height="96" rx="10" fill="#F4EEE2" />{img(46, 52, 86, 96, id + 'm')}
+        <rect x="52" y="56" width="10" height="88" rx="5" fill="#ffffff" opacity=".22" /><ellipse cx="89" cy="152" rx="46" ry="6" fill="#00000040" />
+      </g>)}
+      {kind === 'Tote Bag' && (<g>
+        <path d="M72 80 C72 30 128 30 128 80" fill="none" stroke="#C9B48A" strokeWidth="8" strokeLinecap="round" />
+        <rect x="42" y="72" width="116" height="106" fill="#E9DFC8" /><rect x="42" y="72" width="116" height="106" fill="none" stroke="#00000022" />
+        {img(66, 96, 68, 68, id + 't')}<rect x="66" y="96" width="68" height="68" fill="none" stroke="#00000030" />
+      </g>)}
+      {kind === 'Throw Blanket' && (<g>
+        <rect x="26" y="52" width="148" height="96" rx="4" fill="#E9DFC8" />{img(26, 52, 148, 96, id + 'b')}
+        <rect x="26" y="52" width="148" height="96" rx="4" fill="none" stroke="#D8B565" strokeWidth="5" />
+        {Array.from({ length: 19 }).map((_, i) => <line key={i} x1={32 + i * 7.7} y1="148" x2={32 + i * 7.7} y2="162" stroke="#D8B565" strokeWidth="2.5" strokeLinecap="round" />)}
+        <path d="M26 52 L174 148" stroke="#ffffff" opacity=".07" strokeWidth="40" clipPath={'url(#' + id + 'b)'} />
+      </g>)}
+    </svg>
+  );
+}
+
 export function PicksGrid({ works, loading, limit }) {
   if (loading) {
     return <div className="hl-picks" aria-busy="true">{Array.from({ length: Math.min(limit || 12, 12) }).map((_, i) => <div key={i} className="hl-skel" />)}</div>;
