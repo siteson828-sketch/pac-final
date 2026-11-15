@@ -66,9 +66,9 @@ export default function HolidayTheme({ theme }) {
             <>
               <h2 className="hl-shelf" style={{ marginTop: 44 }}>More in the same spirit</h2>
               <p className="hl-sub" style={{ marginBottom: 18 }}>Loved those? These are by the same hands and in the same mood.</p>
-              <PicksGrid works={cur.similar} limit={shown} />
-              {cur.similar.length > shown && (
-                <div className="hl-more"><button type="button" className="hl-btn hl-btn-ghost" style={{ background: 'none', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setShown(n => n + 24)}>Show more</button></div>
+              <PicksGrid works={cur.similar} limit={cur.similar.length} />
+              {cur.hasMore && (
+                <div className="hl-more"><button type="button" disabled={cur.busy} className="hl-btn hl-btn-ghost" style={{ background: 'none', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit' }} onClick={cur.loadMore}>{cur.busy ? 'Loading…' : 'Show more'}</button></div>
               )}
             </>
           )}

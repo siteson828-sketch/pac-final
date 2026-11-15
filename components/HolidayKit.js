@@ -49,17 +49,30 @@ export function useArtPicks(query) {
 
 // Famous, hand-picked works from our stored collection (see /api/holiday-curated).
 export function useCurated(cat, { similar = true } = {}) {
-  const [state, setState] = useState({ famous: [], similar: [], loading: true, error: false });
+  const [state, setState] = useState({ famous: [], similar: [], loading: true, error: false, hasMore: false, page: 0, busy: false });
+  const url = (page) => '/api/holiday-curated?cat=' + encodeURIComponent(cat) + (similar ? '&page=' + page : '&similar=0');
   useEffect(() => {
     let dead = false;
-    setState({ famous: [], similar: [], loading: true, error: false });
-    fetch('/api/holiday-curated?cat=' + encodeURIComponent(cat) + (similar ? '' : '&similar=0'))
-      .then(r => r.json())
-      .then(d => { if (!dead) setState({ famous: d.famous || [], similar: d.similar || [], loading: false, error: !!d.error }); })
-      .catch(() => { if (!dead) setState({ famous: [], similar: [], loading: false, error: true }); });
+    setState({ famous: [], similar: [], loading: true, error: false, hasMore: false, page: 0, busy: false });
+    fetch(url(0)).then(r => r.json())
+      .then(d => { if (!dead) setState({ famous: d.famous || [], similar: d.similar || [], loading: false, error: !!d.error, hasMore: !!d.hasMore, page: 0, busy: false }); })
+      .catch(() => { if (!dead) setState(s => ({ ...s, loading: false, error: true })); });
     return () => { dead = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cat, similar]);
-  return state;
+  const loadMore = () => {
+    if (state.busy || !state.hasMore) return;
+    const next = state.page + 1;
+    setState(s => ({ ...s, busy: true }));
+    fetch(url(next)).then(r => r.json()).then(d => {
+      setState(c => {
+        const ids = new Set([...c.famous, ...c.similar].map(w => w.id));
+        const add = (d.similar || []).filter(w => !ids.has(w.id));
+        return { ...c, similar: [...c.similar, ...add], hasMore: !!d.hasMore && (d.similar || []).length > 0, page: next, busy: false };
+      });
+    }).catch(() => setState(c => ({ ...c, busy: false, hasMore: false })));
+  };
+  return { ...state, loadMore };
 }
 
 // One cover image per category, for the mood boxes.

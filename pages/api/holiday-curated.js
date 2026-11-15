@@ -29,13 +29,19 @@ async function findEntry(sql, e) {
   return rows[0] || null;
 }
 
-async function byArtist(sql, a, n) {
-  return sql`SELECT * FROM artworks
-    WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!=''
-      AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%'
-      AND artist ~* ${a} AND COALESCE(medium,'') ~* ${COLOR}
-    ORDER BY (CASE WHEN source ~* ${PREFERRED} THEN 0 ELSE 1 END), id
-    LIMIT ${n}`;
+const PAGE = 48;
+
+// "More in the same spirit": painted/printed work by the shelf's artists OR with the shelf's
+// subject words in the title, round-robin by artist (rn) so no painter takes over.
+async function moreLike(sql, def, page) {
+  return sql`WITH m AS (
+      SELECT *, row_number() OVER (PARTITION BY lower(COALESCE(artist,'')) ORDER BY (CASE WHEN source ~* ${PREFERRED} THEN 0 ELSE 1 END), id) AS rn
+      FROM artworks
+      WHERE commercial_ok=true AND thumb_url IS NOT NULL AND thumb_url!=''
+        AND thumb_url NOT LIKE '%ark.digitalcommonwealth.org%' AND thumb_url NOT LIKE '%artic.edu%' AND thumb_url LIKE 'http%'
+        AND COALESCE(artist,'')!='' AND COALESCE(medium,'') ~* ${COLOR}
+        AND (artist ~* ${def.more || def.artists.join('|')} OR title ~* ${def.terms || '$^'}))
+    SELECT * FROM m WHERE rn <= 25 ORDER BY rn, id LIMIT ${PAGE} OFFSET ${page * PAGE}`;
 }
 
 const key = w => `${(w.title || '').toLowerCase().slice(0, 40)}|${(w.artist || '').toLowerCase().slice(0, 20)}`;
@@ -63,31 +69,32 @@ export default async function handler(req, res) {
     const def = CURATED[cat];
     if (!def) return res.status(404).json({ error: 'Unknown category' });
 
-    const found = await Promise.all(def.entries.map(e => findEntry(sql, e).catch(() => null)));
+    const page = Math.max(0, Math.min(200, parseInt(req.query.page, 10) || 0));
     const seen = new Set();
     const famous = [];
-    found.forEach(w => {
-      if (!w || seen.has(w.id) || seen.has(key(w))) return;
-      seen.add(w.id); seen.add(key(w));
-      famous.push(shapeArtwork(w));
-    });
+    let found = [];
+    if (page === 0) {
+      found = await Promise.all(def.entries.map(e => findEntry(sql, e).catch(() => null)));
+      found.forEach(w => {
+        if (!w || seen.has(w.id) || seen.has(key(w))) return;
+        seen.add(w.id); seen.add(key(w));
+        famous.push(shapeArtwork(w));
+      });
+    }
 
     let similar = [];
+    let hasMore = false;
     if (req.query.similar !== '0') {
-      const lists = await Promise.all(def.artists.map(a => byArtist(sql, a, 8).catch(() => [])));
-      // round-robin across artists so one painter doesn't take the whole shelf
-      for (let i = 0; i < 8 && similar.length < 36; i++) {
-        for (const l of lists) {
-          const w = l[i];
-          if (!w || seen.has(w.id) || seen.has(key(w))) continue;
-          seen.add(w.id); seen.add(key(w));
-          similar.push(shapeArtwork(w));
-          if (similar.length >= 36) break;
-        }
+      const rows = await moreLike(sql, def, page).catch(() => []);
+      hasMore = rows.length === PAGE;
+      for (const w of rows) {
+        if (seen.has(w.id) || seen.has(key(w))) continue;
+        seen.add(w.id); seen.add(key(w));
+        similar.push(shapeArtwork(w));
       }
     }
 
-    const body = { famous, similar };
+    const body = { famous, similar, hasMore };
     if (debug) body.debug = def.entries.map((e, i) => ({ entry: e.n, found: !!found[i], title: found[i]?.title || null, artist: found[i]?.artist || null, source: found[i]?.source || null }));
     return res.status(200).json(body);
   } catch (e) {
