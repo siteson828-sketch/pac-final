@@ -695,6 +695,17 @@ export default function Viewer() {
       .finally(() => setLiveLoading(false));
   };
 
+  // Deep link: /viewer?q=winter+landscape runs that search on arrival (used by the
+  // landing pages such as /holiday). Nothing else loads at mount until a museum is
+  // chosen, so this cannot race with another load.
+  useEffect(() => {
+    try {
+      const q = (new URLSearchParams(window.location.search).get('q') || '').trim().slice(0, 200);
+      if (q) { setSearch(q); doAISearch(q); }
+    } catch (e) {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Cross-museum "by artist" study search: our catalog (direct artist match) PLUS
   // live results from every connected museum API (mode=artist), shown in the same
   // aiActive viewer. Live results are view-only until added to the catalog.
