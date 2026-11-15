@@ -26,8 +26,9 @@ export function Holly({ w = 220, style }) {
 
 // Fetch artwork picks for a search phrase (same engine as the viewer's search box).
 export function useArtPicks(query) {
-  const [state, setState] = useState({ works: [], loading: true, error: false });
+  const [state, setState] = useState({ works: [], loading: !!query, error: false });
   useEffect(() => {
+    if (!query) { setState({ works: [], loading: false, error: false }); return undefined; }
     let dead = false;
     setState({ works: [], loading: true, error: false });
     fetch('/api/ai-search?query=' + encodeURIComponent(query))
@@ -46,6 +47,32 @@ export function useArtPicks(query) {
   return state;
 }
 
+// Famous, hand-picked works from our stored collection (see /api/holiday-curated).
+export function useCurated(cat, { similar = true } = {}) {
+  const [state, setState] = useState({ famous: [], similar: [], loading: true, error: false });
+  useEffect(() => {
+    let dead = false;
+    setState({ famous: [], similar: [], loading: true, error: false });
+    fetch('/api/holiday-curated?cat=' + encodeURIComponent(cat) + (similar ? '' : '&similar=0'))
+      .then(r => r.json())
+      .then(d => { if (!dead) setState({ famous: d.famous || [], similar: d.similar || [], loading: false, error: !!d.error }); })
+      .catch(() => { if (!dead) setState({ famous: [], similar: [], loading: false, error: true }); });
+    return () => { dead = true; };
+  }, [cat, similar]);
+  return state;
+}
+
+// One cover image per category, for the mood boxes.
+export function useCovers() {
+  const [covers, setCovers] = useState({});
+  useEffect(() => {
+    let dead = false;
+    fetch('/api/holiday-curated?cat=covers').then(r => r.json()).then(d => { if (!dead) setCovers(d.covers || {}); }).catch(() => {});
+    return () => { dead = true; };
+  }, []);
+  return covers;
+}
+
 export function ArtCard({ w }) {
   const artist = (w.artist || '').split('\n')[0].split('(')[0].trim();
   return (
@@ -60,12 +87,12 @@ export function ArtCard({ w }) {
   );
 }
 
-export function PicksGrid({ state, limit }) {
-  if (state.loading) {
+export function PicksGrid({ works, loading, limit }) {
+  if (loading) {
     return <div className="hl-picks" aria-busy="true">{Array.from({ length: Math.min(limit || 12, 12) }).map((_, i) => <div key={i} className="hl-skel" />)}</div>;
   }
-  if (!state.works.length) return null;
-  return <div className="hl-picks">{state.works.slice(0, limit || 24).map(w => <ArtCard key={w.id} w={w} />)}</div>;
+  if (!works || !works.length) return null;
+  return <div className="hl-picks">{works.slice(0, limit || 24).map(w => <ArtCard key={w.id} w={w} />)}</div>;
 }
 
 export function HolidayNav() {
@@ -184,6 +211,8 @@ body{margin:0;background:#0A0908}
 .hl-skel{aspect-ratio:4/5;border-radius:14px;background:linear-gradient(110deg,#14110F 30%,#1d1814 50%,#14110F 70%);background-size:200% 100%;animation:hlsk 1.4s linear infinite}
 @keyframes hlsk{to{background-position:-200% 0}}
 @media(prefers-reduced-motion:reduce){.hl-skel{animation:none}}
+.hl-shelf{font-size:clamp(24px,3vw,34px);margin:0 0 16px}
+.hl-tile-for{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin-bottom:6px}
 .hl-more{display:flex;justify-content:center;margin-top:28px}
 .hl-msg{color:var(--mut);font-size:16px;padding:20px 0}
 .hl-chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}

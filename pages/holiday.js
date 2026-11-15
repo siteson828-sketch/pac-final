@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { CATALOG } from '../lib/printful-catalog';
 import { getThumbUrl } from '../lib/thumb';
-import { THEMES, FRONT_Q, ALL_PICKS } from '../lib/holidayThemes';
-import { CSS, FONT_LINKS, Holly, HolidayNav, HolidayFoot, PicksGrid, useArtPicks } from '../components/HolidayKit';
+import { THEMES, FRONT_CAT, ALL_PICKS } from '../lib/holidayThemes';
+import { CSS, FONT_LINKS, Holly, HolidayNav, HolidayFoot, PicksGrid, useArtPicks, useCurated, useCovers } from '../components/HolidayKit';
 
 // /holiday — seasonal "front door" for ads, email and social. Same shop and checkout
 // as the rest of the site; this page only changes the story and the way in:
@@ -27,25 +26,14 @@ function fromPrice(name) {
 }
 
 export default function Holiday() {
-  const picks = useArtPicks(FRONT_Q);
-
-  // Cover image for each theme box (cheap plain title search; gradient if none).
-  const [imgs, setImgs] = useState({});
-  useEffect(() => {
-    let dead = false;
-    THEMES.forEach(t => {
-      fetch('/api/artworks?limit=12&search=' + encodeURIComponent(t.term))
-        .then(r => r.json())
-        .then(d => {
-          const w = (d.works || []).find(x => x.thumb_url);
-          if (w && !dead) setImgs(prev => ({ ...prev, [t.slug]: { src: getThumbUrl(w.thumb_url), title: w.title || '' } }));
-        })
-        .catch(() => {});
-    });
-    return () => { dead = true; };
-  }, []);
-
-  const frames = picks.works.slice(0, 2);
+  const front = useCurated(FRONT_CAT, { similar: false });
+  // If none of the hand-picked works are in the collection, fall back to a search.
+  const needFallback = !front.loading && front.famous.length === 0;
+  const fallback = useArtPicks(needFallback ? ALL_PICKS.q : '');
+  const works = front.famous.length ? front.famous : fallback.works;
+  const loading = front.loading || (needFallback && fallback.loading);
+  const covers = useCovers();
+  const frames = works.slice(0, 2);
 
   return (
     <>
@@ -89,26 +77,27 @@ export default function Holiday() {
         </section>
 
         <section id="picks" className="hl-sec hl-wrap" style={{ paddingTop: 20 }}>
-          <h2>Colorful holiday picks, ready to gift</h2>
-          <p className="hl-sub">Tap any piece to choose your gift: a framed poster, mug, tote or blanket.</p>
-          <PicksGrid state={picks} limit={18} />
-          {!picks.loading && !picks.works.length && (
-            <p className="hl-msg">Our holiday picks are taking a moment to load. <a href="/holiday/colorful-picks" style={{ color: 'var(--gold)' }}>Try the full picks page</a> or <a href="#browse" style={{ color: 'var(--gold)' }}>search every museum</a>.</p>
+          <h2>Famous favorites, ready to gift</h2>
+          <p className="hl-sub">Masterpieces everyone knows, in the colors of the season. Tap one to make it a gift: a framed poster, mug, tote or blanket.</p>
+          <PicksGrid works={works} loading={loading} limit={20} />
+          {!loading && !works.length && (
+            <p className="hl-msg">Our holiday picks are taking a moment to load. <a href={'/holiday/' + ALL_PICKS.slug} style={{ color: 'var(--gold)' }}>Try the full picks page</a> or <a href="#browse" style={{ color: 'var(--gold)' }}>search every museum</a>.</p>
           )}
-          <div className="hl-more"><a href={'/holiday/' + ALL_PICKS.slug} className="hl-btn hl-btn-ghost">See all colorful picks</a></div>
+          <div className="hl-more"><a href={'/holiday/' + ALL_PICKS.slug} className="hl-btn hl-btn-ghost">See all famous favorites</a></div>
         </section>
 
         <section id="holiday" className="hl-band hl-band-dark">
           <div className="hl-wrap hl-sec">
-            <h2>Or start with a mood</h2>
-            <p className="hl-sub">Each one opens a short list of choices, hand-picked for the season.</p>
+            <h2>Or shop by who it's for</h2>
+            <p className="hl-sub">Each one opens a hand-picked shelf of famous pieces, then more in the same spirit.</p>
             <div className="hl-grid">
               {THEMES.map(t => (
                 <a key={t.slug} href={'/holiday/' + t.slug} className="hl-tile">
                   <div className="hl-tile-img" style={{ background: t.grad }}>
-                    {imgs[t.slug] && <img src={imgs[t.slug].src} alt={imgs[t.slug].title} loading="lazy" />}
+                    {covers[t.slug] && <img src={getThumbUrl(covers[t.slug].thumb_url)} alt={covers[t.slug].title || t.name} loading="lazy" />}
                   </div>
                   <div className="hl-tile-body">
+                    <div className="hl-tile-for">{t.for}</div>
                     <div className="hl-tile-name">{t.name}</div>
                     <div className="hl-tile-sub">{t.sub}</div>
                   </div>

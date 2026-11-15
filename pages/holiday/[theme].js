@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Head from 'next/head';
 import { CATALOG } from '../../lib/printful-catalog';
 import { THEMES, ALL_PICKS, themeBySlug } from '../../lib/holidayThemes';
-import { CSS, FONT_LINKS, Holly, HolidayNav, HolidayFoot, PicksGrid, useArtPicks } from '../../components/HolidayKit';
+import { CSS, FONT_LINKS, Holly, HolidayNav, HolidayFoot, PicksGrid, useArtPicks, useCurated } from '../../components/HolidayKit';
 
 // /holiday/<theme>: a short list of choices for one mood. Every card opens the normal
 // artwork page (product, size, gift message, checkout). Below the picks: a way to
@@ -24,8 +24,11 @@ function posterPrice() {
 }
 
 export default function HolidayTheme({ theme }) {
-  const state = useArtPicks(theme.q);
+  const cur = useCurated(theme.slug);
+  const needFallback = !cur.loading && cur.famous.length + cur.similar.length === 0;
+  const fb = useArtPicks(needFallback ? theme.q : '');
   const [shown, setShown] = useState(24);
+  const empty = !cur.loading && !fb.loading && cur.famous.length + cur.similar.length + fb.works.length === 0;
   const price = posterPrice();
   const others = [...THEMES, ALL_PICKS].filter(t => t.slug !== theme.slug);
   const title = `${theme.name} — Holiday Art Gifts | Great Art Classics`;
@@ -53,12 +56,25 @@ export default function HolidayTheme({ theme }) {
         </section>
 
         <section className="hl-wrap hl-sec" style={{ paddingTop: 28 }}>
-          <PicksGrid state={state} limit={shown} />
-          {!state.loading && !state.works.length && (
-            <p className="hl-msg">{state.error ? "We couldn't load this list just now." : 'No pieces found for this mood yet.'} <a href={'/viewer?q=' + encodeURIComponent(theme.q)} style={{ color: 'var(--gold)' }}>Search every museum for “{theme.q}”</a>.</p>
+          {(cur.loading || cur.famous.length > 0) && (
+            <>
+              <h2 className="hl-shelf">Famous favorites</h2>
+              <PicksGrid works={cur.famous} loading={cur.loading} limit={24} />
+            </>
           )}
-          {!state.loading && state.works.length > shown && (
-            <div className="hl-more"><button type="button" className="hl-btn hl-btn-ghost" style={{ background: 'none', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setShown(n => n + 24)}>Show more</button></div>
+          {cur.similar.length > 0 && (
+            <>
+              <h2 className="hl-shelf" style={{ marginTop: 44 }}>More in the same spirit</h2>
+              <p className="hl-sub" style={{ marginBottom: 18 }}>Loved those? These are by the same hands and in the same mood.</p>
+              <PicksGrid works={cur.similar} limit={shown} />
+              {cur.similar.length > shown && (
+                <div className="hl-more"><button type="button" className="hl-btn hl-btn-ghost" style={{ background: 'none', color: 'inherit', cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => setShown(n => n + 24)}>Show more</button></div>
+              )}
+            </>
+          )}
+          {needFallback && <PicksGrid works={fb.works} loading={fb.loading} limit={shown} />}
+          {empty && (
+            <p className="hl-msg">{cur.error ? "We couldn't load this list just now." : 'No pieces found for this shelf yet.'} <a href={'/viewer?q=' + encodeURIComponent(theme.q)} style={{ color: 'var(--gold)' }}>Search every museum for “{theme.q}”</a>.</p>
           )}
         </section>
 
