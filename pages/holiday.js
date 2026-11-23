@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import Head from 'next/head';
 import { CATALOG } from '../lib/printful-catalog';
 import { getThumbUrl } from '../lib/thumb';
@@ -26,6 +27,7 @@ function fromPrice(name) {
 }
 
 export default function Holiday() {
+  const [shown, setShown] = useState(48);
   const front = useCurated(FRONT_CAT, { pages: 4 });
   // If none of the hand-picked works are in the collection, fall back to a search.
   const needFallback = !front.loading && front.famous.length === 0;
@@ -69,7 +71,7 @@ export default function Holiday() {
             {[0, 1].map(i => (
               <a key={i} href={frames[i] ? '/artwork/' + frames[i].id : '#picks'} className={'hl-frame hl-frame-' + (i + 1)} aria-label={frames[i]?.title || 'Holiday pick'}>
                 <div className="hl-frame-in" style={{ background: THEMES[i].grad }}>
-                  {frames[i] && <img src={getThumbUrl(frames[i].thumb_url)} alt={frames[i].title || ''} />}
+                  {frames[i] && <img src={getThumbUrl(frames[i].thumb_url)} alt={frames[i].title || ''} fetchPriority="high" decoding="async" onError={e => { e.currentTarget.style.display = 'none'; }} />}
                 </div>
               </a>
             ))}
@@ -79,13 +81,13 @@ export default function Holiday() {
         <section id="picks" className="hl-sec hl-wrap" style={{ paddingTop: 20 }}>
           <h2>Famous favorites, ready to gift</h2>
           <p className="hl-sub">Hundreds of our best, brightest works, starting with the masterpieces everyone knows. Tap one to make it a gift: a framed poster, mug, tote or blanket.</p>
-          <PicksGrid works={works} loading={loading} limit={works.length} />
+          <PicksGrid works={works} loading={loading} limit={shown} />
           {!loading && !works.length && (
             <p className="hl-msg">Our holiday picks are taking a moment to load. <a href={'/holiday/' + ALL_PICKS.slug} style={{ color: 'var(--gold)' }}>Try the full picks page</a> or <a href="#browse" style={{ color: 'var(--gold)' }}>search every museum</a>.</p>
           )}
           <div className="hl-more">
-            {front.hasMore
-              ? <button type="button" disabled={front.busy} className="hl-btn hl-btn-ghost" style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }} onClick={front.loadMore}>{front.busy ? 'Loading…' : 'Show more art'}</button>
+            {(shown < works.length || front.hasMore)
+              ? <button type="button" disabled={front.busy} className="hl-btn hl-btn-ghost" style={{ background: 'none', cursor: 'pointer', fontFamily: 'inherit' }} onClick={() => { if (shown < works.length) setShown(n => n + 48); else front.loadMore(); }}>{front.busy ? 'Loading…' : 'Show more art'}</button>
               : <a href={'/holiday/' + ALL_PICKS.slug} className="hl-btn hl-btn-ghost">See all famous favorites</a>}
           </div>
         </section>

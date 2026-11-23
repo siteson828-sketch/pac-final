@@ -94,9 +94,19 @@ export function useCovers() {
 
 export function ArtCard({ w }) {
   const artist = (w.artist || '').split('\n')[0].split('(')[0].trim();
+  const first = getThumbUrl(w.thumb_url);
+  const [src, setSrc] = useState(first);
+  const [bad, setBad] = useState(false);
+  // If a museum's own server refuses or is slow, retry once through our cached proxy;
+  // if that fails too, drop the card so the wall never shows a blank tile.
+  const onError = () => {
+    if (!src.startsWith('/api/img') && /^https:\/\//.test(w.thumb_url || '')) setSrc('/api/img?url=' + encodeURIComponent(w.thumb_url));
+    else setBad(true);
+  };
+  if (bad || !first) return null;
   return (
     <a href={'/artwork/' + w.id} className="hl-art">
-      <div className="hl-art-img"><img src={getThumbUrl(w.thumb_url)} alt={w.title || 'Artwork'} loading="lazy" /></div>
+      <div className="hl-art-img"><img src={src} alt={w.title || 'Artwork'} loading="lazy" decoding="async" onError={onError} /></div>
       <div className="hl-art-body">
         <div className="hl-art-t">{w.title || 'Untitled'}</div>
         {artist && artist !== 'Unknown' && <div className="hl-art-a">{artist}</div>}
